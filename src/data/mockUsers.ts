@@ -33,7 +33,7 @@ export const mockUsers: User[] = [
     photos: [
       'https://images.unsplash.com/photo-1721322800607-8c38375eef04?w=400'
     ],
-    interests: ['Technology', 'Coffee',<- 'Reading', 'Gaming', 'Startups', 'AI'],
+    interests: ['Technology', 'Coffee', 'Reading', 'Gaming', 'Startups', 'AI'],
     location: 'Palo Alto, CA',
     job: 'Senior Software Engineer at Google',
     education: 'UC Berkeley',
