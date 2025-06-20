@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -38,55 +37,72 @@ const SwipeStack = () => {
 
     setLoading(true);
 
-    // Get profiles excluding current user and already swiped users
-    const { data: swipedUsers } = await supabase
-      .from('swipes')
-      .select('swiped_id')
-      .eq('swiper_id', user.id);
+    try {
+      // Get profiles excluding current user and already swiped users
+      const { data: swipedUsers } = await supabase
+        .from('swipes')
+        .select('swiped_id')
+        .eq('swiper_id', user.id);
 
-    const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
 
-    const { data: profilesData, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .neq('user_id', user.id)
-      .not('user_id', 'in', `(${swipedUserIds.join(',') || 'null'})`);
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('*')
+        .neq('user_id', user.id);
 
-    if (error) {
+      // Only add the NOT IN filter if there are actually swiped users
+      if (swipedUserIds.length > 0) {
+        profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
+      }
+
+      const { data: profilesData, error } = await profilesQuery;
+
+      if (error) {
+        console.error('Error loading profiles:', error);
+        toast({
+          title: "Error loading profiles",
+          description: error.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Load photos and interests for each profile
+      const profilesWithData = await Promise.all(
+        (profilesData || []).map(async (profile) => {
+          const [photosResult, interestsResult] = await Promise.all([
+            supabase
+              .from('photos')
+              .select('url')
+              .eq('user_id', profile.user_id)
+              .order('position'),
+            supabase
+              .from('interests')
+              .select('interest')
+              .eq('user_id', profile.user_id)
+          ]);
+
+          return {
+            ...profile,
+            photos: photosResult.data?.map(p => p.url) || [],
+            interests: interestsResult.data?.map(i => i.interest) || [],
+          };
+        })
+      );
+
+      setProfiles(profilesWithData.filter(p => p.photos.length > 0));
+      setLoading(false);
+    } catch (error) {
+      console.error('Error in loadProfiles:', error);
       toast({
         title: "Error loading profiles",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
       setLoading(false);
-      return;
     }
-
-    // Load photos and interests for each profile
-    const profilesWithData = await Promise.all(
-      (profilesData || []).map(async (profile) => {
-        const [photosResult, interestsResult] = await Promise.all([
-          supabase
-            .from('photos')
-            .select('url')
-            .eq('user_id', profile.user_id)
-            .order('position'),
-          supabase
-            .from('interests')
-            .select('interest')
-            .eq('user_id', profile.user_id)
-        ]);
-
-        return {
-          ...profile,
-          photos: photosResult.data?.map(p => p.url) || [],
-          interests: interestsResult.data?.map(i => i.interest) || [],
-        };
-      })
-    );
-
-    setProfiles(profilesWithData.filter(p => p.photos.length > 0));
-    setLoading(false);
   };
 
   const handleSwipe = async (action: 'like' | 'dislike' | 'super_like') => {
