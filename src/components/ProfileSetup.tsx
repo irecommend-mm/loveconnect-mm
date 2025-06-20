@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -178,57 +177,89 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
 
     setLoading(true);
 
-    // Update profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        user_id: user.id,
-        ...profile,
-        updated_at: new Date().toISOString(),
+    try {
+      // Check if profile exists first
+      const { data: existingProfileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      let profileError;
+      
+      if (existingProfileData) {
+        // Update existing profile
+        const { error } = await supabase
+          .from('profiles')
+          .update({
+            ...profile,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+        profileError = error;
+      } else {
+        // Insert new profile
+        const { error } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: user.id,
+            ...profile,
+            updated_at: new Date().toISOString(),
+          });
+        profileError = error;
+      }
+
+      if (profileError) {
+        toast({
+          title: "Profile Error",
+          description: profileError.message,
+          variant: "destructive",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Update interests
+      await supabase
+        .from('interests')
+        .delete()
+        .eq('user_id', user.id);
+
+      if (interests.length > 0) {
+        const { error: interestsError } = await supabase
+          .from('interests')
+          .insert(
+            interests.map(interest => ({
+              user_id: user.id,
+              interest,
+            }))
+          );
+
+        if (interestsError) {
+          toast({
+            title: "Interests Error",
+            description: interestsError.message,
+            variant: "destructive",
+          });
+        }
+      }
+
+      toast({
+        title: "Profile Updated!",
+        description: "Your profile has been saved successfully.",
       });
 
-    if (profileError) {
+      setLoading(false);
+      onComplete();
+    } catch (error) {
+      console.error('Profile update error:', error);
       toast({
         title: "Profile Error",
-        description: profileError.message,
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
       setLoading(false);
-      return;
     }
-
-    // Update interests
-    await supabase
-      .from('interests')
-      .delete()
-      .eq('user_id', user.id);
-
-    if (interests.length > 0) {
-      const { error: interestsError } = await supabase
-        .from('interests')
-        .insert(
-          interests.map(interest => ({
-            user_id: user.id,
-            interest,
-          }))
-        );
-
-      if (interestsError) {
-        toast({
-          title: "Interests Error",
-          description: interestsError.message,
-          variant: "destructive",
-        });
-      }
-    }
-
-    toast({
-      title: "Profile Updated!",
-      description: "Your profile has been saved successfully.",
-    });
-
-    setLoading(false);
-    onComplete();
   };
 
   return (
