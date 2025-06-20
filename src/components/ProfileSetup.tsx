@@ -349,7 +349,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                   id="height"
                   value={profile.height}
                   onChange={(e) => setProfile({...profile, height: e.target.value})}
-                  placeholder="e.g., 5'8\""
+                  placeholder="e.g., 5'8&quot;"
                 />
               </div>
             </div>
@@ -379,7 +379,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                   <SelectContent>
                     <SelectItem value="have">Have kids</SelectItem>
                     <SelectItem value="want">Want kids</SelectItem>
-                    <SelectItem value="dont_want">Don't want kids</SelectItem>
+                    <SelectItem value="dont_want">Don&apos;t want kids</SelectItem>
                     <SelectItem value="unsure">Not sure</SelectItem>
                   </SelectContent>
                 </Select>
