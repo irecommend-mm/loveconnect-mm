@@ -80,7 +80,7 @@ const Index = () => {
 
           return {
             id: match.id,
-            users: [match.user1_id, match.user2_id],
+            users: [match.user1_id, match.user2_id] as [string, string],
             timestamp: new Date(match.created_at),
             lastMessage: lastMessage ? {
               id: lastMessage.id,
