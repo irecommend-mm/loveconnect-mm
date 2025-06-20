@@ -9,7 +9,200 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      interests: {
+        Row: {
+          created_at: string
+          id: string
+          interest: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interest: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interest?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          match_id: string
+          read_at: string | null
+          sender_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          match_id: string
+          read_at?: string | null
+          sender_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          match_id?: string
+          read_at?: string | null
+          sender_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      photos: {
+        Row: {
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          position: number | null
+          url: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          position?: number | null
+          url: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          position?: number | null
+          url?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          age: number
+          bio: string | null
+          children: string | null
+          created_at: string
+          drinking: string | null
+          education: string | null
+          exercise: string | null
+          height: string | null
+          id: string
+          job: string | null
+          location: string | null
+          name: string
+          relationship_type: string | null
+          smoking: string | null
+          updated_at: string
+          user_id: string
+          verified: boolean | null
+          zodiac_sign: string | null
+        }
+        Insert: {
+          age: number
+          bio?: string | null
+          children?: string | null
+          created_at?: string
+          drinking?: string | null
+          education?: string | null
+          exercise?: string | null
+          height?: string | null
+          id?: string
+          job?: string | null
+          location?: string | null
+          name: string
+          relationship_type?: string | null
+          smoking?: string | null
+          updated_at?: string
+          user_id: string
+          verified?: boolean | null
+          zodiac_sign?: string | null
+        }
+        Update: {
+          age?: number
+          bio?: string | null
+          children?: string | null
+          created_at?: string
+          drinking?: string | null
+          education?: string | null
+          exercise?: string | null
+          height?: string | null
+          id?: string
+          job?: string | null
+          location?: string | null
+          name?: string
+          relationship_type?: string | null
+          smoking?: string | null
+          updated_at?: string
+          user_id?: string
+          verified?: boolean | null
+          zodiac_sign?: string | null
+        }
+        Relationships: []
+      }
+      swipes: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          swiped_id: string
+          swiper_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          swiped_id: string
+          swiper_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          swiped_id?: string
+          swiper_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
