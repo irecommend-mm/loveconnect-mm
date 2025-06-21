@@ -20,6 +20,7 @@ interface FilterSettings {
   hasPhotos: boolean;
   education: string[];
   interests: string[];
+  useLocationFilter: boolean;
 }
 
 interface AdvancedFiltersProps {
@@ -42,6 +43,7 @@ const AdvancedFilters = ({ onClose, onApply, initialFilters }: AdvancedFiltersPr
     hasPhotos: true,
     education: [],
     interests: [],
+    useLocationFilter: true,
     ...initialFilters
   });
 
@@ -95,7 +97,8 @@ const AdvancedFilters = ({ onClose, onApply, initialFilters }: AdvancedFiltersPr
       onlineOnly: false,
       hasPhotos: true,
       education: [],
-      interests: []
+      interests: [],
+      useLocationFilter: true
     });
   };
 
@@ -138,17 +141,25 @@ const AdvancedFilters = ({ onClose, onApply, initialFilters }: AdvancedFiltersPr
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Maximum Distance: {filters.maxDistance} km
-                </label>
-                <Slider
-                  value={[filters.maxDistance]}
-                  onValueChange={(value) => updateFilters({ maxDistance: value[0] })}
-                  min={1}
-                  max={100}
-                  step={1}
-                  className="w-full"
-                />
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-sm font-medium text-gray-700">
+                    {filters.useLocationFilter ? `Maximum Distance: ${filters.maxDistance} km` : 'Show all users (no distance filter)'}
+                  </label>
+                  <Switch
+                    checked={filters.useLocationFilter}
+                    onCheckedChange={(checked) => updateFilters({ useLocationFilter: checked })}
+                  />
+                </div>
+                {filters.useLocationFilter && (
+                  <Slider
+                    value={[filters.maxDistance]}
+                    onValueChange={(value) => updateFilters({ maxDistance: value[0] })}
+                    min={1}
+                    max={100}
+                    step={1}
+                    className="w-full"
+                  />
+                )}
               </div>
 
               <div>

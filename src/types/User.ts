@@ -18,6 +18,10 @@ export interface User {
   exercise?: 'often' | 'sometimes' | 'never';
   verified?: boolean;
   lastActive?: Date;
+  isOnline?: boolean;
+  distance?: number;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Message {

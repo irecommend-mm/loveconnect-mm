@@ -2,18 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck } from 'lucide-react';
+import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '../types/User';
 import ModernProfileModal from './ModernProfileModal';
 
 interface DiscoveryGridProps {
   currentUserId: string;
+  userLocation?: {lat: number, lng: number} | null;
 }
 
 type CategoryType = 'verified' | 'popular' | 'nearby' | 'recent' | 'online' | 'serious' | 'casual' | 'friends' | 'unsure';
 
-const DiscoveryGrid = ({ currentUserId }: DiscoveryGridProps) => {
+const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('verified');
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,7 +37,19 @@ const DiscoveryGrid = ({ currentUserId }: DiscoveryGridProps) => {
 
   useEffect(() => {
     loadUsersForCategory(selectedCategory);
-  }, [selectedCategory]);
+  }, [selectedCategory, userLocation]);
+
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+  };
 
   const loadUsersForCategory = async (category: CategoryType) => {
     setLoading(true);
@@ -67,19 +80,20 @@ const DiscoveryGrid = ({ currentUserId }: DiscoveryGridProps) => {
         case 'recent':
           query = query.order('created_at', { ascending: false });
           break;
+        case 'online':
+          // Filter users active within last 10 minutes
+          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+          query = query.gte('last_active', tenMinutesAgo);
+          break;
+        case 'nearby':
+          // For nearby, we'll filter after getting the data
+          break;
         case 'popular':
           // For now, we'll show all users. In a real app, you'd have a popularity score
           break;
-        case 'nearby':
-          // For demo purposes, show users from same general area
-          break;
-        case 'online':
-          // For demo purposes, show recent users
-          query = query.order('updated_at', { ascending: false });
-          break;
       }
 
-      const { data: profilesData, error } = await query.limit(20);
+      const { data: profilesData, error } = await query.limit(50);
 
       if (error) {
         console.error('Error loading users:', error);
@@ -102,6 +116,22 @@ const DiscoveryGrid = ({ currentUserId }: DiscoveryGridProps) => {
               .eq('user_id', profile.user_id)
           ]);
 
+          // Check if user is online (active within last 10 minutes)
+          const lastActive = new Date(profile.last_active || profile.updated_at);
+          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+          const isOnline = lastActive > tenMinutesAgo;
+
+          // Calculate distance if both user and profile have coordinates
+          let distance = null;
+          if (userLocation && profile.latitude && profile.longitude) {
+            distance = calculateDistance(
+              userLocation.lat, 
+              userLocation.lng, 
+              profile.latitude, 
+              profile.longitude
+            );
+          }
+
           return {
             id: profile.user_id,
             name: profile.name,
@@ -120,12 +150,23 @@ const DiscoveryGrid = ({ currentUserId }: DiscoveryGridProps) => {
             drinking: profile.drinking as any,
             exercise: profile.exercise as any,
             verified: profile.verified || false,
-            lastActive: new Date(),
+            lastActive: new Date(profile.last_active || profile.updated_at),
+            isOnline,
+            distance,
           };
         })
       );
 
-      setUsers(usersWithData.filter(u => u.photos.length > 0));
+      let filteredUsers = usersWithData.filter(u => u.photos.length > 0);
+
+      // Apply distance filter for nearby category
+      if (category === 'nearby' && userLocation) {
+        filteredUsers = filteredUsers
+          .filter(u => u.distance !== null && u.distance <= 50)
+          .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      }
+
+      setUsers(filteredUsers.slice(0, 20));
       setLoading(false);
     } catch (error) {
       console.error('Error in loadUsersForCategory:', error);
@@ -150,9 +191,26 @@ const DiscoveryGrid = ({ currentUserId }: DiscoveryGridProps) => {
           className="w-full h-full object-cover"
         />
         
+        {/* Online Status */}
+        {user.isOnline && (
+          <div className="absolute top-3 left-3 flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span>Online</span>
+          </div>
+        )}
+        
+        {/* Verification Badge */}
         {user.verified && (
           <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full">
             <Shield className="h-3 w-3" />
+          </div>
+        )}
+
+        {/* Distance Badge */}
+        {user.distance && (
+          <div className="absolute bottom-16 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center space-x-1">
+            <Navigation className="h-3 w-3" />
+            <span>{Math.round(user.distance)}km</span>
           </div>
         )}
 

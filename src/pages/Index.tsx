@@ -1,9 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, MessageCircle, User, Settings, LogOut, Filter, Grid3x3 } from 'lucide-react';
+import { Heart, MessageCircle, User, Settings, LogOut, Filter } from 'lucide-react';
 import SwipeStack from '@/components/SwipeStack';
 import MatchesList from '@/components/MatchesList';
 import ProfileSetup from '@/components/ProfileSetup';
@@ -24,6 +25,7 @@ const Index = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -32,8 +34,53 @@ const Index = () => {
       checkUserProfile();
       loadMatches();
       loadUsers();
+      getUserLocation();
+      updateOnlineStatus();
     }
   }, [user, loading, navigate]);
+
+  const getUserLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+          
+          // Update user's location in the database
+          if (user) {
+            supabase
+              .from('profiles')
+              .update({ 
+                latitude: latitude, 
+                longitude: longitude,
+                last_active: new Date().toISOString()
+              })
+              .eq('user_id', user.id)
+              .then(() => console.log('Location updated'));
+          }
+        },
+        (error) => {
+          console.log('Location access denied:', error);
+        }
+      );
+    }
+  };
+
+  const updateOnlineStatus = () => {
+    if (!user) return;
+    
+    // Update last_active timestamp every 30 seconds
+    const interval = setInterval(() => {
+      supabase
+        .from('profiles')
+        .update({ last_active: new Date().toISOString() })
+        .eq('user_id', user.id)
+        .then(() => console.log('Online status updated'));
+    }, 30000);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  };
 
   const checkUserProfile = async () => {
     if (!user) return;
@@ -122,6 +169,11 @@ const Index = () => {
               .eq('user_id', profile.user_id)
           ]);
 
+          // Check if user is online (active within last 10 minutes)
+          const lastActive = new Date(profile.last_active || profile.updated_at);
+          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+          const isOnline = lastActive > tenMinutesAgo;
+
           return {
             id: profile.user_id,
             name: profile.name,
@@ -140,7 +192,10 @@ const Index = () => {
             drinking: profile.drinking as any,
             exercise: profile.exercise as any,
             verified: profile.verified || false,
-            lastActive: new Date(),
+            lastActive: new Date(profile.last_active || profile.updated_at),
+            isOnline,
+            latitude: profile.latitude,
+            longitude: profile.longitude,
           };
         })
       );
@@ -272,9 +327,9 @@ const Index = () => {
               <Heart className="h-4 w-4" />
               <span>Discover</span>
             </TabsTrigger>
-            <TabsTrigger value="explore" className="flex items-center space-x-2">
-              <Grid3x3 className="h-4 w-4" />
-              <span>Explore</span>
+            <TabsTrigger value="browse" className="flex items-center space-x-2">
+              <User className="h-4 w-4" />
+              <span>Browse</span>
             </TabsTrigger>
             <TabsTrigger value="matches" className="flex items-center space-x-2">
               <MessageCircle className="h-4 w-4" />
@@ -294,8 +349,8 @@ const Index = () => {
             <SwipeStack />
           </TabsContent>
 
-          <TabsContent value="explore" className="space-y-6">
-            <DiscoveryGrid currentUserId={user.id} />
+          <TabsContent value="browse" className="space-y-6">
+            <DiscoveryGrid currentUserId={user.id} userLocation={userLocation} />
           </TabsContent>
 
           <TabsContent value="matches" className="space-y-6">

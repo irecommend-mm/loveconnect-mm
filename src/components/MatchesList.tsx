@@ -61,6 +61,10 @@ const MatchesList = ({ matches, users, onChatClick, currentUserId }: MatchesList
                     alt={user.name}
                     className="w-14 h-14 rounded-full object-cover"
                   />
+                  {/* Online Status */}
+                  {user.isOnline && (
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
+                  )}
                   {user.verified && (
                     <div className="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                       <svg className="w-3 h-3 fill-current text-white" viewBox="0 0 20 20">
@@ -74,6 +78,9 @@ const MatchesList = ({ matches, users, onChatClick, currentUserId }: MatchesList
                   <div className="flex items-center space-x-2 mb-1">
                     <h3 className="font-semibold text-gray-900 truncate">{user.name}</h3>
                     <span className="text-sm text-gray-500">{user.age}</span>
+                    {user.isOnline && (
+                      <span className="text-xs text-green-600 font-medium">Online</span>
+                    )}
                   </div>
                   
                   {match.lastMessage ? (
