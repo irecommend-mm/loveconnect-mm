@@ -1,14 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Heart, MessageCircle, User, Settings, LogOut } from 'lucide-react';
+import { Heart, MessageCircle, User, Settings, LogOut, Filter, Grid3x3 } from 'lucide-react';
 import SwipeStack from '@/components/SwipeStack';
 import MatchesList from '@/components/MatchesList';
 import ProfileSetup from '@/components/ProfileSetup';
 import ChatInterface from '@/components/ChatInterface';
+import AdvancedFilters from '@/components/AdvancedFilters';
+import DiscoveryGrid from '@/components/DiscoveryGrid';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType, Match } from '@/types/User';
 
@@ -18,6 +19,7 @@ const Index = () => {
   const [activeTab, setActiveTab] = useState('discover');
   const [showProfileSetup, setShowProfileSetup] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -171,6 +173,11 @@ const Index = () => {
     navigate('/auth');
   };
 
+  const handleApplyFilters = (filters: any) => {
+    console.log('Applied filters:', filters);
+    // Here you would apply the filters to your data loading logic
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-50 to-purple-50">
@@ -230,6 +237,15 @@ const Index = () => {
             </h1>
           </div>
           <div className="flex items-center space-x-2">
+            {activeTab === 'discover' && (
+              <Button
+                onClick={() => setShowFilters(true)}
+                variant="ghost"
+                size="sm"
+              >
+                <Filter className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               onClick={() => setShowProfileSetup(true)}
               variant="ghost"
@@ -251,10 +267,14 @@ const Index = () => {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="discover" className="flex items-center space-x-2">
               <Heart className="h-4 w-4" />
               <span>Discover</span>
+            </TabsTrigger>
+            <TabsTrigger value="explore" className="flex items-center space-x-2">
+              <Grid3x3 className="h-4 w-4" />
+              <span>Explore</span>
             </TabsTrigger>
             <TabsTrigger value="matches" className="flex items-center space-x-2">
               <MessageCircle className="h-4 w-4" />
@@ -272,6 +292,10 @@ const Index = () => {
               <p className="text-gray-600">Swipe right to like, left to pass</p>
             </div>
             <SwipeStack />
+          </TabsContent>
+
+          <TabsContent value="explore" className="space-y-6">
+            <DiscoveryGrid currentUserId={user.id} />
           </TabsContent>
 
           <TabsContent value="matches" className="space-y-6">
@@ -298,6 +322,14 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Filters Modal */}
+      {showFilters && (
+        <AdvancedFilters
+          onClose={() => setShowFilters(false)}
+          onApply={handleApplyFilters}
+        />
+      )}
     </div>
   );
 };

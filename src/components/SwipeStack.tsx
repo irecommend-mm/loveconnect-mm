@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Heart, X, Star, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+import { Heart, X, Star, MapPin, Briefcase, GraduationCap, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import ModernProfileModal from './ModernProfileModal';
 
 interface Profile {
   id: string;
@@ -25,6 +26,7 @@ const SwipeStack = () => {
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -153,6 +155,27 @@ const SwipeStack = () => {
     }
   };
 
+  const convertToUserType = (profile: Profile) => ({
+    id: profile.user_id,
+    name: profile.name,
+    age: profile.age,
+    bio: profile.bio,
+    photos: profile.photos,
+    interests: profile.interests,
+    location: profile.location,
+    job: profile.job,
+    education: profile.education,
+    verified: profile.verified,
+    lastActive: new Date(),
+    height: '',
+    zodiacSign: '',
+    relationshipType: 'serious' as const,
+    children: 'unsure' as const,
+    smoking: 'no' as const,
+    drinking: 'sometimes' as const,
+    exercise: 'sometimes' as const,
+  });
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -199,6 +222,15 @@ const SwipeStack = () => {
               </svg>
             </div>
           )}
+          
+          {/* Info Button */}
+          <button
+            onClick={() => setShowProfileModal(true)}
+            className="absolute top-4 left-4 w-10 h-10 bg-black/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/30 transition-colors"
+          >
+            <Info className="h-5 w-5 text-white" />
+          </button>
+          
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-6">
             <h2 className="text-white text-2xl font-bold">{currentProfile.name}, {currentProfile.age}</h2>
             {currentProfile.location && (
@@ -276,6 +308,26 @@ const SwipeStack = () => {
           </Button>
         </div>
       </div>
+
+      {/* Profile Modal */}
+      {showProfileModal && (
+        <ModernProfileModal
+          user={convertToUserType(currentProfile)}
+          onClose={() => setShowProfileModal(false)}
+          onLike={() => {
+            setShowProfileModal(false);
+            handleSwipe('like');
+          }}
+          onPass={() => {
+            setShowProfileModal(false);
+            handleSwipe('dislike');
+          }}
+          onSuperLike={() => {
+            setShowProfileModal(false);
+            handleSwipe('super_like');
+          }}
+        />
+      )}
     </div>
   );
 };
