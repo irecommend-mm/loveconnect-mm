@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -111,6 +112,19 @@ const SwipeStack = () => {
     if (!user || currentIndex >= profiles.length) return;
 
     const currentProfile = profiles[currentIndex];
+    
+    // Validate that we have required data
+    if (!currentProfile?.user_id) {
+      console.error('Invalid profile data:', currentProfile);
+      toast({
+        title: "Error",
+        description: "Invalid profile data. Moving to next profile.",
+        variant: "destructive",
+      });
+      setCurrentIndex(currentIndex + 1);
+      return;
+    }
+
     console.log('Attempting to swipe:', { 
       swiper_id: user.id, 
       swiped_id: currentProfile.user_id, 
@@ -118,31 +132,60 @@ const SwipeStack = () => {
     });
 
     try {
-      // First, verify both users exist in profiles table
-      const { data: swiperProfile } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', user.id)
+      // Check if swipe already exists first (most efficient check)
+      const { data: existingSwipe, error: existingSwipeError } = await supabase
+        .from('swipes')
+        .select('id')
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', currentProfile.user_id)
         .maybeSingle();
 
-      const { data: swipedProfile } = await supabase
-        .from('profiles')
-        .select('user_id')
-        .eq('user_id', currentProfile.user_id)
-        .maybeSingle();
-
-      if (!swiperProfile) {
-        console.error('Swiper profile does not exist:', user.id);
+      if (existingSwipeError) {
+        console.error('Error checking existing swipe:', existingSwipeError);
         toast({
-          title: "Profile Error",
-          description: "Your profile was not found. Please refresh the page.",
+          title: "Error",
+          description: "Unable to verify swipe status. Please try again.",
           variant: "destructive",
         });
         return;
       }
 
-      if (!swipedProfile) {
-        console.error('Swiped profile does not exist:', currentProfile.user_id);
+      if (existingSwipe) {
+        console.log('Swipe already exists, moving to next profile');
+        setCurrentIndex(currentIndex + 1);
+        return;
+      }
+
+      // Validate both user profiles exist in the database
+      const { data: profileValidation, error: validationError } = await supabase
+        .from('profiles')
+        .select('user_id')
+        .in('user_id', [user.id, currentProfile.user_id]);
+
+      if (validationError) {
+        console.error('Error validating profiles:', validationError);
+        toast({
+          title: "Error",
+          description: "Unable to validate profiles. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const userIds = profileValidation?.map(p => p.user_id) || [];
+      
+      if (!userIds.includes(user.id)) {
+        console.error('Current user profile not found in database:', user.id);
+        toast({
+          title: "Profile Error",
+          description: "Your profile was not found. Please refresh the page and try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (!userIds.includes(currentProfile.user_id)) {
+        console.error('Target profile not found in database:', currentProfile.user_id);
         toast({
           title: "Profile Unavailable",
           description: "This profile is no longer available.",
@@ -152,65 +195,80 @@ const SwipeStack = () => {
         return;
       }
 
-      // Check if swipe already exists
-      const { data: existingSwipe } = await supabase
-        .from('swipes')
-        .select('id')
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', currentProfile.user_id)
-        .maybeSingle();
-
-      if (existingSwipe) {
-        console.log('Swipe already exists, moving to next profile');
-        setCurrentIndex(currentIndex + 1);
-        return;
-      }
-
-      // Create the swipe
-      const { error: swipeError } = await supabase
+      // Create the swipe with proper error handling
+      const { data: swipeData, error: swipeError } = await supabase
         .from('swipes')
         .insert({
           swiper_id: user.id,
           swiped_id: currentProfile.user_id,
           action,
-        });
+        })
+        .select()
+        .single();
 
       if (swipeError) {
         console.error('Error creating swipe:', swipeError);
-        toast({
-          title: "Error",
-          description: "Unable to record your action. Please try again.",
-          variant: "destructive",
-        });
+        
+        // Provide more specific error messages
+        if (swipeError.code === '23503') {
+          toast({
+            title: "Profile Error",
+            description: "One of the profiles is no longer available. Please refresh.",
+            variant: "destructive",
+          });
+        } else if (swipeError.code === '23505') {
+          // Duplicate key error - swipe already exists
+          console.log('Duplicate swipe detected, moving to next profile');
+          setCurrentIndex(currentIndex + 1);
+          return;
+        } else {
+          toast({
+            title: "Error",
+            description: "Unable to record your action. Please try again.",
+            variant: "destructive",
+          });
+        }
         return;
       }
 
-      console.log('Swipe created successfully');
+      console.log('Swipe created successfully:', swipeData);
 
+      // Check for matches only if it's a like
       if (action === 'like') {
-        // Check if this creates a match
-        const { data: matchData } = await supabase
-          .from('swipes')
-          .select('*')
-          .eq('swiper_id', currentProfile.user_id)
-          .eq('swiped_id', user.id)
-          .eq('action', 'like')
-          .maybeSingle();
+        try {
+          const { data: matchData, error: matchError } = await supabase
+            .from('swipes')
+            .select('*')
+            .eq('swiper_id', currentProfile.user_id)
+            .eq('swiped_id', user.id)
+            .eq('action', 'like')
+            .maybeSingle();
 
-        if (matchData) {
-          toast({
-            title: "It's a Match! 🎉",
-            description: `You and ${currentProfile.name} liked each other!`,
-          });
+          if (matchError) {
+            console.error('Error checking for match:', matchError);
+            // Don't block the swipe for match check errors
+          } else if (matchData) {
+            toast({
+              title: "It's a Match! 🎉",
+              description: `You and ${currentProfile.name} liked each other!`,
+            });
+          }
+        } catch (matchCheckError) {
+          console.error('Error in match check:', matchCheckError);
+          // Continue with the flow even if match check fails
         }
       }
 
+      // Move to next profile
       setCurrentIndex(currentIndex + 1);
 
       // Load more profiles if running low
       if (currentIndex >= profiles.length - 2) {
-        loadProfiles();
+        setTimeout(() => {
+          loadProfiles();
+        }, 100);
       }
+
     } catch (error) {
       console.error('Unexpected error in handleSwipe:', error);
       toast({
@@ -334,8 +392,8 @@ const SwipeStack = () => {
             <div className="space-y-2">
               <h4 className="font-medium text-gray-900">Interests</h4>
               <div className="flex flex-wrap gap-2">
-                {currentProfile.interests.slice(0, 6).map((interest) => (
-                  <Badge key={interest} variant="outline" className="text-xs">
+                {currentProfile.interests.slice(0, 6).map((interest, index) => (
+                  <Badge key={`${interest}-${index}`} variant="outline" className="text-xs">
                     {interest}
                   </Badge>
                 ))}
