@@ -112,46 +112,88 @@ const SwipeStack = () => {
 
     const currentProfile = profiles[currentIndex];
 
-    const { error } = await supabase
-      .from('swipes')
-      .insert({
-        swiper_id: user.id,
-        swiped_id: currentProfile.user_id,
-        action,
-      });
+    // Validate that the profile exists before creating swipe
+    const { data: profileExists } = await supabase
+      .from('profiles')
+      .select('user_id')
+      .eq('user_id', currentProfile.user_id)
+      .single();
 
-    if (error) {
+    if (!profileExists) {
+      console.error('Profile does not exist for user_id:', currentProfile.user_id);
       toast({
         title: "Error",
-        description: error.message,
+        description: "This profile is no longer available.",
         variant: "destructive",
       });
+      setCurrentIndex(currentIndex + 1);
       return;
     }
 
-    if (action === 'like') {
-      // Check if this creates a match
-      const { data: matchData } = await supabase
-        .from('swipes')
-        .select('*')
-        .eq('swiper_id', currentProfile.user_id)
-        .eq('swiped_id', user.id)
-        .eq('action', 'like')
-        .single();
+    // Check if swipe already exists to prevent duplicates
+    const { data: existingSwipe } = await supabase
+      .from('swipes')
+      .select('id')
+      .eq('swiper_id', user.id)
+      .eq('swiped_id', currentProfile.user_id)
+      .single();
 
-      if (matchData) {
-        toast({
-          title: "It's a Match! 🎉",
-          description: `You and ${currentProfile.name} liked each other!`,
-        });
-      }
+    if (existingSwipe) {
+      console.log('Swipe already exists, skipping');
+      setCurrentIndex(currentIndex + 1);
+      return;
     }
 
-    setCurrentIndex(currentIndex + 1);
+    try {
+      const { error } = await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: user.id,
+          swiped_id: currentProfile.user_id,
+          action,
+        });
 
-    // Load more profiles if running low
-    if (currentIndex >= profiles.length - 2) {
-      loadProfiles();
+      if (error) {
+        console.error('Error creating swipe:', error);
+        toast({
+          title: "Error",
+          description: "Unable to record your action. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (action === 'like') {
+        // Check if this creates a match
+        const { data: matchData } = await supabase
+          .from('swipes')
+          .select('*')
+          .eq('swiper_id', currentProfile.user_id)
+          .eq('swiped_id', user.id)
+          .eq('action', 'like')
+          .single();
+
+        if (matchData) {
+          toast({
+            title: "It's a Match! 🎉",
+            description: `You and ${currentProfile.name} liked each other!`,
+          });
+        }
+      }
+
+      setCurrentIndex(currentIndex + 1);
+
+      // Load more profiles if running low
+      if (currentIndex >= profiles.length - 2) {
+        loadProfiles();
+      }
+    } catch (error) {
+      console.error('Unexpected error in handleSwipe:', error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
