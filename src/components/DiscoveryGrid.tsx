@@ -116,19 +116,20 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
               .eq('user_id', profile.user_id)
           ]);
 
-          // Check if user is online (active within last 10 minutes)
-          const lastActive = new Date(profile.last_active || profile.updated_at);
+          // Check if user is online (active within last 10 minutes) - handle optional field
+          const lastActiveDate = profile.last_active || profile.updated_at;
+          const lastActive = new Date(lastActiveDate);
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
           const isOnline = lastActive > tenMinutesAgo;
 
-          // Calculate distance if both user and profile have coordinates
+          // Calculate distance if both user and profile have coordinates - handle optional fields
           let distance = null;
-          if (userLocation && profile.latitude && profile.longitude) {
+          if (userLocation && profile.latitude != null && profile.longitude != null) {
             distance = calculateDistance(
               userLocation.lat, 
               userLocation.lng, 
-              profile.latitude, 
-              profile.longitude
+              Number(profile.latitude), 
+              Number(profile.longitude)
             );
           }
 
@@ -150,7 +151,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             drinking: profile.drinking as any,
             exercise: profile.exercise as any,
             verified: profile.verified || false,
-            lastActive: new Date(profile.last_active || profile.updated_at),
+            lastActive: new Date(lastActiveDate),
             isOnline,
             distance,
           };

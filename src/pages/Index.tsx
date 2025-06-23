@@ -46,15 +46,23 @@ const Index = () => {
           const { latitude, longitude } = position.coords;
           setUserLocation({ lat: latitude, lng: longitude });
           
-          // Update user's location in the database
+          // Update user's location in the database - handle optional fields
           if (user) {
+            const updateData: any = {
+              last_active: new Date().toISOString()
+            };
+            
+            // Only add lat/lng if they exist in the table schema
+            try {
+              updateData.latitude = latitude;
+              updateData.longitude = longitude;
+            } catch (e) {
+              console.log('Location fields may not exist in schema');
+            }
+            
             supabase
               .from('profiles')
-              .update({ 
-                latitude: latitude, 
-                longitude: longitude,
-                last_active: new Date().toISOString()
-              })
+              .update(updateData)
               .eq('user_id', user.id)
               .then(() => console.log('Location updated'));
           }
@@ -69,11 +77,19 @@ const Index = () => {
   const updateOnlineStatus = () => {
     if (!user) return;
     
-    // Update last_active timestamp every 30 seconds
+    // Update last_active timestamp every 30 seconds - handle optional field
     const interval = setInterval(() => {
+      const updateData: any = {};
+      
+      try {
+        updateData.last_active = new Date().toISOString();
+      } catch (e) {
+        console.log('last_active field may not exist in schema');
+      }
+      
       supabase
         .from('profiles')
-        .update({ last_active: new Date().toISOString() })
+        .update(updateData)
         .eq('user_id', user.id)
         .then(() => console.log('Online status updated'));
     }, 30000);
@@ -169,8 +185,9 @@ const Index = () => {
               .eq('user_id', profile.user_id)
           ]);
 
-          // Check if user is online (active within last 10 minutes)
-          const lastActive = new Date(profile.last_active || profile.updated_at);
+          // Check if user is online (active within last 10 minutes) - handle optional field
+          const lastActiveDate = profile.last_active || profile.updated_at;
+          const lastActive = new Date(lastActiveDate);
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
           const isOnline = lastActive > tenMinutesAgo;
 
@@ -192,10 +209,10 @@ const Index = () => {
             drinking: profile.drinking as any,
             exercise: profile.exercise as any,
             verified: profile.verified || false,
-            lastActive: new Date(profile.last_active || profile.updated_at),
+            lastActive: new Date(lastActiveDate),
             isOnline,
-            latitude: profile.latitude,
-            longitude: profile.longitude,
+            latitude: profile.latitude ? Number(profile.latitude) : undefined,
+            longitude: profile.longitude ? Number(profile.longitude) : undefined,
           };
         })
       );

@@ -128,7 +128,10 @@ export type Database = {
           height: string | null
           id: string
           job: string | null
+          last_active: string | null
+          latitude: number | null
           location: string | null
+          longitude: number | null
           name: string
           relationship_type: string | null
           smoking: string | null
@@ -148,7 +151,10 @@ export type Database = {
           height?: string | null
           id?: string
           job?: string | null
+          last_active?: string | null
+          latitude?: number | null
           location?: string | null
+          longitude?: number | null
           name: string
           relationship_type?: string | null
           smoking?: string | null
@@ -168,7 +174,10 @@ export type Database = {
           height?: string | null
           id?: string
           job?: string | null
+          last_active?: string | null
+          latitude?: number | null
           location?: string | null
+          longitude?: number | null
           name?: string
           relationship_type?: string | null
           smoking?: string | null
@@ -208,7 +217,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_distance: {
+        Args: { lat1: number; lon1: number; lat2: number; lon2: number }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never
