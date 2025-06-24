@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -337,23 +336,24 @@ const Index = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto p-4">
+      <div className="max-w-4xl mx-auto p-2 sm:p-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
-            <TabsTrigger value="discover" className="flex items-center space-x-2">
-              <Heart className="h-4 w-4" />
-              <span>Discover</span>
+          <TabsList className="grid w-full grid-cols-4 mb-4 sm:mb-6">
+            <TabsTrigger value="discover" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+              <Heart className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Discover</span>
+              <span className="sm:hidden">Find</span>
             </TabsTrigger>
-            <TabsTrigger value="browse" className="flex items-center space-x-2">
-              <User className="h-4 w-4" />
+            <TabsTrigger value="browse" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+              <User className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Browse</span>
             </TabsTrigger>
-            <TabsTrigger value="matches" className="flex items-center space-x-2">
-              <MessageCircle className="h-4 w-4" />
+            <TabsTrigger value="matches" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+              <MessageCircle className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Matches</span>
             </TabsTrigger>
-            <TabsTrigger value="profile" className="flex items-center space-x-2">
-              <User className="h-4 w-4" />
+            <TabsTrigger value="profile" className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+              <User className="h-3 w-3 sm:h-4 sm:w-4" />
               <span>Profile</span>
             </TabsTrigger>
           </TabsList>
@@ -366,7 +366,7 @@ const Index = () => {
             <SwipeStack />
           </TabsContent>
 
-          <TabsContent value="browse" className="space-y-6">
+          <TabsContent value="browse" className="space-y-4 sm:space-y-6">
             <DiscoveryGrid currentUserId={user.id} userLocation={userLocation} />
           </TabsContent>
 

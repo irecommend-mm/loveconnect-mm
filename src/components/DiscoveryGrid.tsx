@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -25,14 +24,14 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     { id: 'popular' as CategoryType, label: 'Popular', icon: Star, color: 'bg-yellow-500' },
     { id: 'nearby' as CategoryType, label: 'Nearby', icon: MapPin, color: 'bg-green-500' },
     { id: 'recent' as CategoryType, label: 'Recent', icon: Clock, color: 'bg-purple-500' },
-    { id: 'online' as CategoryType, label: 'Online Now', icon: UserCheck, color: 'bg-emerald-500' },
+    { id: 'online' as CategoryType, label: 'Online', icon: UserCheck, color: 'bg-emerald-500' },
   ];
 
   const relationshipCategories = [
-    { id: 'serious' as CategoryType, label: 'Serious Relationship', icon: Heart, color: 'bg-red-500' },
-    { id: 'casual' as CategoryType, label: 'Casual Dating', icon: Coffee, color: 'bg-orange-500' },
-    { id: 'friends' as CategoryType, label: 'Friends Only', icon: Users, color: 'bg-indigo-500' },
-    { id: 'unsure' as CategoryType, label: 'Not Sure Yet', icon: Users, color: 'bg-gray-500' },
+    { id: 'serious' as CategoryType, label: 'Serious', icon: Heart, color: 'bg-red-500' },
+    { id: 'casual' as CategoryType, label: 'Casual', icon: Coffee, color: 'bg-orange-500' },
+    { id: 'friends' as CategoryType, label: 'Friends', icon: Users, color: 'bg-indigo-500' },
+    { id: 'unsure' as CategoryType, label: 'Unsure', icon: Users, color: 'bg-gray-500' },
   ];
 
   useEffect(() => {
@@ -175,6 +174,49 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     }
   };
 
+  const handleLike = async (user: UserType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    try {
+      const { error } = await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: user.id,
+          action: 'like'
+        });
+
+      if (error) {
+        console.error('Error liking user:', error);
+        return;
+      }
+
+      // Check for match
+      const { data: matchData } = await supabase
+        .from('swipes')
+        .select('*')
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', currentUserId)
+        .eq('action', 'like')
+        .maybeSingle();
+
+      if (matchData) {
+        // Create match record
+        await supabase
+          .from('matches')
+          .insert({
+            user1_id: currentUserId,
+            user2_id: user.id
+          });
+      }
+
+      // Remove user from current list
+      setUsers(prevUsers => prevUsers.filter(u => u.id !== user.id));
+    } catch (error) {
+      console.error('Error in handleLike:', error);
+    }
+  };
+
   const handleUserClick = (user: UserType) => {
     setSelectedUser(user);
   };
@@ -182,10 +224,12 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const renderUserCard = (user: UserType) => (
     <div
       key={user.id}
-      onClick={() => handleUserClick(user)}
       className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105"
     >
-      <div className="aspect-[3/4] relative">
+      <div 
+        className="aspect-[3/4] relative"
+        onClick={() => handleUserClick(user)}
+      >
         <img
           src={user.photos[0]}
           alt={user.name}
@@ -209,11 +253,19 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
         {/* Distance Badge */}
         {user.distance && (
-          <div className="absolute bottom-16 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center space-x-1">
+          <div className="absolute bottom-20 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center space-x-1">
             <Navigation className="h-3 w-3" />
             <span>{Math.round(user.distance)}km</span>
           </div>
         )}
+
+        {/* Like Button - Tinder Style */}
+        <button
+          onClick={(e) => handleLike(user, e)}
+          className="absolute bottom-3 right-3 w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-xl flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
+        >
+          <Heart className="h-6 w-6 text-white fill-current group-hover:animate-pulse" />
+        </button>
 
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           <h3 className="text-white font-semibold text-lg">{user.name}, {user.age}</h3>
@@ -238,11 +290,11 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   );
 
   return (
-    <div className="space-y-6">
-      {/* Category Tabs */}
+    <div className="space-y-4 px-2 sm:px-0">
+      {/* Category Tabs - Mobile Optimized */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Discover by Type</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Type</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
           {categories.map((category) => {
             const Icon = category.icon;
             return (
@@ -250,24 +302,24 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
                 variant={selectedCategory === category.id ? "default" : "outline"}
-                className={`h-auto p-4 flex flex-col items-center space-y-2 ${
+                className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
                   selectedCategory === category.id
                     ? `${category.color} text-white hover:opacity-90`
                     : 'hover:bg-gray-50'
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium">{category.label}</span>
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-medium leading-tight text-center">{category.label}</span>
               </Button>
             );
           })}
         </div>
       </div>
 
-      {/* Relationship Type Categories */}
+      {/* Relationship Type Categories - Mobile Optimized */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Discover by Intent</h2>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Intent</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
           {relationshipCategories.map((category) => {
             const Icon = category.icon;
             return (
@@ -275,47 +327,47 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
                 key={category.id}
                 onClick={() => setSelectedCategory(category.id)}
                 variant={selectedCategory === category.id ? "default" : "outline"}
-                className={`h-auto p-4 flex flex-col items-center space-y-2 ${
+                className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
                   selectedCategory === category.id
                     ? `${category.color} text-white hover:opacity-90`
                     : 'hover:bg-gray-50'
                 }`}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs font-medium text-center">{category.label}</span>
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-medium leading-tight text-center">{category.label}</span>
               </Button>
             );
           })}
         </div>
       </div>
 
-      {/* Users Grid */}
+      {/* Users Grid - Mobile Optimized */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-900">
+        <div className="flex items-center justify-between mb-3 px-2">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
             {categories.find(c => c.id === selectedCategory)?.label || 
              relationshipCategories.find(c => c.id === selectedCategory)?.label}
           </h3>
-          <Badge variant="secondary">{users.length} people</Badge>
+          <Badge variant="secondary" className="text-xs sm:text-sm">{users.length} people</Badge>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {[...Array(8)].map((_, index) => (
               <div key={index} className="aspect-[3/4] bg-gray-200 rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : users.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {users.map(renderUserCard)}
           </div>
         ) : (
-          <div className="text-center py-12">
+          <div className="text-center py-8 sm:py-12">
             <div className="text-gray-400 mb-4">
-              <Users className="h-16 w-16 mx-auto" />
+              <Users className="h-12 w-12 sm:h-16 sm:w-16 mx-auto" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-600 mb-2">No users found</h3>
-            <p className="text-gray-500">Try adjusting your filters or check back later!</p>
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">No users found</h3>
+            <p className="text-gray-500 text-sm sm:text-base px-4">Try adjusting your filters or check back later!</p>
           </div>
         )}
       </div>
