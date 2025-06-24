@@ -33,7 +33,6 @@ const MobileSwipeCard = ({ profile, onSwipe, onShowProfile }: MobileSwipeCardPro
   
   const cardRef = useRef<HTMLDivElement>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
-  const initialTouchRef = useRef<Touch | null>(null);
 
   const handleStart = (clientX: number, clientY: number) => {
     setIsDragging(true);
@@ -106,7 +105,6 @@ const MobileSwipeCard = ({ profile, onSwipe, onShowProfile }: MobileSwipeCardPro
   const handleTouchStart = (e: React.TouchEvent) => {
     e.preventDefault();
     const touch = e.touches[0];
-    initialTouchRef.current = touch;
     handleStart(touch.clientX, touch.clientY);
   };
 
@@ -118,7 +116,6 @@ const MobileSwipeCard = ({ profile, onSwipe, onShowProfile }: MobileSwipeCardPro
 
   const handleTouchEnd = (e: React.TouchEvent) => {
     e.preventDefault();
-    initialTouchRef.current = null;
     handleEnd();
   };
 
