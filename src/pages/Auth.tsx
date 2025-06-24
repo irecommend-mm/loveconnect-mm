@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Heart, Mail, Lock, User as UserIcon, Play } from 'lucide-react';
+import { Heart, Mail, Lock, User as UserIcon, Play, Sparkles } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import SignupWizard from '@/components/SignupWizard';
 
@@ -109,107 +109,124 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-400 via-purple-400 to-indigo-400 flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Logo and Header */}
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center shadow-lg">
-              <Heart className="h-10 w-10 text-pink-500" />
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-8">
+        {/* Modern Logo and Header */}
+        <div className="text-center space-y-4">
+          <div className="flex justify-center">
+            <div className="relative">
+              <div className="w-24 h-24 bg-gradient-to-br from-pink-500 to-purple-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-pink-200">
+                <Heart className="h-12 w-12 text-white" fill="white" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center">
+                <Sparkles className="h-3 w-3 text-white" />
+              </div>
             </div>
           </div>
-          <h1 className="text-4xl font-bold text-white mb-2">LoveConnect</h1>
-          <p className="text-white/80 text-lg">Find your perfect match</p>
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+              LoveConnect
+            </h1>
+            <p className="text-gray-600 text-lg font-medium">Find your perfect match</p>
+          </div>
         </div>
 
-        <Card className="backdrop-blur-sm bg-white/90 border-0 shadow-2xl">
+        {/* Demo Login Card - Prominent */}
+        <Card className="bg-gradient-to-r from-purple-500 to-pink-500 border-0 shadow-xl">
+          <CardContent className="p-6">
+            <div className="text-center space-y-4">
+              <div className="flex justify-center">
+                <Play className="h-8 w-8 text-white" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold text-white">Try Demo Account</h3>
+                <p className="text-white/90 text-sm">Experience LoveConnect instantly</p>
+              </div>
+              <Button 
+                onClick={handleDemoLogin}
+                className="w-full h-14 bg-white text-purple-600 hover:bg-gray-50 font-semibold text-lg rounded-2xl shadow-lg"
+                disabled={loading}
+              >
+                {loading ? 'Signing in...' : 'Continue as Demo User'}
+              </Button>
+              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 text-xs text-white space-y-1">
+                <p className="font-medium">Demo Credentials:</p>
+                <p>📧 {demoCredentials.email}</p>
+                <p>🔐 {demoCredentials.password}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Login/Signup Card */}
+        <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
           <CardContent className="p-6">
             <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="login" className="text-sm font-medium">Login</TabsTrigger>
-                <TabsTrigger value="signup" className="text-sm font-medium">Sign Up</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 mb-6 bg-gray-100 p-1 rounded-2xl">
+                <TabsTrigger value="login" className="text-sm font-semibold py-3 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md">
+                  Sign In
+                </TabsTrigger>
+                <TabsTrigger value="signup" className="text-sm font-semibold py-3 rounded-xl data-[state=active]:bg-white data-[state=active]:shadow-md">
+                  Sign Up
+                </TabsTrigger>
               </TabsList>
               
-              <TabsContent value="login" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
+              <TabsContent value="login" className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="login-email">Email</Label>
+                    <Label htmlFor="login-email" className="text-gray-700 font-medium">Email Address</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                       <Input
                         id="login-email"
                         type="email"
                         placeholder="Enter your email"
                         value={loginEmail}
                         onChange={(e) => setLoginEmail(e.target.value)}
-                        className="pl-10 h-12"
+                        className="pl-12 h-14 border-2 border-gray-200 rounded-2xl focus:border-pink-400 focus:ring-pink-400 text-base"
                         required
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <Label htmlFor="login-password" className="text-gray-700 font-medium">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
                       <Input
                         id="login-password"
                         type="password"
                         placeholder="Enter your password"
                         value={loginPassword}
                         onChange={(e) => setLoginPassword(e.target.value)}
-                        className="pl-10 h-12"
+                        className="pl-12 h-14 border-2 border-gray-200 rounded-2xl focus:border-pink-400 focus:ring-pink-400 text-base"
                         required
                       />
                     </div>
                   </div>
                   <Button 
                     type="submit" 
-                    className="w-full h-12 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium rounded-xl"
+                    className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg rounded-2xl shadow-lg"
                     disabled={loading}
                   >
-                    {loading ? 'Signing in...' : 'Sign In'}
+                    {loading ? 'Signing in...' : 'Sign In to LoveConnect'}
                   </Button>
                 </form>
-                
-                {/* Demo Login Section */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-300" />
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-2 bg-white text-gray-500">Or try demo</span>
-                  </div>
-                </div>
-                
-                <Button 
-                  onClick={handleDemoLogin}
-                  variant="outline"
-                  className="w-full h-12 border-2 border-gray-200 hover:bg-gray-50 rounded-xl"
-                  disabled={loading}
-                >
-                  <Play className="h-4 w-4 mr-2" />
-                  Continue as Demo User
-                </Button>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4">
-                  <p className="text-xs text-blue-700 text-center">
-                    <strong>Demo Credentials:</strong><br />
-                    Email: {demoCredentials.email}<br />
-                    Password: {demoCredentials.password}
-                  </p>
-                </div>
               </TabsContent>
               
-              <TabsContent value="signup" className="space-y-4">
-                <div className="text-center space-y-4">
-                  <p className="text-gray-600">Ready to find your match?</p>
+              <TabsContent value="signup" className="space-y-6">
+                <div className="text-center space-y-6">
+                  <div className="space-y-3">
+                    <h3 className="text-xl font-bold text-gray-800">Ready to find love?</h3>
+                    <p className="text-gray-600">Join thousands of people finding their perfect match</p>
+                  </div>
                   <Button 
                     onClick={() => setShowSignupWizard(true)}
-                    className="w-full h-12 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-medium rounded-xl"
+                    className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg rounded-2xl shadow-lg"
                   >
-                    Start Your Journey
+                    <Heart className="h-5 w-5 mr-2" />
+                    Start Your Love Journey
                   </Button>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-gray-500 leading-relaxed">
                     By signing up, you agree to our Terms of Service and Privacy Policy
                   </p>
                 </div>
