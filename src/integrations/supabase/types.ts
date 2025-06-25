@@ -127,6 +127,7 @@ export type Database = {
           exercise: string | null
           height: string | null
           id: string
+          incognito: boolean | null
           job: string | null
           last_active: string | null
           latitude: number | null
@@ -150,6 +151,7 @@ export type Database = {
           exercise?: string | null
           height?: string | null
           id?: string
+          incognito?: boolean | null
           job?: string | null
           last_active?: string | null
           latitude?: number | null
@@ -173,6 +175,7 @@ export type Database = {
           exercise?: string | null
           height?: string | null
           id?: string
+          incognito?: boolean | null
           job?: string | null
           last_active?: string | null
           latitude?: number | null

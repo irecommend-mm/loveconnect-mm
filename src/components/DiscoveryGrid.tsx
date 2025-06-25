@@ -16,7 +16,7 @@ interface DiscoveryGridProps {
 type CategoryType = 'verified' | 'popular' | 'nearby' | 'recent' | 'online' | 'serious' | 'casual' | 'friends' | 'unsure';
 
 const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('verified');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('nearby');
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
@@ -25,9 +25,9 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
 
   const categories = [
+    { id: 'nearby' as CategoryType, label: 'Nearby', icon: MapPin, color: 'bg-green-500' },
     { id: 'verified' as CategoryType, label: 'Verified', icon: Shield, color: 'bg-blue-500' },
     { id: 'popular' as CategoryType, label: 'Popular', icon: Star, color: 'bg-yellow-500' },
-    { id: 'nearby' as CategoryType, label: 'Nearby', icon: MapPin, color: 'bg-green-500' },
     { id: 'recent' as CategoryType, label: 'Recent', icon: Clock, color: 'bg-purple-500' },
     { id: 'online' as CategoryType, label: 'Online', icon: UserCheck, color: 'bg-emerald-500' },
   ];
@@ -80,7 +80,8 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
       let query = supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', currentUserId);
+        .neq('user_id', currentUserId)
+        .eq('incognito', false); // Filter out incognito users
 
       // Apply category-specific filters
       switch (category) {
@@ -176,17 +177,24 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             lastActive: new Date(lastActiveDate),
             isOnline,
             distance,
+            latitude: profile.latitude,
+            longitude: profile.longitude,
           };
         })
       );
 
       let filteredUsers = usersWithData.filter(u => u.photos.length > 0);
 
-      // Apply distance filter for nearby category
+      // Apply distance filter and sorting for nearby category
       if (category === 'nearby' && userLocation) {
         filteredUsers = filteredUsers
-          .filter(u => u.distance !== null && u.distance <= 50)
-          .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+          .filter(u => u.distance !== null && u.distance <= 100) // Show users within 100km
+          .sort((a, b) => (a.distance || 0) - (b.distance || 0)); // Sort by closest first
+      } else if (category === 'nearby') {
+        // If no user location, sort by users who have location data
+        filteredUsers = filteredUsers
+          .filter(u => u.latitude != null && u.longitude != null)
+          .sort((a, b) => a.name.localeCompare(b.name));
       }
 
       setUsers(filteredUsers.slice(0, 20));
@@ -344,18 +352,18 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             <X className="h-5 w-5 text-gray-600 group-hover:text-red-500 transition-colors" />
           </button>
 
-          {/* Favorite Button */}
+          {/* Super Like/Favorite Button */}
           <button
             onClick={(e) => {
               e.stopPropagation();
-              // Handle favorite/super like
+              // Handle super like
             }}
             className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
           >
             <Star className="h-5 w-5 text-white fill-current group-hover:animate-pulse" />
           </button>
 
-          {/* Like Button - Now matches other buttons exactly */}
+          {/* Like Button */}
           <button
             onClick={(e) => handleLike(user, e)}
             className="w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
@@ -366,7 +374,16 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           <h3 className="text-white font-semibold text-lg">{user.name}, {user.age}</h3>
-          <p className="text-white/90 text-sm">{user.location}</p>
+          <div className="flex items-center space-x-1 text-white/90 text-sm">
+            <MapPin className="h-3 w-3" />
+            <span>{user.location}</span>
+            {user.distance && (
+              <>
+                <span>•</span>
+                <span>{Math.round(user.distance)}km away</span>
+              </>
+            )}
+          </div>
           
           {user.interests.length > 0 && (
             <div className="flex space-x-1 mt-2">
@@ -444,6 +461,9 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
             {categories.find(c => c.id === selectedCategory)?.label || 
              relationshipCategories.find(c => c.id === selectedCategory)?.label}
+            {selectedCategory === 'nearby' && !userLocation && (
+              <span className="text-sm text-gray-500 ml-2">(Enable location for distance)</span>
+            )}
           </h3>
           <Badge variant="secondary" className="text-xs sm:text-sm">{users.length} people</Badge>
         </div>
@@ -464,7 +484,11 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
               <Users className="h-12 w-12 sm:h-16 sm:w-16 mx-auto" />
             </div>
             <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">No users found</h3>
-            <p className="text-gray-500 text-sm sm:text-base px-4">Try adjusting your filters or check back later!</p>
+            <p className="text-gray-500 text-sm sm:text-base px-4">
+              {selectedCategory === 'nearby' && !userLocation 
+                ? 'Enable location to see nearby users!'
+                : 'Try adjusting your filters or check back later!'}
+            </p>
           </div>
         )}
       </div>
