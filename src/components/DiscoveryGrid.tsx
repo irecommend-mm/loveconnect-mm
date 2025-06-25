@@ -5,6 +5,7 @@ import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigatio
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '../types/User';
 import ModernProfileModal from './ModernProfileModal';
+import { toast } from '@/hooks/use-toast';
 
 interface DiscoveryGridProps {
   currentUserId: string;
@@ -178,6 +179,22 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     e.stopPropagation();
     
     try {
+      // Check if swipe already exists
+      const { data: existingSwipe } = await supabase
+        .from('swipes')
+        .select('id')
+        .eq('swiper_id', currentUserId)
+        .eq('swiped_id', user.id)
+        .maybeSingle();
+
+      if (existingSwipe) {
+        toast({
+          title: "Already swiped!",
+          description: "You've already interacted with this profile.",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('swipes')
         .insert({
@@ -188,6 +205,11 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
       if (error) {
         console.error('Error liking user:', error);
+        toast({
+          title: "Error",
+          description: "Failed to like this profile. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -208,12 +230,27 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             user1_id: currentUserId,
             user2_id: user.id
           });
+
+        toast({
+          title: "It's a Match! 🎉",
+          description: `You and ${user.name} liked each other!`,
+        });
+      } else {
+        toast({
+          title: "Like sent! 💕",
+          description: `You liked ${user.name}'s profile.`,
+        });
       }
 
       // Remove user from current list
       setUsers(prevUsers => prevUsers.filter(u => u.id !== user.id));
     } catch (error) {
       console.error('Error in handleLike:', error);
+      toast({
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -259,7 +296,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           </div>
         )}
 
-        {/* Like Button - Tinder Style */}
+        {/* Like Button - Fixed styling to match other buttons */}
         <button
           onClick={(e) => handleLike(user, e)}
           className="absolute bottom-3 right-3 w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-xl flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
