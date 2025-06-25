@@ -296,10 +296,10 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           </div>
         )}
 
-        {/* Like Button - Fixed styling to match other buttons */}
+        {/* Like Button - Fixed to match other buttons with proper rounded styling */}
         <button
           onClick={(e) => handleLike(user, e)}
-          className="absolute bottom-3 right-3 w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-xl flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
+          className="absolute bottom-3 right-3 w-14 h-14 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-xl flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
         >
           <Heart className="h-6 w-6 text-white fill-current group-hover:animate-pulse" />
         </button>
