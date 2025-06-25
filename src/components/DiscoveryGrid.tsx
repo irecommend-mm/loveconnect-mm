@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation } from 'lucide-react';
+import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '../types/User';
 import ModernProfileModal from './ModernProfileModal';
+import MatchCelebrationModal from './MatchCelebrationModal';
 import { toast } from '@/hooks/use-toast';
 
 interface DiscoveryGridProps {
@@ -19,6 +20,9 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
+  const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
 
   const categories = [
     { id: 'verified' as CategoryType, label: 'Verified', icon: Shield, color: 'bg-blue-500' },
@@ -37,7 +41,25 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
   useEffect(() => {
     loadUsersForCategory(selectedCategory);
+    loadCurrentUserPhoto();
   }, [selectedCategory, userLocation]);
+
+  const loadCurrentUserPhoto = async () => {
+    try {
+      const { data } = await supabase
+        .from('photos')
+        .select('url')
+        .eq('user_id', currentUserId)
+        .eq('is_primary', true)
+        .single();
+      
+      if (data) {
+        setCurrentUserPhoto(data.url);
+      }
+    } catch (error) {
+      console.log('No primary photo found for current user');
+    }
+  };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Earth's radius in kilometers
@@ -231,10 +253,9 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             user2_id: user.id
           });
 
-        toast({
-          title: "It's a Match! 🎉",
-          description: `You and ${user.name} liked each other!`,
-        });
+        // Show animated match modal
+        setMatchedUser(user);
+        setShowMatchModal(true);
       } else {
         toast({
           title: "Like sent! 💕",
@@ -256,6 +277,20 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
   const handleUserClick = (user: UserType) => {
     setSelectedUser(user);
+  };
+
+  const handleChatNow = () => {
+    setShowMatchModal(false);
+    // Navigate to chat - this would typically use router navigation
+    toast({
+      title: "Opening chat...",
+      description: `Starting conversation with ${matchedUser?.name}`,
+    });
+  };
+
+  const handleContinueBrowsing = () => {
+    setShowMatchModal(false);
+    setMatchedUser(null);
   };
 
   const renderUserCard = (user: UserType) => (
@@ -296,13 +331,38 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           </div>
         )}
 
-        {/* Like Button - Fixed to match other buttons with proper rounded styling */}
-        <button
-          onClick={(e) => handleLike(user, e)}
-          className="absolute bottom-3 right-3 w-14 h-14 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-xl flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
-        >
-          <Heart className="h-6 w-6 text-white fill-current group-hover:animate-pulse" />
-        </button>
+        {/* Action Buttons Container */}
+        <div className="absolute bottom-3 right-3 flex flex-col space-y-2">
+          {/* Dislike Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Handle dislike
+            }}
+            className="w-12 h-12 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
+          >
+            <X className="h-5 w-5 text-gray-600 group-hover:text-red-500 transition-colors" />
+          </button>
+
+          {/* Favorite Button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              // Handle favorite/super like
+            }}
+            className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
+          >
+            <Star className="h-5 w-5 text-white fill-current group-hover:animate-pulse" />
+          </button>
+
+          {/* Like Button - Now matches other buttons exactly */}
+          <button
+            onClick={(e) => handleLike(user, e)}
+            className="w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
+          >
+            <Heart className="h-5 w-5 text-white fill-current group-hover:animate-pulse" />
+          </button>
+        </div>
 
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           <h3 className="text-white font-semibold text-lg">{user.name}, {user.age}</h3>
@@ -415,6 +475,18 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
           showActions={false}
+        />
+      )}
+
+      {/* Match Celebration Modal */}
+      {showMatchModal && matchedUser && (
+        <MatchCelebrationModal
+          isOpen={showMatchModal}
+          matchedUser={matchedUser}
+          currentUserPhoto={currentUserPhoto}
+          onChatNow={handleChatNow}
+          onContinueBrowsing={handleContinueBrowsing}
+          onClose={() => setShowMatchModal(false)}
         />
       )}
     </div>

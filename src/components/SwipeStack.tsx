@@ -1,11 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw } from 'lucide-react';
+import { Heart, RefreshCw, X, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import ModernProfileModal from './ModernProfileModal';
+import MatchCelebrationModal from './MatchCelebrationModal';
 
 interface Profile {
   id: string;
@@ -27,12 +27,35 @@ const SwipeStack = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
+  const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
 
   useEffect(() => {
     if (user) {
       loadProfiles();
+      loadCurrentUserPhoto();
     }
   }, [user]);
+
+  const loadCurrentUserPhoto = async () => {
+    if (!user) return;
+    
+    try {
+      const { data } = await supabase
+        .from('photos')
+        .select('url')
+        .eq('user_id', user.id)
+        .eq('is_primary', true)
+        .single();
+      
+      if (data) {
+        setCurrentUserPhoto(data.url);
+      }
+    } catch (error) {
+      console.log('No primary photo found for current user');
+    }
+  };
 
   const loadProfiles = async () => {
     if (!user) return;
@@ -167,8 +190,8 @@ const SwipeStack = () => {
         return;
       }
 
-      // Check for matches only if it's a like
-      if (action === 'like') {
+      // Check for matches only if it's a like or super_like
+      if (action === 'like' || action === 'super_like') {
         const { data: matchData } = await supabase
           .from('swipes')
           .select('*')
@@ -178,14 +201,22 @@ const SwipeStack = () => {
           .maybeSingle();
 
         if (matchData) {
-          toast({
-            title: "It's a Match! 🎉",
-            description: `You and ${currentProfile.name} liked each other!`,
-          });
+          // Create match record
+          await supabase
+            .from('matches')
+            .insert({
+              user1_id: user.id,
+              user2_id: currentProfile.user_id
+            });
+
+          // Show animated match modal
+          setMatchedUser(currentProfile);
+          setShowMatchModal(true);
         } else {
+          const actionText = action === 'super_like' ? 'Super liked' : 'Liked';
           toast({
-            title: "Like sent! 💕",
-            description: `You liked ${currentProfile.name}'s profile.`,
+            title: `${actionText}! 💕`,
+            description: `You ${actionText.toLowerCase()} ${currentProfile.name}'s profile.`,
           });
         }
       }
@@ -230,6 +261,19 @@ const SwipeStack = () => {
     drinking: 'sometimes' as const,
     exercise: 'sometimes' as const,
   });
+
+  const handleChatNow = () => {
+    setShowMatchModal(false);
+    toast({
+      title: "Opening chat...",
+      description: `Starting conversation with ${matchedUser?.name}`,
+    });
+  };
+
+  const handleContinueBrowsing = () => {
+    setShowMatchModal(false);
+    setMatchedUser(null);
+  };
 
   if (loading) {
     return (
@@ -342,34 +386,30 @@ const SwipeStack = () => {
             </div>
           </div>
 
-          {/* Action Buttons */}
+          {/* Action Buttons - All consistent styling now */}
           <div className="flex justify-center items-center space-x-6 mt-8 px-4">
             <Button
               onClick={() => handleAction('dislike')}
               size="lg"
-              className="w-16 h-16 rounded-full bg-white shadow-xl border-2 border-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 group"
+              className="w-14 h-14 rounded-full bg-white shadow-xl border-2 border-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 group hover:bg-gray-50"
             >
-              <svg className="h-7 w-7 text-gray-600 group-hover:text-red-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+              <X className="h-6 w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
             </Button>
             
             <Button
               onClick={() => handleAction('super_like')}
               size="lg"
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
+              className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
             >
-              <svg className="h-6 w-6 text-white fill-current" viewBox="0 0 24 24">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
-              </svg>
+              <Star className="h-6 w-6 text-white fill-current" />
             </Button>
             
             <Button
               onClick={() => handleAction('like')}
               size="lg"
-              className="w-18 h-18 rounded-full bg-gradient-to-r from-pink-500 to-red-500 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
+              className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
             >
-              <Heart className="h-8 w-8 text-white fill-current" />
+              <Heart className="h-7 w-7 text-white fill-current" />
             </Button>
           </div>
         </div>
@@ -391,6 +431,18 @@ const SwipeStack = () => {
               setShowProfileModal(false);
               handleAction('super_like');
             }}
+          />
+        )}
+
+        {/* Match Celebration Modal */}
+        {showMatchModal && matchedUser && (
+          <MatchCelebrationModal
+            isOpen={showMatchModal}
+            matchedUser={convertToUserType(matchedUser)}
+            currentUserPhoto={currentUserPhoto}
+            onChatNow={handleChatNow}
+            onContinueBrowsing={handleContinueBrowsing}
+            onClose={() => setShowMatchModal(false)}
           />
         )}
       </div>
