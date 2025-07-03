@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -100,32 +99,63 @@ const Index = () => {
 
   const loadMatches = async (userId: string) => {
     try {
-      const { data: matchesData } = await supabase
+      console.log('Loading matches for user:', userId);
+      
+      // Get matches where current user is involved
+      const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select('*')
         .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
         .eq('is_active', true);
 
-      if (matchesData) {
-        setMatches(matchesData);
-        
-        // Load user profiles for matches
-        const userIds = matchesData.flatMap(match => [match.user1_id, match.user2_id])
-          .filter(id => id !== userId);
-        
-        if (userIds.length > 0) {
-          const { data: usersData } = await supabase
-            .from('profiles')
-            .select('*, photos(*)')
-            .in('user_id', userIds);
-          
-          if (usersData) {
-            setUsers(usersData);
-          }
+      if (matchesError) {
+        console.error('Error loading matches:', matchesError);
+        return;
+      }
+
+      console.log('Raw matches data:', matchesData);
+
+      if (matchesData && matchesData.length > 0) {
+        // Get the other user IDs from matches
+        const otherUserIds = matchesData.map(match => 
+          match.user1_id === userId ? match.user2_id : match.user1_id
+        );
+
+        console.log('Other user IDs:', otherUserIds);
+
+        // Load profiles for the matched users
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select(`
+            *,
+            photos(*)
+          `)
+          .in('user_id', otherUserIds);
+
+        if (profilesError) {
+          console.error('Error loading profiles:', profilesError);
+        } else {
+          console.log('Loaded profiles:', profilesData);
+          setUsers(profilesData || []);
         }
+
+        // Transform matches data to include user info
+        const transformedMatches = matchesData.map(match => ({
+          ...match,
+          users: [match.user1_id, match.user2_id]
+        }));
+
+        console.log('Transformed matches:', transformedMatches);
+        setMatches(transformedMatches);
+      } else {
+        console.log('No matches found');
+        setMatches([]);
+        setUsers([]);
       }
     } catch (error) {
-      console.error('Error loading matches:', error);
+      console.error('Error in loadMatches:', error);
+      setMatches([]);
+      setUsers([]);
     }
   };
 
@@ -135,11 +165,14 @@ const Index = () => {
   };
 
   const handleChatSelect = (selectedUser: any) => {
+    console.log('Chat selected with user:', selectedUser);
     // Find the match ID for this user
     const match = matches.find(m => 
-      (m.user1_id === user?.id && m.user2_id === selectedUser.id) ||
-      (m.user2_id === user?.id && m.user1_id === selectedUser.id)
+      (m.user1_id === user?.id && m.user2_id === selectedUser.user_id) ||
+      (m.user2_id === user?.id && m.user1_id === selectedUser.user_id)
     );
+    
+    console.log('Found match:', match);
     
     if (match) {
       setSelectedMatchId(match.id);
@@ -168,8 +201,34 @@ const Index = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/auth');
+    try {
+      console.log('Logging out...');
+      
+      // Clear local state first
+      setUser(null);
+      setMatches([]);
+      setUsers([]);
+      setHasProfile(false);
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Logout error:', error);
+      }
+      
+      // Navigate to auth page
+      navigate('/auth');
+      
+      // Force page reload to clear any remaining state
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Force navigation even if logout fails
+      window.location.href = '/auth';
+    }
   };
 
   const handleApplyFilters = (filters: any) => {
