@@ -129,8 +129,9 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
       <Navbar 
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        matches={[]}
+        onChatClick={() => {}}
+        onMatchesClick={() => setActiveTab('matches')}
         onProfileClick={() => setShowProfile(true)}
         onSettingsClick={() => setShowSettings(true)}
       />
@@ -160,18 +161,18 @@ const Index = () => {
       <main className="pt-20 pb-4">
         <div className="container mx-auto px-4">
           {activeTab === 'swipe' && (
-            <SwipeStack currentUserId={user.id} userLocation={location} />
+            <SwipeStack />
           )}
           {activeTab === 'discover' && (
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
           )}
           {activeTab === 'matches' && (
-            <MatchesList currentUserId={user.id} onChatSelect={handleChatSelect} />
+            <MatchesList matches={[]} users={[]} onChatClick={() => {}} currentUserId={user.id} />
           )}
           {activeTab === 'chat' && selectedMatchId && (
             <ChatInterface 
-              currentUserId={user.id} 
               matchId={selectedMatchId}
+              otherUser={{ id: '', name: '', photos: [] }}
               onBack={() => setActiveTab('matches')}
             />
           )}
@@ -185,9 +186,13 @@ const Index = () => {
       
       {showSettings && (
         <SettingsModal 
-          isOpen={showSettings}
           onClose={() => setShowSettings(false)}
-          currentUserId={user.id}
+          settings={{
+            discovery: { ageRange: [18, 35], maxDistance: 50, showMe: 'everyone', relationshipType: 'serious' },
+            notifications: { matches: true, messages: true, likes: true },
+            privacy: { showAge: true, showDistance: true, incognito: false }
+          }}
+          onUpdateSettings={() => {}}
         />
       )}
     </div>
