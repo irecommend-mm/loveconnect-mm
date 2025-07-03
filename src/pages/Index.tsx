@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -29,8 +30,8 @@ const Index = () => {
   const [filterSettings, setFilterSettings] = useState({
     ageRange: [18, 50] as [number, number],
     maxDistance: 50,
-    showMe: 'everyone',
-    relationshipType: 'any',
+    showMe: 'everyone' as 'men' | 'women' | 'everyone',
+    relationshipType: 'any' as 'serious' | 'casual' | 'friends' | 'unsure' | 'any',
     verifiedOnly: false,
     onlineOnly: false,
     hasPhotos: true,
@@ -174,7 +175,9 @@ const Index = () => {
   const handleApplyFilters = (filters: any) => {
     setFilterSettings({
       ...filters,
-      ageRange: filters.ageRange as [number, number]
+      ageRange: filters.ageRange as [number, number],
+      showMe: filters.showMe as 'men' | 'women' | 'everyone',
+      relationshipType: filters.relationshipType as 'serious' | 'casual' | 'friends' | 'unsure' | 'any'
     });
     console.log('Applied filters:', filters);
   };
