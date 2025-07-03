@@ -12,12 +12,12 @@ import ProfileSetup from '@/components/ProfileSetup';
 import SettingsModal from '@/components/SettingsModal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin } from 'lucide-react';
+import { MapPin, Heart, Users, Search, User as UserIcon, Settings, LogOut } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState('swipe');
+  const [activeTab, setActiveTab] = useState('discover');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -110,6 +110,11 @@ const Index = () => {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/auth');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
@@ -128,17 +133,87 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
-      <Navbar 
-        matches={[]}
-        onChatClick={() => {}}
-        onMatchesClick={() => setActiveTab('matches')}
-        onProfileClick={() => setShowProfile(true)}
-        onSettingsClick={() => setShowSettings(true)}
-      />
+      {/* Top Navigation */}
+      <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-pink-100 z-50">
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Heart className="h-8 w-8 text-pink-500" />
+            <span className="text-xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+              LoveConnect
+            </span>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSettings(true)}
+              className="p-2"
+            >
+              <Settings className="h-5 w-5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="p-2 text-red-500 hover:text-red-600"
+            >
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+      </nav>
+
+      {/* Tab Navigation */}
+      <div className="fixed top-16 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-gray-100 z-40">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-around py-3">
+            <button
+              onClick={() => setActiveTab('discover')}
+              className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'discover' ? 'bg-pink-100 text-pink-600' : 'text-gray-600 hover:text-pink-500'
+              }`}
+            >
+              <Heart className="h-5 w-5" />
+              <span className="text-xs font-medium">Discover</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('browse')}
+              className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'browse' ? 'bg-pink-100 text-pink-600' : 'text-gray-600 hover:text-pink-500'
+              }`}
+            >
+              <Search className="h-5 w-5" />
+              <span className="text-xs font-medium">Browse</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('matches')}
+              className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'matches' ? 'bg-pink-100 text-pink-600' : 'text-gray-600 hover:text-pink-500'
+              }`}
+            >
+              <Users className="h-5 w-5" />
+              <span className="text-xs font-medium">Matches</span>
+            </button>
+            
+            <button
+              onClick={() => setActiveTab('profile')}
+              className={`flex flex-col items-center space-y-1 px-4 py-2 rounded-lg transition-colors ${
+                activeTab === 'profile' ? 'bg-pink-100 text-pink-600' : 'text-gray-600 hover:text-pink-500'
+              }`}
+            >
+              <UserIcon className="h-5 w-5" />
+              <span className="text-xs font-medium">Profile</span>
+            </button>
+          </div>
+        </div>
+      </div>
       
       {/* Location Permission Banner */}
-      {!location && !locationLoading && activeTab === 'discover' && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-4 rounded">
+      {!location && !locationLoading && (activeTab === 'discover' || activeTab === 'browse') && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-32 rounded">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <MapPin className="h-5 w-5 text-blue-400 mr-2" />
@@ -158,16 +233,19 @@ const Index = () => {
         </div>
       )}
 
-      <main className="pt-20 pb-4">
+      <main className="pt-32 pb-4">
         <div className="container mx-auto px-4">
-          {activeTab === 'swipe' && (
+          {activeTab === 'discover' && (
             <SwipeStack />
           )}
-          {activeTab === 'discover' && (
+          {activeTab === 'browse' && (
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
           )}
           {activeTab === 'matches' && (
             <MatchesList matches={[]} users={[]} onChatClick={() => {}} currentUserId={user.id} />
+          )}
+          {activeTab === 'profile' && (
+            <ProfileSetup onComplete={() => setActiveTab('discover')} />
           )}
           {activeTab === 'chat' && selectedMatchId && (
             <ChatInterface 
@@ -179,11 +257,7 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Modals */}
-      {showProfile && (
-        <ProfileSetup onComplete={() => setShowProfile(false)} />
-      )}
-      
+      {/* Settings Modal */}
       {showSettings && (
         <SettingsModal 
           onClose={() => setShowSettings(false)}
