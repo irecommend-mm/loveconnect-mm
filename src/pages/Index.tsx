@@ -10,9 +10,10 @@ import MatchesList from '@/components/MatchesList';
 import ChatInterface from '@/components/ChatInterface';
 import ProfileSetup from '@/components/ProfileSetup';
 import SettingsModal from '@/components/SettingsModal';
+import AdvancedFilters from '@/components/AdvancedFilters';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin, Heart, Users, Search, User as UserIcon, Settings, LogOut } from 'lucide-react';
+import { MapPin, Heart, Users, Search, User as UserIcon, Settings, LogOut, Filter } from 'lucide-react';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -21,8 +22,23 @@ const Index = () => {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [matches, setMatches] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [filterSettings, setFilterSettings] = useState({
+    ageRange: [18, 50],
+    maxDistance: 50,
+    showMe: 'everyone',
+    relationshipType: 'any',
+    verifiedOnly: false,
+    onlineOnly: false,
+    hasPhotos: true,
+    education: [],
+    interests: [],
+    useLocationFilter: true
+  });
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
 
   useEffect(() => {
@@ -31,6 +47,7 @@ const Index = () => {
       if (session?.user) {
         setUser(session.user);
         checkUserProfile(session.user.id);
+        loadMatches(session.user.id);
       } else {
         navigate('/auth');
       }
@@ -40,6 +57,7 @@ const Index = () => {
       if (session?.user) {
         setUser(session.user);
         checkUserProfile(session.user.id);
+        loadMatches(session.user.id);
       } else {
         navigate('/auth');
       }
@@ -80,6 +98,37 @@ const Index = () => {
     }
   };
 
+  const loadMatches = async (userId: string) => {
+    try {
+      const { data: matchesData } = await supabase
+        .from('matches')
+        .select('*')
+        .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+        .eq('is_active', true);
+
+      if (matchesData) {
+        setMatches(matchesData);
+        
+        // Load user profiles for matches
+        const userIds = matchesData.flatMap(match => [match.user1_id, match.user2_id])
+          .filter(id => id !== userId);
+        
+        if (userIds.length > 0) {
+          const { data: usersData } = await supabase
+            .from('profiles')
+            .select('*, photos(*)')
+            .in('user_id', userIds);
+          
+          if (usersData) {
+            setUsers(usersData);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error loading matches:', error);
+    }
+  };
+
   const handleProfileComplete = () => {
     setHasProfile(true);
     checkUserProfile(user!.id);
@@ -115,6 +164,16 @@ const Index = () => {
     navigate('/auth');
   };
 
+  const handleApplyFilters = (filters: any) => {
+    setFilterSettings(filters);
+    console.log('Applied filters:', filters);
+  };
+
+  const handleUpdateSettings = (settings: any) => {
+    console.log('Updated settings:', settings);
+    // You can add settings update logic here
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
@@ -144,6 +203,16 @@ const Index = () => {
           </div>
           
           <div className="flex items-center space-x-2">
+            {activeTab === 'browse' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowFilters(true)}
+                className="p-2"
+              >
+                <Filter className="h-5 w-5" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -196,6 +265,11 @@ const Index = () => {
             >
               <Users className="h-5 w-5" />
               <span className="text-xs font-medium">Matches</span>
+              {matches.length > 0 && (
+                <span className="bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                  {matches.length}
+                </span>
+              )}
             </button>
             
             <button
@@ -239,10 +313,19 @@ const Index = () => {
             <SwipeStack />
           )}
           {activeTab === 'browse' && (
-            <DiscoveryGrid currentUserId={user.id} userLocation={location} />
+            <DiscoveryGrid 
+              currentUserId={user.id} 
+              userLocation={location} 
+              filters={filterSettings}
+            />
           )}
           {activeTab === 'matches' && (
-            <MatchesList matches={[]} users={[]} onChatClick={() => {}} currentUserId={user.id} />
+            <MatchesList 
+              matches={matches} 
+              users={users} 
+              onChatClick={handleChatSelect} 
+              currentUserId={user.id} 
+            />
           )}
           {activeTab === 'profile' && (
             <ProfileSetup onComplete={() => setActiveTab('discover')} />
@@ -266,7 +349,16 @@ const Index = () => {
             notifications: { matches: true, messages: true, likes: true },
             privacy: { showAge: true, showDistance: true, incognito: false }
           }}
-          onUpdateSettings={() => {}}
+          onUpdateSettings={handleUpdateSettings}
+        />
+      )}
+
+      {/* Advanced Filters Modal */}
+      {showFilters && (
+        <AdvancedFilters 
+          onClose={() => setShowFilters(false)}
+          onApply={handleApplyFilters}
+          initialFilters={filterSettings}
         />
       )}
     </div>
