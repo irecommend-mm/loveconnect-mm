@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,7 +27,7 @@ const Index = () => {
   const [matches, setMatches] = useState([]);
   const [users, setUsers] = useState([]);
   const [filterSettings, setFilterSettings] = useState({
-    ageRange: [18, 50],
+    ageRange: [18, 50] as [number, number],
     maxDistance: 50,
     showMe: 'everyone',
     relationshipType: 'any',
@@ -134,9 +133,17 @@ const Index = () => {
     checkUserProfile(user!.id);
   };
 
-  const handleChatSelect = (matchId: string) => {
-    setSelectedMatchId(matchId);
-    setActiveTab('chat');
+  const handleChatSelect = (selectedUser: any) => {
+    // Find the match ID for this user
+    const match = matches.find(m => 
+      (m.user1_id === user?.id && m.user2_id === selectedUser.id) ||
+      (m.user2_id === user?.id && m.user1_id === selectedUser.id)
+    );
+    
+    if (match) {
+      setSelectedMatchId(match.id);
+      setActiveTab('chat');
+    }
   };
 
   const handleLocationEnable = async () => {
@@ -165,7 +172,10 @@ const Index = () => {
   };
 
   const handleApplyFilters = (filters: any) => {
-    setFilterSettings(filters);
+    setFilterSettings({
+      ...filters,
+      ageRange: filters.ageRange as [number, number]
+    });
     console.log('Applied filters:', filters);
   };
 
@@ -316,7 +326,6 @@ const Index = () => {
             <DiscoveryGrid 
               currentUserId={user.id} 
               userLocation={location} 
-              filters={filterSettings}
             />
           )}
           {activeTab === 'matches' && (
