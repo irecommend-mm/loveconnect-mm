@@ -41,52 +41,99 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   const [showPreview, setShowPreview] = useState(false);
   
   const [profile, setProfile] = useState<ProfileData>({
-    name: existingProfile?.name || '',
-    age: existingProfile?.age || 18,
-    bio: existingProfile?.bio || '',
-    location: existingProfile?.location || '',
-    job: existingProfile?.job || '',
-    education: existingProfile?.education || '',
-    height: existingProfile?.height || '',
-    zodiac_sign: existingProfile?.zodiac_sign || '',
-    relationship_type: existingProfile?.relationship_type || '',
-    children: existingProfile?.children || '',
-    smoking: existingProfile?.smoking || '',
-    drinking: existingProfile?.drinking || '',
-    exercise: existingProfile?.exercise || '',
+    name: '',
+    age: 18,
+    bio: '',
+    location: '',
+    job: '',
+    education: '',
+    height: '',
+    zodiac_sign: '',
+    relationship_type: '',
+    children: '',
+    smoking: '',
+    drinking: '',
+    exercise: '',
   });
 
   useEffect(() => {
     if (user) {
-      loadUserPhotos();
-      loadUserInterests();
+      loadUserData();
     }
   }, [user]);
 
-  const loadUserPhotos = async () => {
-    if (!user) return;
-    
-    const { data, error } = await supabase
-      .from('photos')
-      .select('url')
-      .eq('user_id', user.id)
-      .order('position');
-
-    if (!error && data) {
-      setPhotos(data.map(photo => photo.url));
+  // Load existing profile data if available
+  useEffect(() => {
+    if (existingProfile) {
+      setProfile({
+        name: existingProfile.name || '',
+        age: existingProfile.age || 18,
+        bio: existingProfile.bio || '',
+        location: existingProfile.location || '',
+        job: existingProfile.job || '',
+        education: existingProfile.education || '',
+        height: existingProfile.height || '',
+        zodiac_sign: existingProfile.zodiac_sign || '',
+        relationship_type: existingProfile.relationship_type || '',
+        children: existingProfile.children || '',
+        smoking: existingProfile.smoking || '',
+        drinking: existingProfile.drinking || '',
+        exercise: existingProfile.exercise || '',
+      });
     }
-  };
+  }, [existingProfile]);
 
-  const loadUserInterests = async () => {
+  const loadUserData = async () => {
     if (!user) return;
     
-    const { data, error } = await supabase
-      .from('interests')
-      .select('interest')
-      .eq('user_id', user.id);
+    try {
+      // Load user profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
 
-    if (!error && data) {
-      setInterests(data.map(item => item.interest));
+      if (profileData) {
+        setProfile({
+          name: profileData.name || '',
+          age: profileData.age || 18,
+          bio: profileData.bio || '',
+          location: profileData.location || '',
+          job: profileData.job || '',
+          education: profileData.education || '',
+          height: profileData.height || '',
+          zodiac_sign: profileData.zodiac_sign || '',
+          relationship_type: profileData.relationship_type || '',
+          children: profileData.children || '',
+          smoking: profileData.smoking || '',
+          drinking: profileData.drinking || '',
+          exercise: profileData.exercise || '',
+        });
+      }
+
+      // Load photos
+      const { data: photosData } = await supabase
+        .from('photos')
+        .select('url')
+        .eq('user_id', user.id)
+        .order('position');
+
+      if (photosData) {
+        setPhotos(photosData.map(photo => photo.url));
+      }
+
+      // Load interests
+      const { data: interestsData } = await supabase
+        .from('interests')
+        .select('interest')
+        .eq('user_id', user.id);
+
+      if (interestsData) {
+        setInterests(interestsData.map(item => item.interest));
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
   };
 
@@ -179,6 +226,8 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     setLoading(true);
 
     try {
+      console.log('Saving profile:', profile);
+      
       // Check if profile exists first
       const { data: existingProfileData } = await supabase
         .from('profiles')
@@ -189,28 +238,55 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
       let profileError;
       
       if (existingProfileData) {
+        console.log('Updating existing profile');
         // Update existing profile
         const { error } = await supabase
           .from('profiles')
           .update({
-            ...profile,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio,
+            location: profile.location,
+            job: profile.job,
+            education: profile.education,
+            height: profile.height,
+            zodiac_sign: profile.zodiac_sign,
+            relationship_type: profile.relationship_type,
+            children: profile.children,
+            smoking: profile.smoking,
+            drinking: profile.drinking,
+            exercise: profile.exercise,
             updated_at: new Date().toISOString(),
           })
           .eq('user_id', user.id);
         profileError = error;
       } else {
+        console.log('Creating new profile');
         // Insert new profile
         const { error } = await supabase
           .from('profiles')
           .insert({
             user_id: user.id,
-            ...profile,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio,
+            location: profile.location,
+            job: profile.job,
+            education: profile.education,
+            height: profile.height,
+            zodiac_sign: profile.zodiac_sign,
+            relationship_type: profile.relationship_type,
+            children: profile.children,
+            smoking: profile.smoking,
+            drinking: profile.drinking,
+            exercise: profile.exercise,
             updated_at: new Date().toISOString(),
           });
         profileError = error;
       }
 
       if (profileError) {
+        console.error('Profile save error:', profileError);
         toast({
           title: "Profile Error",
           description: profileError.message,
@@ -220,7 +296,9 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         return;
       }
 
-      // Update interests
+      console.log('Profile saved successfully');
+
+      // Update interests - delete all first, then insert new ones
       await supabase
         .from('interests')
         .delete()
@@ -237,6 +315,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
           );
 
         if (interestsError) {
+          console.error('Interests save error:', interestsError);
           toast({
             title: "Interests Error",
             description: interestsError.message,
@@ -342,7 +421,9 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
       <div className="max-w-md mx-auto">
         <Card className="bg-white shadow-2xl border-0 rounded-3xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-center py-8">
-            <CardTitle className="text-2xl font-bold">Complete Your Profile</CardTitle>
+            <CardTitle className="text-2xl font-bold">
+              {existingProfile ? 'Update Your Profile' : 'Complete Your Profile'}
+            </CardTitle>
             <p className="text-pink-100 mt-2">Make a great first impression</p>
           </CardHeader>
           <CardContent className="p-6">
@@ -588,9 +669,9 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                 <Button
                   type="submit"
                   className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg rounded-2xl shadow-lg"
-                  disabled={loading || photos.length === 0}
+                  disabled={loading || photos.length === 0 || !profile.name.trim()}
                 >
-                  {loading ? 'Saving...' : 'Save Profile'}
+                  {loading ? 'Saving...' : (existingProfile ? 'Update Profile' : 'Save Profile')}
                 </Button>
               </div>
             </form>

@@ -12,7 +12,7 @@ import SettingsModal from '@/components/SettingsModal';
 import AdvancedFilters from '@/components/AdvancedFilters';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import { User as UserType, Match, UserSettings } from '@/types/User';
 
 const Index = () => {
@@ -28,6 +28,7 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
+  const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [settings, setSettings] = useState<UserSettings>({
     notifications: {
       matches: true,
@@ -83,6 +84,7 @@ const Index = () => {
 
       if (profile) {
         setHasProfile(true);
+        setCurrentProfile(profile);
         // Update user's location if we have geolocation data
         if (location && !profile.latitude && !profile.longitude) {
           await supabase
@@ -204,8 +206,8 @@ const Index = () => {
   };
 
   const handleProfileClick = () => {
-    setActiveTab('profile');
     setShowProfile(true);
+    // Do not change activeTab when showing profile modal
   };
 
   const handleProfileComplete = () => {
@@ -214,6 +216,11 @@ const Index = () => {
     if (user) {
       checkUserProfile(user.id);
     }
+  };
+
+  const handleCloseProfile = () => {
+    setShowProfile(false);
+    // Stay on current tab, don't change activeTab
   };
 
   const handleChatSelect = (matchedUser: UserType) => {
@@ -309,7 +316,7 @@ const Index = () => {
     return null;
   }
 
-  if (!hasProfile) {
+  if (!hasProfile && !showProfile) {
     return <ProfileSetup onComplete={handleProfileComplete} />;
   }
 
@@ -381,15 +388,19 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Profile Modal - Opens as overlay, not as tab content */}
+      {/* Profile Modal - Fixed overlay */}
       {showProfile && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={handleCloseProfile}
+              className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-600" />
+            </button>
             <ProfileSetup 
-              onComplete={() => {
-                setShowProfile(false);
-                setActiveTab('discover'); // Return to discover after profile setup
-              }} 
+              onComplete={handleProfileComplete}
+              existingProfile={currentProfile}
             />
           </div>
         </div>
