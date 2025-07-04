@@ -13,19 +13,38 @@ import SettingsModal from '@/components/SettingsModal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin } from 'lucide-react';
-import { User as UserType, Match } from '@/types/User';
+import { User as UserType, Match, UserSettings } from '@/types/User';
 
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState('swipe');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
+  const [selectedOtherUser, setSelectedOtherUser] = useState<UserType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
+  const [settings, setSettings] = useState<UserSettings>({
+    notifications: {
+      matches: true,
+      messages: true,
+      likes: true,
+    },
+    privacy: {
+      showAge: true,
+      showDistance: true,
+      incognito: false,
+    },
+    discovery: {
+      ageRange: [18, 35],
+      maxDistance: 50,
+      relationshipType: 'serious',
+      showMe: 'everyone',
+    },
+  });
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
 
   useEffect(() => {
@@ -155,26 +174,23 @@ const Index = () => {
             lastActive: new Date(profile.last_active || profile.created_at),
             height: profile.height || '',
             zodiacSign: profile.zodiac_sign || '',
-            relationshipType: (profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friendship',
-            children: (profile.children || 'unsure') as 'yes' | 'no' | 'unsure',
-            smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'occasionally',
-            drinking: (profile.drinking || 'sometimes') as 'never' | 'rarely' | 'sometimes' | 'often',
-            exercise: (profile.exercise || 'sometimes') as 'never' | 'rarely' | 'sometimes' | 'often',
+            relationshipType: (profile.relationship_type === 'friendship' ? 'friends' : profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
+            children: (profile.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
+            smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'sometimes',
+            drinking: (profile.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
+            exercise: (profile.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
             isOnline: false,
           };
         })
       );
 
-      // Transform matches data to include user arrays
+      // Transform matches data to match the Match interface
       const transformedMatches = matchesData.map(match => ({
         id: match.id,
-        users: [match.user1_id, match.user2_id],
-        matchedAt: new Date(match.created_at),
-        lastMessage: null, // We'll load messages separately if needed
-        user1_id: match.user1_id,
-        user2_id: match.user2_id,
-        created_at: match.created_at,
-        is_active: match.is_active
+        users: [match.user1_id, match.user2_id] as [string, string],
+        timestamp: new Date(match.created_at),
+        lastMessage: undefined,
+        isActive: match.is_active
       }));
 
       console.log('Transformed matches:', transformedMatches);
@@ -201,6 +217,7 @@ const Index = () => {
     
     if (match) {
       setSelectedMatchId(match.id);
+      setSelectedOtherUser(matchedUser);
       setActiveTab('chat');
     }
   };
@@ -225,6 +242,24 @@ const Index = () => {
     }
   };
 
+  const handleUpdateSettings = (newSettings: UserSettings) => {
+    setSettings(newSettings);
+    // Here you could also save to database if needed
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setHasProfile(false);
+      setMatches([]);
+      setUsers([]);
+      navigate('/auth');
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
@@ -245,7 +280,7 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
       <Navbar 
         onProfileClick={() => setShowProfile(true)}
-        matches={matches}
+        matches={users}
         onChatClick={handleChatSelect}
         onSettingsClick={() => setShowSettings(true)}
         onMatchesClick={() => setActiveTab('matches')}
@@ -289,9 +324,10 @@ const Index = () => {
               currentUserId={user.id}
             />
           )}
-          {activeTab === 'chat' && selectedMatchId && (
+          {activeTab === 'chat' && selectedMatchId && selectedOtherUser && (
             <ChatInterface 
               matchId={selectedMatchId}
+              otherUser={selectedOtherUser}
               onBack={() => setActiveTab('matches')}
             />
           )}
@@ -305,6 +341,8 @@ const Index = () => {
       
       {showSettings && (
         <SettingsModal 
+          settings={settings}
+          onUpdateSettings={handleUpdateSettings}
           onClose={() => setShowSettings(false)}
         />
       )}
