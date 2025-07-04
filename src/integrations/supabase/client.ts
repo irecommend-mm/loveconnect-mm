@@ -2,10 +2,39 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://lvhslqwsijnoxajnujzw.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2aHNscXdzaWpub3hham51anp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzMjYwMjQsImV4cCI6MjA2NTkwMjAyNH0.MUtSga0YQRB2yqur77GoZ19MCvtXytdW152b6jpsI9o";
+// Environment-based configuration
+const isDevelopment = import.meta.env.DEV;
+const isBoltVersion = window.location.hostname.includes('bolt') || 
+                     import.meta.env.VITE_BRANCH === 'bolt-version' ||
+                     localStorage.getItem('supabase-env') === 'bolt-version';
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// Production/Main branch credentials
+const MAIN_SUPABASE_URL = "https://lvhslqwsijnoxajnujzw.supabase.co";
+const MAIN_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2aHNscXdzaWpub3hham51anp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzMjYwMjQsImV4cCI6MjA2NTkwMjAyNH0.MUtSga0YQRB2yqur77GoZ19MCvtXytdW152b6jpsI9o";
 
+// bolt-version branch credentials
+const BOLT_SUPABASE_URL = "https://jgrgdaexdykykbqgokub.supabase.co";
+const BOLT_SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpncmdkYWV4ZHlreWticWdva3ViIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE2NDI3MTYsImV4cCI6MjA2NzIxODcxNn0.8rXsEdUB7YSZjcqUWTADhdsixMvq1IVQT4AhCYYrHi0";
+
+// Select credentials based on environment
+const SUPABASE_URL = isBoltVersion ? BOLT_SUPABASE_URL : MAIN_SUPABASE_URL;
+const SUPABASE_PUBLISHABLE_KEY = isBoltVersion ? BOLT_SUPABASE_KEY : MAIN_SUPABASE_KEY;
+
+// Create the Supabase client
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+
+// Environment utilities
+export const getCurrentEnvironment = () => {
+  return isBoltVersion ? 'bolt-version' : 'main';
+};
+
+export const switchEnvironment = (env: 'main' | 'bolt-version') => {
+  localStorage.setItem('supabase-env', env);
+  window.location.reload();
+};
+
+// Debug info (only in development)
+if (isDevelopment) {
+  console.log('🔧 Supabase Environment:', getCurrentEnvironment());
+  console.log('🔗 Database URL:', SUPABASE_URL);
+}

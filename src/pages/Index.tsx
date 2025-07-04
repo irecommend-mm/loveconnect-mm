@@ -10,6 +10,7 @@ import ChatInterface from '@/components/ChatInterface';
 import ProfileSetup from '@/components/ProfileSetup';
 import SettingsModal from '@/components/SettingsModal';
 import AdvancedFilters from '@/components/AdvancedFilters';
+import EnvironmentSwitcher from '@/components/EnvironmentSwitcher';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X } from 'lucide-react';
@@ -387,6 +388,9 @@ const Index = () => {
           )}
         </div>
       </main>
+
+      {/* Environment Switcher - Only in development */}
+      {import.meta.env.DEV && <EnvironmentSwitcher />}
 
       {/* Profile Modal - Fixed overlay */}
       {showProfile && (
