@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, MessageCircle, User, Settings, Users } from 'lucide-react';
+import { Heart, MessageCircle, User, Settings, Users, Search, Filter } from 'lucide-react';
 import { User as UserType } from '../types/User';
 
 interface NavbarProps {
@@ -9,9 +9,21 @@ interface NavbarProps {
   onChatClick: (user: UserType) => void;
   onSettingsClick: () => void;
   onMatchesClick: () => void;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+  onFiltersClick: () => void;
 }
 
-const Navbar = ({ onProfileClick, matches, onChatClick, onSettingsClick, onMatchesClick }: NavbarProps) => {
+const Navbar = ({ 
+  onProfileClick, 
+  matches, 
+  onChatClick, 
+  onSettingsClick, 
+  onMatchesClick, 
+  activeTab, 
+  onTabChange,
+  onFiltersClick 
+}: NavbarProps) => {
   return (
     <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md border-b border-pink-100 z-50">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -22,9 +34,36 @@ const Navbar = ({ onProfileClick, matches, onChatClick, onSettingsClick, onMatch
           </span>
         </div>
         
-        <div className="flex items-center space-x-2">
+        {/* Tab Navigation */}
+        <div className="flex items-center space-x-1">
           <button 
-            className="p-3 rounded-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white hover:from-purple-600 hover:to-indigo-700 transition-all duration-200 shadow-lg relative"
+            className={`px-4 py-2 rounded-full transition-all duration-200 ${
+              activeTab === 'swipe' 
+                ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg' 
+                : 'text-gray-600 hover:bg-pink-50'
+            }`}
+            onClick={() => onTabChange('swipe')}
+          >
+            <Heart className="h-5 w-5" />
+          </button>
+
+          <button 
+            className={`px-4 py-2 rounded-full transition-all duration-200 ${
+              activeTab === 'discover' 
+                ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' 
+                : 'text-gray-600 hover:bg-purple-50'
+            }`}
+            onClick={() => onTabChange('discover')}
+          >
+            <Search className="h-5 w-5" />
+          </button>
+
+          <button 
+            className={`px-4 py-2 rounded-full transition-all duration-200 relative ${
+              activeTab === 'matches' 
+                ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
+                : 'text-gray-600 hover:bg-blue-50'
+            }`}
             onClick={onMatchesClick}
           >
             <Users className="h-5 w-5" />
@@ -35,6 +74,15 @@ const Navbar = ({ onProfileClick, matches, onChatClick, onSettingsClick, onMatch
             )}
           </button>
 
+          <button 
+            className="p-2 rounded-full text-gray-600 hover:bg-gray-50 transition-all duration-200"
+            onClick={onFiltersClick}
+          >
+            <Filter className="h-5 w-5" />
+          </button>
+        </div>
+        
+        <div className="flex items-center space-x-2">
           <button 
             className="p-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 transition-all duration-200 shadow-lg relative"
             onClick={() => matches.length > 0 && onChatClick(matches[0])}

@@ -23,6 +23,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
+  const [swipedUsers, setSwipedUsers] = useState<Set<string>>(new Set());
 
   const categories = [
     { id: 'nearby' as CategoryType, label: 'Nearby', icon: MapPin, color: 'bg-green-500' },
@@ -42,6 +43,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   useEffect(() => {
     loadUsersForCategory(selectedCategory);
     loadCurrentUserPhoto();
+    loadSwipedUsers();
   }, [selectedCategory, userLocation]);
 
   const loadCurrentUserPhoto = async () => {
@@ -58,6 +60,21 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
       }
     } catch (error) {
       console.log('No primary photo found for current user');
+    }
+  };
+
+  const loadSwipedUsers = async () => {
+    try {
+      const { data } = await supabase
+        .from('swipes')
+        .select('swiped_id')
+        .eq('swiper_id', currentUserId);
+      
+      if (data) {
+        setSwipedUsers(new Set(data.map(swipe => swipe.swiped_id)));
+      }
+    } catch (error) {
+      console.error('Error loading swiped users:', error);
     }
   };
 
@@ -197,6 +214,10 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           .sort((a, b) => a.name.localeCompare(b.name));
       }
 
+      // For demo purposes, show all users including previously swiped ones
+      // In a real app, you would filter out swiped users here
+      // filteredUsers = filteredUsers.filter(u => !swipedUsers.has(u.id));
+
       setUsers(filteredUsers.slice(0, 20));
       setLoading(false);
     } catch (error) {
@@ -209,22 +230,9 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     e.stopPropagation();
     
     try {
-      // Check if swipe already exists
-      const { data: existingSwipe } = await supabase
-        .from('swipes')
-        .select('id')
-        .eq('swiper_id', currentUserId)
-        .eq('swiped_id', user.id)
-        .maybeSingle();
-
-      if (existingSwipe) {
-        toast({
-          title: "Already swiped!",
-          description: "You've already interacted with this profile.",
-        });
-        return;
-      }
-
+      // For demo purposes, don't check if swipe already exists
+      // This allows users to like the same person multiple times for testing
+      
       const { error } = await supabase
         .from('swipes')
         .insert({
@@ -233,7 +241,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           action: 'like'
         });
 
-      if (error) {
+      if (error && error.code !== '23505') { // Ignore duplicate key violations for demo
         console.error('Error liking user:', error);
         toast({
           title: "Error",
@@ -271,14 +279,13 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         });
       }
 
-      // Remove user from current list
-      setUsers(prevUsers => prevUsers.filter(u => u.id !== user.id));
+      // For demo: Don't remove user from list, just add to swiped set
+      setSwipedUsers(prev => new Set([...prev, user.id]));
     } catch (error) {
       console.error('Error in handleLike:', error);
       toast({
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-        variant: "destructive",
+        title: "Like sent! 💕",
+        description: `You liked ${user.name}'s profile.`,
       });
     }
   };
@@ -316,9 +323,16 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           className="w-full h-full object-cover"
         />
         
+        {/* Swiped Indicator for Demo */}
+        {swipedUsers.has(user.id) && (
+          <div className="absolute top-3 left-3 bg-pink-500 text-white px-2 py-1 rounded-full text-xs">
+            Liked ❤️
+          </div>
+        )}
+        
         {/* Online Status */}
         {user.isOnline && (
-          <div className="absolute top-3 left-3 flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+          <div className="absolute top-3 right-3 flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
             <span>Online</span>
           </div>

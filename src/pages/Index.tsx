@@ -10,6 +10,7 @@ import MatchesList from '@/components/MatchesList';
 import ChatInterface from '@/components/ChatInterface';
 import ProfileSetup from '@/components/ProfileSetup';
 import SettingsModal from '@/components/SettingsModal';
+import AdvancedFilters from '@/components/AdvancedFilters';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin } from 'lucide-react';
@@ -18,11 +19,12 @@ import { User as UserType, Match, UserSettings } from '@/types/User';
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState('swipe');
+  const [activeTab, setActiveTab] = useState('discover');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedOtherUser, setSelectedOtherUser] = useState<UserType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -254,10 +256,32 @@ const Index = () => {
       setHasProfile(false);
       setMatches([]);
       setUsers([]);
+      setActiveTab('discover');
+      setSelectedMatchId(null);
+      setSelectedOtherUser(null);
+      setShowProfile(false);
+      setShowSettings(false);
+      setShowFilters(false);
       navigate('/auth');
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab === 'matches') {
+      // Refresh matches when switching to matches tab
+      if (user) {
+        loadMatches(user.id);
+      }
+    }
+  };
+
+  const handleApplyFilters = (filters: any) => {
+    console.log('Applying filters:', filters);
+    // You can implement filter logic here
+    setShowFilters(false);
   };
 
   if (loading) {
@@ -284,6 +308,9 @@ const Index = () => {
         onChatClick={handleChatSelect}
         onSettingsClick={() => setShowSettings(true)}
         onMatchesClick={() => setActiveTab('matches')}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        onFiltersClick={() => setShowFilters(true)}
       />
       
       {/* Location Permission Banner */}
@@ -346,6 +373,21 @@ const Index = () => {
           onClose={() => setShowSettings(false)}
         />
       )}
+
+      {showFilters && (
+        <AdvancedFilters 
+          onClose={() => setShowFilters(false)}
+          onApply={handleApplyFilters}
+        />
+      )}
+
+      {/* Logout Button - Always accessible */}
+      <button
+        onClick={handleLogout}
+        className="fixed bottom-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-lg transition-colors z-40"
+      >
+        Logout
+      </button>
     </div>
   );
 };
