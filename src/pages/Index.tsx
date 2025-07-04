@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,7 +18,7 @@ import { User as UserType, Match, UserSettings } from '@/types/User';
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState('discover');
+  const [activeTab, setActiveTab] = useState('discover'); // Default to discover (swipe mode)
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedOtherUser, setSelectedOtherUser] = useState<UserType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -204,8 +203,14 @@ const Index = () => {
     }
   };
 
+  const handleProfileClick = () => {
+    setActiveTab('profile');
+    setShowProfile(true);
+  };
+
   const handleProfileComplete = () => {
     setHasProfile(true);
+    setShowProfile(false);
     if (user) {
       checkUserProfile(user.id);
     }
@@ -270,6 +275,14 @@ const Index = () => {
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
+    
+    // Close any open modals when switching tabs
+    setShowProfile(false);
+    setShowSettings(false);
+    setShowFilters(false);
+    setSelectedMatchId(null);
+    setSelectedOtherUser(null);
+    
     if (tab === 'matches') {
       // Refresh matches when switching to matches tab
       if (user) {
@@ -303,19 +316,19 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
       <Navbar 
-        onProfileClick={() => setShowProfile(true)}
+        onProfileClick={handleProfileClick}
         matches={users}
         onChatClick={handleChatSelect}
         onSettingsClick={() => setShowSettings(true)}
-        onMatchesClick={() => setActiveTab('matches')}
+        onMatchesClick={() => handleTabChange('matches')}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onFiltersClick={() => setShowFilters(true)}
       />
       
       {/* Location Permission Banner */}
-      {!location && !locationLoading && activeTab === 'discover' && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-4 rounded">
+      {!location && !locationLoading && (activeTab === 'discover' || activeTab === 'browse') && (
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-20 rounded">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <MapPin className="h-5 w-5 text-blue-400 mr-2" />
@@ -337,12 +350,17 @@ const Index = () => {
 
       <main className="pt-20 pb-4">
         <div className="container mx-auto px-4">
-          {activeTab === 'swipe' && (
+          {/* Discover Tab - Swipe Mode (Default Home) */}
+          {activeTab === 'discover' && (
             <SwipeStack />
           )}
-          {activeTab === 'discover' && (
+          
+          {/* Browse Tab - Discovery Grid */}
+          {activeTab === 'browse' && (
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
           )}
+          
+          {/* Matches Tab */}
           {activeTab === 'matches' && (
             <MatchesList 
               matches={matches}
@@ -351,6 +369,8 @@ const Index = () => {
               currentUserId={user.id}
             />
           )}
+          
+          {/* Chat Interface */}
           {activeTab === 'chat' && selectedMatchId && selectedOtherUser && (
             <ChatInterface 
               matchId={selectedMatchId}
@@ -361,11 +381,21 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Modals */}
+      {/* Profile Modal - Opens as overlay, not as tab content */}
       {showProfile && (
-        <ProfileSetup onComplete={() => setShowProfile(false)} />
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <ProfileSetup 
+              onComplete={() => {
+                setShowProfile(false);
+                setActiveTab('discover'); // Return to discover after profile setup
+              }} 
+            />
+          </div>
+        </div>
       )}
       
+      {/* Settings Modal */}
       {showSettings && (
         <SettingsModal 
           settings={settings}
@@ -374,6 +404,7 @@ const Index = () => {
         />
       )}
 
+      {/* Advanced Filters Modal */}
       {showFilters && (
         <AdvancedFilters 
           onClose={() => setShowFilters(false)}

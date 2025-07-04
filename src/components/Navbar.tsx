@@ -34,32 +34,34 @@ const Navbar = ({
           </span>
         </div>
         
-        {/* Tab Navigation */}
+        {/* Main Tab Navigation - 4 tabs */}
         <div className="flex items-center space-x-1">
           <button 
-            className={`px-4 py-2 rounded-full transition-all duration-200 ${
-              activeTab === 'swipe' 
+            className={`px-4 py-2 rounded-full transition-all duration-200 flex items-center space-x-2 ${
+              activeTab === 'discover' 
                 ? 'bg-gradient-to-r from-pink-500 to-red-500 text-white shadow-lg' 
                 : 'text-gray-600 hover:bg-pink-50'
             }`}
-            onClick={() => onTabChange('swipe')}
+            onClick={() => onTabChange('discover')}
           >
             <Heart className="h-5 w-5" />
+            <span className="hidden sm:inline">Discover</span>
           </button>
 
           <button 
-            className={`px-4 py-2 rounded-full transition-all duration-200 ${
-              activeTab === 'discover' 
+            className={`px-4 py-2 rounded-full transition-all duration-200 flex items-center space-x-2 ${
+              activeTab === 'browse' 
                 ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-lg' 
                 : 'text-gray-600 hover:bg-purple-50'
             }`}
-            onClick={() => onTabChange('discover')}
+            onClick={() => onTabChange('browse')}
           >
             <Search className="h-5 w-5" />
+            <span className="hidden sm:inline">Browse</span>
           </button>
 
           <button 
-            className={`px-4 py-2 rounded-full transition-all duration-200 relative ${
+            className={`px-4 py-2 rounded-full transition-all duration-200 relative flex items-center space-x-2 ${
               activeTab === 'matches' 
                 ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white shadow-lg' 
                 : 'text-gray-600 hover:bg-blue-50'
@@ -67,6 +69,7 @@ const Navbar = ({
             onClick={onMatchesClick}
           >
             <Users className="h-5 w-5" />
+            <span className="hidden sm:inline">Matches</span>
             {matches.length > 0 && (
               <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                 {matches.length}
@@ -75,17 +78,40 @@ const Navbar = ({
           </button>
 
           <button 
-            className="p-2 rounded-full text-gray-600 hover:bg-gray-50 transition-all duration-200"
-            onClick={onFiltersClick}
+            className={`px-4 py-2 rounded-full transition-all duration-200 flex items-center space-x-2 ${
+              activeTab === 'profile' 
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg' 
+                : 'text-gray-600 hover:bg-emerald-50'
+            }`}
+            onClick={onProfileClick}
           >
-            <Filter className="h-5 w-5" />
+            <User className="h-5 w-5" />
+            <span className="hidden sm:inline">Profile</span>
           </button>
         </div>
         
+        {/* Header Action Buttons */}
         <div className="flex items-center space-x-2">
+          <button 
+            className="p-2 rounded-full text-gray-600 hover:bg-gray-50 transition-all duration-200"
+            onClick={onFiltersClick}
+            title="Filters"
+          >
+            <Filter className="h-5 w-5" />
+          </button>
+          
+          <button 
+            className="p-2 rounded-full text-gray-600 hover:bg-gray-50 transition-all duration-200"
+            onClick={onSettingsClick}
+            title="Settings"
+          >
+            <Settings className="h-5 w-5" />
+          </button>
+
           <button 
             className="p-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 transition-all duration-200 shadow-lg relative"
             onClick={() => matches.length > 0 && onChatClick(matches[0])}
+            title="Messages"
           >
             <MessageCircle className="h-5 w-5" />
             {matches.length > 0 && (
@@ -93,20 +119,6 @@ const Navbar = ({
                 {matches.length}
               </span>
             )}
-          </button>
-          
-          <button 
-            className="p-3 rounded-full bg-gradient-to-r from-gray-500 to-gray-600 text-white hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-lg"
-            onClick={onSettingsClick}
-          >
-            <Settings className="h-5 w-5" />
-          </button>
-
-          <button 
-            className="p-3 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 transition-all duration-200 shadow-lg"
-            onClick={onProfileClick}
-          >
-            <User className="h-5 w-5" />
           </button>
         </div>
       </div>

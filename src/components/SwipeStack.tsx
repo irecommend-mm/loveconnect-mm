@@ -30,6 +30,7 @@ const SwipeStack = () => {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
+  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -57,27 +58,35 @@ const SwipeStack = () => {
     }
   };
 
-  const loadProfiles = async () => {
+  const loadProfiles = async (forceRefresh = false) => {
     if (!user) return;
 
     setLoading(true);
 
     try {
-      // Get profiles excluding current user and already swiped users
-      const { data: swipedUsers } = await supabase
-        .from('swipes')
-        .select('swiped_id')
-        .eq('swiper_id', user.id);
+      let swipedUserIds: string[] = [];
+      
+      // Only exclude matched users, not all swiped users (for demo purposes)
+      if (!forceRefresh) {
+        const { data: matchedUsers } = await supabase
+          .from('matches')
+          .select('user1_id, user2_id')
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
 
-      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+        if (matchedUsers) {
+          swipedUserIds = matchedUsers.map(match => 
+            match.user1_id === user.id ? match.user2_id : match.user1_id
+          );
+        }
+      }
 
       let profilesQuery = supabase
         .from('profiles')
         .select('*')
         .neq('user_id', user.id);
 
-      // Only add the NOT IN filter if there are actually swiped users
-      if (swipedUserIds.length > 0) {
+      // Only exclude matched users, not all swiped users
+      if (swipedUserIds.length > 0 && !forceRefresh) {
         profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
       }
 
@@ -117,8 +126,22 @@ const SwipeStack = () => {
         })
       );
 
-      setProfiles(profilesWithData.filter(p => p.photos.length > 0));
-      setCurrentIndex(0); // Reset to first profile
+      const filteredProfiles = profilesWithData.filter(p => p.photos.length > 0);
+      
+      if (forceRefresh) {
+        setAllProfiles(filteredProfiles);
+        setProfiles(filteredProfiles);
+        setCurrentIndex(0);
+        toast({
+          title: "Profiles refreshed! 🔄",
+          description: `Showing ${filteredProfiles.length} profiles`,
+        });
+      } else {
+        setAllProfiles(filteredProfiles);
+        setProfiles(filteredProfiles);
+        setCurrentIndex(0);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error in loadProfiles:', error);
@@ -241,6 +264,10 @@ const SwipeStack = () => {
     }
   };
 
+  const handleRefresh = () => {
+    loadProfiles(true); // Force refresh - show all profiles again
+  };
+
   const convertToUserType = (profile: Profile) => ({
     id: profile.user_id,
     name: profile.name,
@@ -293,7 +320,7 @@ const SwipeStack = () => {
         <h3 className="text-2xl font-bold text-gray-700 mb-4 text-center">That's everyone for now!</h3>
         <p className="text-gray-500 text-center mb-8">Check back later for new people to connect with.</p>
         <Button 
-          onClick={loadProfiles} 
+          onClick={handleRefresh} 
           className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
         >
           <RefreshCw className="h-5 w-5 mr-2" />
@@ -308,6 +335,11 @@ const SwipeStack = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 pt-safe pb-safe">
       <div className="container mx-auto px-4 py-8">
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">Discover People</h1>
+          <p className="text-gray-600">Swipe right to like, left to pass</p>
+        </div>
+
         {/* Simplified Card Design without complex swipe gestures */}
         <div className="relative w-full max-w-sm mx-auto">
           <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden">
