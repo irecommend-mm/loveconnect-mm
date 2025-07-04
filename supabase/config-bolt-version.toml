@@ -1,0 +1,15 @@
+# Configuration for bolt-version branch
+# This will be updated with your new project ID once you create it
+
+# Replace with your new project ID from Supabase dashboard
+project_id = "your-new-project-id-here"
+
+# Additional configuration for bolt-version specific settings
+[db]
+# You can add bolt-version specific database settings here
+
+[auth]
+# Authentication settings specific to bolt-version
+
+[storage]
+# Storage settings for bolt-version branch
