@@ -13,6 +13,7 @@ import SettingsModal from '@/components/SettingsModal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin } from 'lucide-react';
+import { User as UserType, Match } from '@/types/User';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -23,6 +24,8 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [users, setUsers] = useState<UserType[]>([]);
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
 
   useEffect(() => {
@@ -31,6 +34,7 @@ const Index = () => {
       if (session?.user) {
         setUser(session.user);
         checkUserProfile(session.user.id);
+        loadMatches(session.user.id);
       } else {
         navigate('/auth');
       }
@@ -40,6 +44,7 @@ const Index = () => {
       if (session?.user) {
         setUser(session.user);
         checkUserProfile(session.user.id);
+        loadMatches(session.user.id);
       } else {
         navigate('/auth');
       }
@@ -80,14 +85,124 @@ const Index = () => {
     }
   };
 
-  const handleProfileComplete = () => {
-    setHasProfile(true);
-    checkUserProfile(user!.id);
+  const loadMatches = async (userId: string) => {
+    try {
+      console.log('Loading matches for user:', userId);
+      
+      // Get matches where the user is either user1 or user2
+      const { data: matchesData, error: matchesError } = await supabase
+        .from('matches')
+        .select('*')
+        .or(`user1_id.eq.${userId},user2_id.eq.${userId}`)
+        .eq('is_active', true);
+
+      if (matchesError) {
+        console.error('Error loading matches:', matchesError);
+        return;
+      }
+
+      console.log('Raw matches data:', matchesData);
+
+      if (!matchesData || matchesData.length === 0) {
+        setMatches([]);
+        setUsers([]);
+        return;
+      }
+
+      // Get the other user IDs from matches
+      const otherUserIds = matchesData.map(match => 
+        match.user1_id === userId ? match.user2_id : match.user1_id
+      );
+
+      console.log('Other user IDs:', otherUserIds);
+
+      // Load profiles for the matched users
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', otherUserIds);
+
+      if (profilesError) {
+        console.error('Error loading profiles:', profilesError);
+        return;
+      }
+
+      // Load photos for each profile
+      const usersWithPhotos = await Promise.all(
+        (profilesData || []).map(async (profile) => {
+          const { data: photosData } = await supabase
+            .from('photos')
+            .select('url')
+            .eq('user_id', profile.user_id)
+            .order('position');
+
+          const { data: interestsData } = await supabase
+            .from('interests')
+            .select('interest')
+            .eq('user_id', profile.user_id);
+
+          return {
+            id: profile.user_id,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio || '',
+            photos: photosData?.map(p => p.url) || [],
+            interests: interestsData?.map(i => i.interest) || [],
+            location: profile.location || '',
+            job: profile.job || '',
+            education: profile.education || '',
+            verified: profile.verified || false,
+            lastActive: new Date(profile.last_active || profile.created_at),
+            height: profile.height || '',
+            zodiacSign: profile.zodiac_sign || '',
+            relationshipType: (profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friendship',
+            children: (profile.children || 'unsure') as 'yes' | 'no' | 'unsure',
+            smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'occasionally',
+            drinking: (profile.drinking || 'sometimes') as 'never' | 'rarely' | 'sometimes' | 'often',
+            exercise: (profile.exercise || 'sometimes') as 'never' | 'rarely' | 'sometimes' | 'often',
+            isOnline: false,
+          };
+        })
+      );
+
+      // Transform matches data to include user arrays
+      const transformedMatches = matchesData.map(match => ({
+        id: match.id,
+        users: [match.user1_id, match.user2_id],
+        matchedAt: new Date(match.created_at),
+        lastMessage: null, // We'll load messages separately if needed
+        user1_id: match.user1_id,
+        user2_id: match.user2_id,
+        created_at: match.created_at,
+        is_active: match.is_active
+      }));
+
+      console.log('Transformed matches:', transformedMatches);
+      
+      setMatches(transformedMatches);
+      setUsers(usersWithPhotos);
+    } catch (error) {
+      console.error('Error in loadMatches:', error);
+    }
   };
 
-  const handleChatSelect = (matchId: string) => {
-    setSelectedMatchId(matchId);
-    setActiveTab('chat');
+  const handleProfileComplete = () => {
+    setHasProfile(true);
+    if (user) {
+      checkUserProfile(user.id);
+    }
+  };
+
+  const handleChatSelect = (matchedUser: UserType) => {
+    // Find the match that corresponds to this user
+    const match = matches.find(m => 
+      m.users.includes(matchedUser.id)
+    );
+    
+    if (match) {
+      setSelectedMatchId(match.id);
+      setActiveTab('chat');
+    }
   };
 
   const handleLocationEnable = async () => {
@@ -129,10 +244,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
       <Navbar 
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
         onProfileClick={() => setShowProfile(true)}
+        matches={matches}
+        onChatClick={handleChatSelect}
         onSettingsClick={() => setShowSettings(true)}
+        onMatchesClick={() => setActiveTab('matches')}
       />
       
       {/* Location Permission Banner */}
@@ -160,17 +276,21 @@ const Index = () => {
       <main className="pt-20 pb-4">
         <div className="container mx-auto px-4">
           {activeTab === 'swipe' && (
-            <SwipeStack currentUserId={user.id} userLocation={location} />
+            <SwipeStack />
           )}
           {activeTab === 'discover' && (
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
           )}
           {activeTab === 'matches' && (
-            <MatchesList currentUserId={user.id} onChatSelect={handleChatSelect} />
+            <MatchesList 
+              matches={matches}
+              users={users}
+              onChatClick={handleChatSelect}
+              currentUserId={user.id}
+            />
           )}
           {activeTab === 'chat' && selectedMatchId && (
             <ChatInterface 
-              currentUserId={user.id} 
               matchId={selectedMatchId}
               onBack={() => setActiveTab('matches')}
             />
@@ -185,9 +305,7 @@ const Index = () => {
       
       {showSettings && (
         <SettingsModal 
-          isOpen={showSettings}
           onClose={() => setShowSettings(false)}
-          currentUserId={user.id}
         />
       )}
     </div>
