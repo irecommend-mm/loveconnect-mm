@@ -70,7 +70,7 @@ const LikesYouGrid = () => {
               age: profile.age,
               photos: photosData?.map(p => p.url) || [],
               location: profile.location || '',
-              action: swipeInfo?.action || 'like'
+              action: (swipeInfo?.action === 'super_like' ? 'super_like' : 'like') as 'like' | 'super_like'
             };
           })
         );
