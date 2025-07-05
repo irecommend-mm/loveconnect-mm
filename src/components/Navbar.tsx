@@ -4,7 +4,6 @@ import { Heart, MessageCircle, User, Users, Filter, Settings, Zap, Eye } from 'l
 import { User as UserType } from '../types/User';
 import VideoCallModal from './VideoCallModal';
 import ProfileVerification from './ProfileVerification';
-import EnhancedFilters from './EnhancedFilters';
 
 interface NavbarProps {
   onProfileClick: () => void;
@@ -29,22 +28,6 @@ const Navbar = ({
 }: NavbarProps) => {
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [showVerification, setShowVerification] = useState(false);
-  const [showEnhancedFilters, setShowEnhancedFilters] = useState(false);
-  const [filterOptions, setFilterOptions] = useState({
-    ageRange: [18, 65] as [number, number],
-    maxDistance: 50,
-    heightRange: [150, 200] as [number, number],
-    education: [],
-    jobField: [],
-    relationshipType: [],
-    lifestyle: {
-      smoking: [],
-      drinking: [],
-      exercise: []
-    },
-    verified: false,
-    recentlyActive: false
-  });
 
   const handleVideoCall = () => {
     if (matches.length > 0) {
@@ -53,11 +36,6 @@ const Navbar = ({
   };
 
   const handleFiltersClick = () => {
-    setShowEnhancedFilters(true);
-  };
-
-  const handleApplyFilters = (filters: any) => {
-    setFilterOptions(filters);
     onFiltersClick();
   };
 
@@ -89,7 +67,7 @@ const Navbar = ({
               <button
                 onClick={handleFiltersClick}
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                title="Enhanced Filters"
+                title="Advanced Filters"
               >
                 <Filter className="h-5 w-5 text-gray-600" />
               </button>
@@ -164,12 +142,6 @@ const Navbar = ({
         onComplete={() => {
           console.log('Verification completed');
         }}
-      />
-
-      <EnhancedFilters
-        onClose={() => setShowEnhancedFilters(false)}
-        onApply={handleApplyFilters}
-        currentFilters={filterOptions}
       />
     </>
   );

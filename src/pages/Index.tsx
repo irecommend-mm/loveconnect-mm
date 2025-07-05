@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -312,6 +311,10 @@ const Index = () => {
     setShowLikesYou(true);
   };
 
+  const handleFiltersClick = () => {
+    setShowFilters(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
@@ -338,7 +341,7 @@ const Index = () => {
         onMatchesClick={() => handleTabChange('matches')}
         activeTab={activeTab}
         onTabChange={handleTabChange}
-        onFiltersClick={() => setShowFilters(true)}
+        onFiltersClick={handleFiltersClick}
       />
       
       {/* Location Permission Banner */}
