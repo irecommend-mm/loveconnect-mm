@@ -9,6 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      event_attendees: {
+        Row: {
+          event_id: string
+          id: string
+          joined_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          joined_at?: string
+          status: string
+          user_id: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          joined_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_attendees_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "group_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      group_events: {
+        Row: {
+          created_at: string
+          creator_id: string
+          description: string | null
+          event_date: string
+          event_type: string
+          id: string
+          location: string
+          max_attendees: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          description?: string | null
+          event_date: string
+          event_type: string
+          id?: string
+          location: string
+          max_attendees?: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          description?: string | null
+          event_date?: string
+          event_type?: string
+          id?: string
+          location?: string
+          max_attendees?: number
+          title?: string
+        }
+        Relationships: []
+      }
       interests: {
         Row: {
           created_at: string
@@ -88,6 +156,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          data: Json | null
+          id: string
+          message: string
+          read: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       photos: {
         Row: {

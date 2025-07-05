@@ -64,53 +64,82 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
     
     setLoading(true);
     try {
-      let query = supabase
+      let baseQuery = supabase
         .from('group_events')
         .select(`
-          *,
-          profiles!group_events_creator_id_fkey(name, user_id),
-          photos!left(url),
-          event_attendees(
-            id,
-            user_id,
-            status,
-            joined_at,
-            profiles!event_attendees_user_id_fkey(name, user_id)
-          )
+          *
         `);
 
       if (activeTab === 'my-events') {
-        query = query.eq('creator_id', user.id);
+        baseQuery = baseQuery.eq('creator_id', user.id);
       } else if (activeTab === 'joined') {
-        query = query.in('id', 
-          await supabase
-            .from('event_attendees')
-            .select('event_id')
-            .eq('user_id', user.id)
-            .eq('status', 'joined')
-            .then(res => res.data?.map(a => a.event_id) || [])
-        );
+        // First get event IDs where user has joined
+        const { data: attendeeData } = await supabase
+          .from('event_attendees')
+          .select('event_id')
+          .eq('user_id', user.id)
+          .eq('status', 'joined');
+        
+        const eventIds = attendeeData?.map(a => a.event_id) || [];
+        if (eventIds.length === 0) {
+          setEvents([]);
+          setLoading(false);
+          return;
+        }
+        
+        baseQuery = baseQuery.in('id', eventIds);
       }
 
-      const { data, error } = await query
+      const { data: eventsData, error } = await baseQuery
         .gte('event_date', new Date().toISOString())
         .order('event_date', { ascending: true });
 
       if (error) {
         console.error('Error loading events:', error);
+        setEvents([]);
       } else {
-        const eventsWithDetails = data?.map(event => ({
-          ...event,
-          creator_name: event.profiles?.name || 'Unknown',
-          creator_photo: event.photos?.[0]?.url,
-          current_attendees: event.event_attendees?.filter((a: any) => a.status === 'joined').length || 0,
-          attendees: event.event_attendees || []
-        })) || [];
+        // Load additional data for each event
+        const eventsWithDetails = await Promise.all(
+          (eventsData || []).map(async (event) => {
+            // Load creator profile
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('user_id', event.creator_id)
+              .single();
+
+            // Load creator photo
+            const { data: photoData } = await supabase
+              .from('photos')
+              .select('url')
+              .eq('user_id', event.creator_id)
+              .eq('is_primary', true)
+              .single();
+
+            // Load attendees
+            const { data: attendeesData } = await supabase
+              .from('event_attendees')
+              .select('*')
+              .eq('event_id', event.id);
+
+            // Count joined attendees
+            const joinedCount = attendeesData?.filter(a => a.status === 'joined').length || 0;
+
+            return {
+              ...event,
+              creator_name: profileData?.name || 'Unknown',
+              creator_photo: photoData?.url,
+              current_attendees: joinedCount,
+              attendees: attendeesData || []
+            };
+          })
+        );
         
         setEvents(eventsWithDetails);
       }
     } catch (error) {
       console.error('Error loading events:', error);
+      setEvents([]);
     } finally {
       setLoading(false);
     }

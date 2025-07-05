@@ -1,63 +1,249 @@
 
 import React, { useState } from 'react';
-import { X, User, Bell, Shield, Search, Camera, Eye } from 'lucide-react';
-import { UserSettings, DiscoveryPreferences } from '../types/User';
-import { Slider } from '@/components/ui/slider';
+import { X, Shield, Bell, Eye, EyeOff, Camera, Check } from 'lucide-react';
+import { UserSettings } from '@/types/User';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import ProfileVerification from './ProfileVerification';
+import { Slider } from '@/components/ui/slider';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SettingsModalProps {
-  onClose: () => void;
   settings: UserSettings;
   onUpdateSettings: (settings: UserSettings) => void;
+  onClose: () => void;
 }
 
-const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalProps) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'discovery' | 'notifications' | 'privacy' | 'verification'>('profile');
-  const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
-  const [showVerification, setShowVerification] = useState(false);
+const SettingsModal = ({ settings, onUpdateSettings, onClose }: SettingsModalProps) => {
+  const { user } = useAuth();
+  const [currentSettings, setCurrentSettings] = useState<UserSettings>(settings);
+  const [activeTab, setActiveTab] = useState<'notifications' | 'privacy' | 'discovery' | 'verification'>('notifications');
+  const [verificationStep, setVerificationStep] = useState<'start' | 'camera' | 'review' | 'submitted'>('start');
+  const [verificationPhotos, setVerificationPhotos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
 
   const handleSave = () => {
-    onUpdateSettings(localSettings);
+    onUpdateSettings(currentSettings);
     onClose();
   };
 
-  const updateDiscoverySettings = (updates: Partial<DiscoveryPreferences>) => {
-    setLocalSettings(prev => ({
+  const updateSettings = (section: keyof UserSettings, key: string, value: any) => {
+    setCurrentSettings(prev => ({
       ...prev,
-      discovery: { ...prev.discovery, ...updates }
+      [section]: {
+        ...prev[section],
+        [key]: value
+      }
     }));
   };
 
-  const tabs = [
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'discovery', label: 'Discovery', icon: Search },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'privacy', label: 'Privacy', icon: Shield },
-    { id: 'verification', label: 'Verification', icon: Eye }
-  ];
+  const handleVerificationPhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !user) return;
 
-  if (showVerification) {
-    return (
-      <ProfileVerification
-        isOpen={true}
-        onClose={() => setShowVerification(false)}
-        onComplete={() => {
-          setShowVerification(false);
-          console.log('Verification completed');
-        }}
-      />
-    );
-  }
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `verification_${user.id}_${Date.now()}.${fileExt}`;
+      const filePath = `verification/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(filePath);
+
+      setVerificationPhotos(prev => [...prev, publicUrl]);
+      
+      if (verificationPhotos.length >= 2) {
+        setVerificationStep('review');
+      }
+    } catch (error) {
+      console.error('Error uploading verification photo:', error);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const submitVerification = async () => {
+    if (!user || verificationPhotos.length < 3) return;
+
+    try {
+      // In a real app, this would send the photos to a verification service
+      // For now, we'll just update the profile as pending verification
+      await supabase
+        .from('profiles')
+        .update({ 
+          verified: false // Would be set to true after manual review
+        })
+        .eq('user_id', user.id);
+
+      setVerificationStep('submitted');
+      
+      // Create notification about verification submission
+      await supabase
+        .from('notifications')
+        .insert({
+          user_id: user.id,
+          type: 'event_update',
+          title: 'Verification Submitted',
+          message: 'Your verification request has been submitted and is under review.',
+          data: { verification_photos: verificationPhotos }
+        });
+
+    } catch (error) {
+      console.error('Error submitting verification:', error);
+    }
+  };
+
+  const renderVerificationContent = () => {
+    switch (verificationStep) {
+      case 'start':
+        return (
+          <div className="text-center space-y-4">
+            <Shield className="h-16 w-16 text-pink-500 mx-auto" />
+            <h3 className="text-xl font-semibold">Get Verified</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              Verification helps build trust in the community. We'll need you to take a few photos following our guidelines.
+            </p>
+            <div className="bg-blue-50 p-4 rounded-lg text-left">
+              <h4 className="font-medium text-blue-900 mb-2">What you'll need:</h4>
+              <ul className="text-sm text-blue-800 space-y-1">
+                <li>• A well-lit area</li>
+                <li>• Hold up your ID next to your face</li>
+                <li>• Take 3 clear photos from different angles</li>
+                <li>• Make sure your face is clearly visible</li>
+              </ul>
+            </div>
+            <Button 
+              onClick={() => setVerificationStep('camera')}
+              className="bg-pink-500 hover:bg-pink-600"
+            >
+              Start Verification
+            </Button>
+          </div>
+        );
+
+      case 'camera':
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <Camera className="h-12 w-12 text-pink-500 mx-auto mb-2" />
+              <h3 className="text-lg font-semibold">Take Verification Photos</h3>
+              <p className="text-gray-600">Upload {3 - verificationPhotos.length} more photo(s)</p>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              {verificationPhotos.map((photo, index) => (
+                <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <img src={photo} alt={`Verification ${index + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+              {Array.from({ length: 3 - verificationPhotos.length }).map((_, index) => (
+                <div key={`empty-${index}`} className="aspect-square bg-gray-100 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
+                  <label className="cursor-pointer">
+                    <Camera className="h-8 w-8 text-gray-400" />
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleVerificationPhotoUpload}
+                      className="hidden"
+                      disabled={uploading}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            {uploading && (
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto"></div>
+                <p className="text-sm text-gray-600 mt-2">Uploading photo...</p>
+              </div>
+            )}
+
+            {verificationPhotos.length >= 3 && (
+              <Button 
+                onClick={() => setVerificationStep('review')}
+                className="w-full bg-pink-500 hover:bg-pink-600"
+              >
+                Review Photos
+              </Button>
+            )}
+          </div>
+        );
+
+      case 'review':
+        return (
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">Review Your Photos</h3>
+              <p className="text-gray-600">Make sure all photos are clear and follow the guidelines</p>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-4">
+              {verificationPhotos.map((photo, index) => (
+                <div key={index} className="aspect-square bg-gray-100 rounded-lg overflow-hidden">
+                  <img src={photo} alt={`Verification ${index + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+
+            <div className="flex space-x-3">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setVerificationPhotos([]);
+                  setVerificationStep('camera');
+                }}
+                className="flex-1"
+              >
+                Retake Photos
+              </Button>
+              <Button 
+                onClick={submitVerification}
+                className="flex-1 bg-pink-500 hover:bg-pink-600"
+              >
+                Submit for Review
+              </Button>
+            </div>
+          </div>
+        );
+
+      case 'submitted':
+        return (
+          <div className="text-center space-y-4">
+            <Check className="h-16 w-16 text-green-500 mx-auto" />
+            <h3 className="text-xl font-semibold">Verification Submitted!</h3>
+            <p className="text-gray-600 max-w-md mx-auto">
+              Your verification request has been submitted. We'll review it within 24-48 hours and notify you of the result.
+            </p>
+            <Button onClick={onClose} className="bg-pink-500 hover:bg-pink-600">
+              Done
+            </Button>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
-            Settings
-          </h2>
+          <h2 className="text-2xl font-bold text-gray-800">Settings</h2>
           <button
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
@@ -66,67 +252,101 @@ const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalPro
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-100 overflow-x-auto">
-          {tabs.map(tab => (
+        {/* Tab Navigation */}
+        <div className="flex border-b border-gray-100">
+          {[
+            { id: 'notifications', label: 'Notifications', icon: Bell },
+            { id: 'privacy', label: 'Privacy', icon: EyeOff },
+            { id: 'discovery', label: 'Discovery', icon: Eye },
+            { id: 'verification', label: 'Verification', icon: Shield }
+          ].map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex-1 flex items-center justify-center space-x-2 py-4 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               <tab.icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{tab.label}</span>
+              <span>{tab.label}</span>
             </button>
           ))}
         </div>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
-          {activeTab === 'profile' && (
+          {activeTab === 'notifications' && (
             <div className="space-y-6">
-              <div className="text-center">
-                <div className="w-24 h-24 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <Camera className="h-8 w-8 text-white" />
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-medium">New matches</Label>
+                  <p className="text-sm text-gray-600">Get notified when you have a new match</p>
                 </div>
-                <button className="text-pink-600 font-medium hover:underline">
-                  Add Photos
-                </button>
+                <Switch
+                  checked={currentSettings.notifications.matches}
+                  onCheckedChange={(checked) => updateSettings('notifications', 'matches', checked)}
+                />
               </div>
               
-              <div className="space-y-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Show my age
-                  </label>
-                  <Switch
-                    checked={localSettings.privacy.showAge}
-                    onCheckedChange={(checked) => 
-                      setLocalSettings(prev => ({
-                        ...prev,
-                        privacy: { ...prev.privacy, showAge: checked }
-                      }))
-                    }
-                  />
+                  <Label className="text-base font-medium">Messages</Label>
+                  <p className="text-sm text-gray-600">Get notified about new messages</p>
                 </div>
-                
+                <Switch
+                  checked={currentSettings.notifications.messages}
+                  onCheckedChange={(checked) => updateSettings('notifications', 'messages', checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Show distance
-                  </label>
-                  <Switch
-                    checked={localSettings.privacy.showDistance}
-                    onCheckedChange={(checked) => 
-                      setLocalSettings(prev => ({
-                        ...prev,
-                        privacy: { ...prev.privacy, showDistance: checked }
-                      }))
-                    }
-                  />
+                  <Label className="text-base font-medium">Likes</Label>
+                  <p className="text-sm text-gray-600">Get notified when someone likes you</p>
                 </div>
+                <Switch
+                  checked={currentSettings.notifications.likes}
+                  onCheckedChange={(checked) => updateSettings('notifications', 'likes', checked)}
+                />
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'privacy' && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-medium">Show age</Label>
+                  <p className="text-sm text-gray-600">Display your age on your profile</p>
+                </div>
+                <Switch
+                  checked={currentSettings.privacy.showAge}
+                  onCheckedChange={(checked) => updateSettings('privacy', 'showAge', checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-medium">Show distance</Label>
+                  <p className="text-sm text-gray-600">Display distance from other users</p>
+                </div>
+                <Switch
+                  checked={currentSettings.privacy.showDistance}
+                  onCheckedChange={(checked) => updateSettings('privacy', 'showDistance', checked)}
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-base font-medium">Incognito mode</Label>
+                  <p className="text-sm text-gray-600">Browse profiles without being seen</p>
+                </div>
+                <Switch
+                  checked={currentSettings.privacy.incognito}
+                  onCheckedChange={(checked) => updateSettings('privacy', 'incognito', checked)}
+                />
               </div>
             </div>
           )}
@@ -134,226 +354,84 @@ const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalPro
           {activeTab === 'discovery' && (
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Age Range: {localSettings.discovery.ageRange[0]} - {localSettings.discovery.ageRange[1]}
-                </label>
+                <Label className="text-base font-medium mb-4 block">Age range: {currentSettings.discovery.ageRange[0]} - {currentSettings.discovery.ageRange[1]}</Label>
                 <Slider
-                  value={localSettings.discovery.ageRange}
-                  onValueChange={(value) => updateDiscoverySettings({ ageRange: value as [number, number] })}
+                  value={currentSettings.discovery.ageRange}
+                  onValueChange={(value) => updateSettings('discovery', 'ageRange', value)}
                   min={18}
                   max={65}
                   step={1}
                   className="w-full"
                 />
               </div>
-
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Maximum Distance: {localSettings.discovery.maxDistance} km
-                </label>
+                <Label className="text-base font-medium mb-4 block">Maximum distance: {currentSettings.discovery.maxDistance} km</Label>
                 <Slider
-                  value={[localSettings.discovery.maxDistance]}
-                  onValueChange={(value) => updateDiscoverySettings({ maxDistance: value[0] })}
+                  value={[currentSettings.discovery.maxDistance]}
+                  onValueChange={(value) => updateSettings('discovery', 'maxDistance', value[0])}
                   min={1}
                   max={100}
                   step={1}
                   className="w-full"
                 />
               </div>
-
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Show me
-                </label>
-                <div className="space-y-2">
-                  {[
-                    { value: 'men', label: 'Men' },
-                    { value: 'women', label: 'Women' },
-                    { value: 'everyone', label: 'Everyone' }
-                  ].map(option => (
-                    <label key={option.value} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        value={option.value}
-                        checked={localSettings.discovery.showMe === option.value}
-                        onChange={(e) => updateDiscoverySettings({ showMe: e.target.value as any })}
-                        className="text-pink-600"
-                      />
-                      <span className="text-sm">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
+                <Label className="text-base font-medium mb-2 block">Looking for</Label>
+                <Select
+                  value={currentSettings.discovery.relationshipType}
+                  onValueChange={(value) => updateSettings('discovery', 'relationshipType', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="casual">Something casual</SelectItem>
+                    <SelectItem value="serious">Long-term relationship</SelectItem>
+                    <SelectItem value="friends">New friends</SelectItem>
+                    <SelectItem value="unsure">Not sure yet</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-
+              
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Looking for
-                </label>
-                <div className="space-y-2">
-                  {[
-                    { value: 'serious', label: 'Something serious' },
-                    { value: 'casual', label: 'Something casual' },
-                    { value: 'friends', label: 'New friends' },
-                    { value: 'unsure', label: "I'm not sure yet" }
-                  ].map(option => (
-                    <label key={option.value} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        value={option.value}
-                        checked={localSettings.discovery.relationshipType === option.value}
-                        onChange={(e) => updateDiscoverySettings({ relationshipType: e.target.value as any })}
-                        className="text-pink-600"
-                      />
-                      <span className="text-sm">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'notifications' && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">New matches</h3>
-                    <p className="text-sm text-gray-500">Get notified when you have a new match</p>
-                  </div>
-                  <Switch
-                    checked={localSettings.notifications.matches}
-                    onCheckedChange={(checked) => 
-                      setLocalSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, matches: checked }
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">New messages</h3>
-                    <p className="text-sm text-gray-500">Get notified when you receive a message</p>
-                  </div>
-                  <Switch
-                    checked={localSettings.notifications.messages}
-                    onCheckedChange={(checked) => 
-                      setLocalSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, messages: checked }
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">New likes</h3>
-                    <p className="text-sm text-gray-500">Get notified when someone likes you</p>
-                  </div>
-                  <Switch
-                    checked={localSettings.notifications.likes}
-                    onCheckedChange={(checked) => 
-                      setLocalSettings(prev => ({
-                        ...prev,
-                        notifications: { ...prev.notifications, likes: checked }
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'privacy' && (
-            <div className="space-y-6">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">Incognito Mode</h3>
-                    <p className="text-sm text-gray-500">Only people you like can see your profile</p>
-                  </div>
-                  <Switch
-                    checked={localSettings.privacy.incognito}
-                    onCheckedChange={(checked) => 
-                      setLocalSettings(prev => ({
-                        ...prev,
-                        privacy: { ...prev.privacy, incognito: checked }
-                      }))
-                    }
-                  />
-                </div>
-
-                <div className="pt-4 border-t border-gray-100">
-                  <h3 className="font-medium text-gray-900 mb-2">Account Actions</h3>
-                  <div className="space-y-2">
-                    <button className="w-full text-left text-sm text-gray-600 hover:text-gray-800 py-2">
-                      Block Contacts
-                    </button>
-                    <button className="w-full text-left text-sm text-gray-600 hover:text-gray-800 py-2">
-                      Report a Problem
-                    </button>
-                    <button className="w-full text-left text-sm text-red-600 hover:text-red-800 py-2">
-                      Delete Account
-                    </button>
-                  </div>
-                </div>
+                <Label className="text-base font-medium mb-2 block">Show me</Label>
+                <Select
+                  value={currentSettings.discovery.showMe}
+                  onValueChange={(value) => updateSettings('discovery', 'showMe', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="men">Men</SelectItem>
+                    <SelectItem value="women">Women</SelectItem>
+                    <SelectItem value="everyone">Everyone</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
 
           {activeTab === 'verification' && (
-            <div className="space-y-6">
-              <div className="text-center">
-                <Eye className="h-16 w-16 text-pink-500 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  Get Verified
-                </h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Verify your profile to increase trust and get more matches
-                </p>
-                <button
-                  onClick={() => setShowVerification(true)}
-                  className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 px-4 rounded-2xl font-medium hover:from-pink-600 hover:to-purple-700 transition-all"
-                >
-                  Start Verification
-                </button>
-              </div>
-              
-              <div className="space-y-3 text-sm text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                  <span>Take a selfie following our guidelines</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                  <span>Get verified within 24 hours</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
-                  <span>Stand out with a verification badge</span>
-                </div>
-              </div>
+            <div>
+              {renderVerificationContent()}
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-100 flex space-x-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 px-4 border border-gray-300 rounded-full font-medium hover:bg-gray-50 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="flex-1 py-3 px-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-full font-medium hover:from-pink-600 hover:to-purple-700 transition-all"
-          >
-            Save Changes
-          </button>
-        </div>
+        {activeTab !== 'verification' && (
+          <div className="p-6 border-t border-gray-100 flex justify-end space-x-3">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="bg-pink-500 hover:bg-pink-600">
+              Save Changes
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );

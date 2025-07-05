@@ -262,7 +262,7 @@ const Index = () => {
   };
 
   const handleProfileClick = () => {
-    setShowProfile(true);
+    setActiveTab('profile');
   };
 
   const handleProfileComplete = () => {
@@ -458,11 +458,21 @@ const Index = () => {
           {/* Profile Tab */}
           {activeTab === 'profile' && currentUserProfile && (
             <div className="max-w-md mx-auto">
-              <ProfileModal
-                user={currentUserProfile}
-                onClose={() => {}}
-                isCurrentUser={true}
-              />
+              <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+                <ProfileModal
+                  user={currentUserProfile}
+                  onClose={() => {}}
+                  isCurrentUser={true}
+                />
+                <div className="p-6 border-t border-gray-100">
+                  <Button 
+                    onClick={() => setShowProfile(true)}
+                    className="w-full bg-pink-500 hover:bg-pink-600 text-white"
+                  >
+                    Edit Profile
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
           
