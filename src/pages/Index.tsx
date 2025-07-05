@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,7 @@ import ProfileSetup from '@/components/ProfileSetup';
 import SettingsModal from '@/components/SettingsModal';
 import AdvancedFilters from '@/components/AdvancedFilters';
 import LikesYouGrid from '@/components/LikesYouGrid';
+import ProfileModal from '@/components/ProfileModal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X, Heart } from 'lucide-react';
@@ -19,7 +21,7 @@ import { User as UserType, Match, UserSettings } from '@/types/User';
 const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState('discover'); // Default to discover (swipe mode)
+  const [activeTab, setActiveTab] = useState('discover');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedOtherUser, setSelectedOtherUser] = useState<UserType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
@@ -31,6 +33,7 @@ const Index = () => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserType | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
     notifications: {
       matches: true,
@@ -58,6 +61,7 @@ const Index = () => {
         setUser(session.user);
         checkUserProfile(session.user.id);
         loadMatches(session.user.id);
+        loadCurrentUserProfile(session.user.id);
       } else {
         navigate('/auth');
       }
@@ -68,6 +72,7 @@ const Index = () => {
         setUser(session.user);
         checkUserProfile(session.user.id);
         loadMatches(session.user.id);
+        loadCurrentUserProfile(session.user.id);
       } else {
         navigate('/auth');
       }
@@ -106,6 +111,55 @@ const Index = () => {
       setHasProfile(false);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCurrentUserProfile = async (userId: string) => {
+    try {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (profileData) {
+        const { data: photosData } = await supabase
+          .from('photos')
+          .select('url')
+          .eq('user_id', userId)
+          .order('position');
+
+        const { data: interestsData } = await supabase
+          .from('interests')
+          .select('interest')
+          .eq('user_id', userId);
+
+        const userProfile: UserType = {
+          id: profileData.user_id,
+          name: profileData.name,
+          age: profileData.age,
+          bio: profileData.bio || '',
+          photos: photosData?.map(p => p.url) || [],
+          interests: interestsData?.map(i => i.interest) || [],
+          location: profileData.location || '',
+          job: profileData.job || '',
+          education: profileData.education || '',
+          verified: profileData.verified || false,
+          lastActive: new Date(profileData.last_active || profileData.created_at),
+          height: profileData.height || '',
+          zodiacSign: profileData.zodiac_sign || '',
+          relationshipType: (profileData.relationship_type === 'friendship' ? 'friends' : profileData.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
+          children: (profileData.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
+          smoking: (profileData.smoking || 'no') as 'yes' | 'no' | 'sometimes',
+          drinking: (profileData.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
+          exercise: (profileData.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
+          isOnline: false,
+        };
+
+        setCurrentUserProfile(userProfile);
+      }
+    } catch (error) {
+      console.error('Error loading current user profile:', error);
     }
   };
 
@@ -209,7 +263,6 @@ const Index = () => {
 
   const handleProfileClick = () => {
     setShowProfile(true);
-    // Do not change activeTab when showing profile modal
   };
 
   const handleProfileComplete = () => {
@@ -217,12 +270,12 @@ const Index = () => {
     setShowProfile(false);
     if (user) {
       checkUserProfile(user.id);
+      loadCurrentUserProfile(user.id);
     }
   };
 
   const handleCloseProfile = () => {
     setShowProfile(false);
-    // Stay on current tab, don't change activeTab
   };
 
   const handleChatSelect = (matchedUser: UserType) => {
@@ -398,6 +451,17 @@ const Index = () => {
                 users={users}
                 onChatClick={handleChatSelect}
                 currentUserId={user.id}
+              />
+            </div>
+          )}
+
+          {/* Profile Tab */}
+          {activeTab === 'profile' && currentUserProfile && (
+            <div className="max-w-md mx-auto">
+              <ProfileModal
+                user={currentUserProfile}
+                onClose={() => {}}
+                isCurrentUser={true}
               />
             </div>
           )}

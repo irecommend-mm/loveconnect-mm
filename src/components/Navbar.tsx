@@ -1,9 +1,11 @@
 
-import React, { useState } from 'react';
-import { Heart, MessageCircle, User, Users, Filter, Settings, Zap, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Heart, MessageCircle, User, Users, Filter, Settings, Bell, Calendar } from 'lucide-react';
 import { User as UserType } from '../types/User';
-import VideoCallModal from './VideoCallModal';
-import ProfileVerification from './ProfileVerification';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import NotificationCenter from './NotificationCenter';
+import GroupEvents from './GroupEvents';
 
 interface NavbarProps {
   onProfileClick: () => void;
@@ -26,12 +28,65 @@ const Navbar = ({
   onTabChange,
   onFiltersClick
 }: NavbarProps) => {
-  const [showVideoCall, setShowVideoCall] = useState(false);
-  const [showVerification, setShowVerification] = useState(false);
+  const { user } = useAuth();
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showGroupEvents, setShowGroupEvents] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
 
-  const handleVideoCall = () => {
-    if (matches.length > 0) {
-      setShowVideoCall(true);
+  useEffect(() => {
+    if (user) {
+      loadUnreadNotifications();
+      
+      // Set up real-time subscription for notifications
+      const channel = supabase
+        .channel('navbar-notifications')
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            loadUnreadNotifications();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'notifications',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            loadUnreadNotifications();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user]);
+
+  const loadUnreadNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      const { count, error } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      if (!error) {
+        setUnreadNotifications(count || 0);
+      }
+    } catch (error) {
+      console.error('Error loading unread notifications:', error);
     }
   };
 
@@ -57,11 +112,24 @@ const Navbar = ({
             {/* Action Buttons */}
             <div className="flex items-center space-x-2">
               <button
-                onClick={() => setShowVerification(true)}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                title="Get Verified"
+                onClick={() => setShowNotifications(true)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+                title="Notifications"
               >
-                <Eye className="h-5 w-5 text-gray-600" />
+                <Bell className="h-5 w-5 text-gray-600" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowGroupEvents(true)}
+                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+                title="Group Events"
+              >
+                <Calendar className="h-5 w-5 text-gray-600" />
               </button>
               
               <button
@@ -70,14 +138,6 @@ const Navbar = ({
                 title="Advanced Filters"
               >
                 <Filter className="h-5 w-5 text-gray-600" />
-              </button>
-
-              <button
-                onClick={handleVideoCall}
-                className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-                title="Video Call"
-              >
-                <Zap className="h-5 w-5 text-gray-600" />
               </button>
 
               <button
@@ -107,7 +167,7 @@ const Navbar = ({
           <div className="flex border-t border-gray-100">
             {[
               { id: 'discover', label: 'Discover', icon: Heart },
-              { id: 'browse', label: 'Browse', icon: Eye },
+              { id: 'browse', label: 'Browse', icon: Filter },
               { id: 'matches', label: 'Matches', icon: Users },
               { id: 'profile', label: 'Profile', icon: User }
             ].map(tab => (
@@ -129,20 +189,13 @@ const Navbar = ({
       </nav>
 
       {/* Modals */}
-      <VideoCallModal
-        isOpen={showVideoCall}
-        onClose={() => setShowVideoCall(false)}
-        otherUserName={matches[0]?.name || 'Unknown User'}
-        otherUserPhoto={matches[0]?.photos?.[0] || '/placeholder.svg'}
-      />
+      {showNotifications && (
+        <NotificationCenter onClose={() => setShowNotifications(false)} />
+      )}
 
-      <ProfileVerification
-        isOpen={showVerification}
-        onClose={() => setShowVerification(false)}
-        onComplete={() => {
-          console.log('Verification completed');
-        }}
-      />
+      {showGroupEvents && (
+        <GroupEvents onClose={() => setShowGroupEvents(false)} />
+      )}
     </>
   );
 };

@@ -1,9 +1,10 @@
 
 import React, { useState } from 'react';
-import { X, User, Bell, Shield, Search, Camera } from 'lucide-react';
+import { X, User, Bell, Shield, Search, Camera, Eye } from 'lucide-react';
 import { UserSettings, DiscoveryPreferences } from '../types/User';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import ProfileVerification from './ProfileVerification';
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -12,8 +13,9 @@ interface SettingsModalProps {
 }
 
 const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalProps) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'discovery' | 'notifications' | 'privacy'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'discovery' | 'notifications' | 'privacy' | 'verification'>('profile');
   const [localSettings, setLocalSettings] = useState<UserSettings>(settings);
+  const [showVerification, setShowVerification] = useState(false);
 
   const handleSave = () => {
     onUpdateSettings(localSettings);
@@ -31,8 +33,22 @@ const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalPro
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'discovery', label: 'Discovery', icon: Search },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'privacy', label: 'Privacy', icon: Shield }
+    { id: 'privacy', label: 'Privacy', icon: Shield },
+    { id: 'verification', label: 'Verification', icon: Eye }
   ];
+
+  if (showVerification) {
+    return (
+      <ProfileVerification
+        isOpen={true}
+        onClose={() => setShowVerification(false)}
+        onComplete={() => {
+          setShowVerification(false);
+          console.log('Verification completed');
+        }}
+      />
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -51,12 +67,12 @@ const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalPro
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-gray-100">
+        <div className="flex border-b border-gray-100 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex-1 flex items-center justify-center space-x-2 py-3 text-sm font-medium transition-colors ${
+              className={`flex items-center justify-center space-x-2 py-3 px-4 text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'
                   : 'text-gray-500 hover:text-gray-700'
@@ -282,6 +298,41 @@ const SettingsModal = ({ onClose, settings, onUpdateSettings }: SettingsModalPro
                       Delete Account
                     </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'verification' && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <Eye className="h-16 w-16 text-pink-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  Get Verified
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Verify your profile to increase trust and get more matches
+                </p>
+                <button
+                  onClick={() => setShowVerification(true)}
+                  className="w-full bg-gradient-to-r from-pink-500 to-purple-600 text-white py-3 px-4 rounded-2xl font-medium hover:from-pink-600 hover:to-purple-700 transition-all"
+                >
+                  Start Verification
+                </button>
+              </div>
+              
+              <div className="space-y-3 text-sm text-gray-600">
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                  <span>Take a selfie following our guidelines</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                  <span>Get verified within 24 hours</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <div className="w-2 h-2 bg-pink-500 rounded-full"></div>
+                  <span>Stand out with a verification badge</span>
                 </div>
               </div>
             </div>
