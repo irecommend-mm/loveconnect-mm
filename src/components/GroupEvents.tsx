@@ -127,8 +127,9 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
 
             return {
               ...event,
+              event_type: event.event_type as 'group' | 'individual',
               creator_name: profileData?.name || 'Unknown',
-              creator_photo: photoData?.url,
+              creator_photo: photoData?.url || '',
               current_attendees: joinedCount,
               attendees: attendeesData || []
             };

@@ -40,7 +40,11 @@ const NotificationCenter = ({ onClose }: NotificationCenterProps) => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            setNotifications(prev => [payload.new as Notification, ...prev]);
+            const newNotification = payload.new as any;
+            setNotifications(prev => [{
+              ...newNotification,
+              type: newNotification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like'
+            }, ...prev]);
           }
         )
         .subscribe();
@@ -65,7 +69,11 @@ const NotificationCenter = ({ onClose }: NotificationCenterProps) => {
       if (error) {
         console.error('Error loading notifications:', error);
       } else {
-        setNotifications(data || []);
+        const typedNotifications = (data || []).map(notification => ({
+          ...notification,
+          type: notification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like'
+        }));
+        setNotifications(typedNotifications);
       }
     } catch (error) {
       console.error('Error loading notifications:', error);

@@ -13,9 +13,11 @@ import SettingsModal from '@/components/SettingsModal';
 import AdvancedFilters from '@/components/AdvancedFilters';
 import LikesYouGrid from '@/components/LikesYouGrid';
 import ProfileModal from '@/components/ProfileModal';
+import NotificationCenter from '@/components/NotificationCenter';
+import GroupEvents from '@/components/GroupEvents';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin, X, Heart } from 'lucide-react';
+import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
 import { User as UserType, Match, UserSettings } from '@/types/User';
 
 const Index = () => {
@@ -28,6 +30,8 @@ const Index = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showLikesYou, setShowLikesYou] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showEvents, setShowEvents] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -343,6 +347,8 @@ const Index = () => {
     setShowSettings(false);
     setShowFilters(false);
     setShowLikesYou(false);
+    setShowNotifications(false);
+    setShowEvents(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
     
@@ -395,6 +401,8 @@ const Index = () => {
         activeTab={activeTab}
         onTabChange={handleTabChange}
         onFiltersClick={handleFiltersClick}
+        onNotificationsClick={() => setShowNotifications(true)}
+        onEventsClick={() => setShowEvents(true)}
       />
       
       {/* Location Permission Banner */}
@@ -464,7 +472,7 @@ const Index = () => {
                   onClose={() => {}}
                   isCurrentUser={true}
                 />
-                <div className="p-6 border-t border-gray-100">
+                <div className="p-6 border-t border-gray-100 space-y-3">
                   <Button 
                     onClick={() => setShowProfile(true)}
                     className="w-full bg-pink-500 hover:bg-pink-600 text-white"
@@ -535,6 +543,16 @@ const Index = () => {
             <LikesYouGrid />
           </div>
         </div>
+      )}
+
+      {/* Notifications Modal */}
+      {showNotifications && (
+        <NotificationCenter onClose={() => setShowNotifications(false)} />
+      )}
+
+      {/* Group Events Modal */}
+      {showEvents && (
+        <GroupEvents onClose={() => setShowEvents(false)} />
       )}
 
       {/* Logout Button - Always accessible */}
