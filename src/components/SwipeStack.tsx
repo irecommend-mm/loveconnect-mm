@@ -1,11 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, X, Star } from 'lucide-react';
+import { Heart, RefreshCw, X, Star, Undo2, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import ModernProfileModal from './ModernProfileModal';
 import MatchCelebrationModal from './MatchCelebrationModal';
+import SuperLikeModal from './SuperLikeModal';
+import BoostModal from './BoostModal';
 
 interface Profile {
   id: string;
@@ -28,9 +31,13 @@ const SwipeStack = () => {
   const [loading, setLoading] = useState(true);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMatchModal, setShowMatchModal] = useState(false);
+  const [showSuperLikeModal, setShowSuperLikeModal] = useState(false);
+  const [showBoostModal, setShowBoostModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
+  const [lastSwipedProfile, setLastSwipedProfile] = useState<Profile | null>(null);
+  const [lastSwipeAction, setLastSwipeAction] = useState<'like' | 'dislike' | 'super_like' | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -170,6 +177,10 @@ const SwipeStack = () => {
       return;
     }
 
+    // Store for undo functionality
+    setLastSwipedProfile(currentProfile);
+    setLastSwipeAction(action);
+
     try {
       // Check if swipe already exists
       const { data: existingSwipe, error: existingSwipeError } = await supabase
@@ -264,6 +275,65 @@ const SwipeStack = () => {
     }
   };
 
+  const handleUndo = async () => {
+    if (!lastSwipedProfile || !lastSwipeAction || !user) {
+      toast({
+        title: "Nothing to undo",
+        description: "No recent swipe to undo.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // Remove the last swipe from database
+      await supabase
+        .from('swipes')
+        .delete()
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', lastSwipedProfile.user_id);
+
+      // If it was a match, remove the match too
+      if (lastSwipeAction === 'like' || lastSwipeAction === 'super_like') {
+        await supabase
+          .from('matches')
+          .delete()
+          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+          .or(`user1_id.eq.${lastSwipedProfile.user_id},user2_id.eq.${lastSwipedProfile.user_id}`);
+      }
+
+      // Move back to previous profile
+      setCurrentIndex(Math.max(0, currentIndex - 1));
+      
+      toast({
+        title: "Swipe undone! ↶",
+        description: `Undoing your ${lastSwipeAction} on ${lastSwipedProfile.name}`,
+      });
+
+      // Clear undo state
+      setLastSwipedProfile(null);
+      setLastSwipeAction(null);
+
+    } catch (error) {
+      console.error('Error undoing swipe:', error);
+      toast({
+        title: "Error",
+        description: "Unable to undo swipe. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSuperLike = () => {
+    if (currentIndex >= profiles.length) return;
+    setShowSuperLikeModal(true);
+  };
+
+  const handleConfirmSuperLike = () => {
+    setShowSuperLikeModal(false);
+    handleAction('super_like');
+  };
+
   const handleRefresh = () => {
     loadProfiles(true); // Force refresh - show all profiles again
   };
@@ -340,7 +410,28 @@ const SwipeStack = () => {
           <p className="text-gray-600">Swipe right to like, left to pass</p>
         </div>
 
-        {/* Simplified Card Design without complex swipe gestures */}
+        {/* Enhanced Action Bar */}
+        <div className="flex justify-center items-center space-x-4 mb-6">
+          <Button
+            onClick={() => setShowBoostModal(true)}
+            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-4 py-2 rounded-full text-sm"
+          >
+            <Zap className="h-4 w-4 mr-1" />
+            Boost
+          </Button>
+          
+          {lastSwipedProfile && (
+            <Button
+              onClick={handleUndo}
+              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full text-sm"
+            >
+              <Undo2 className="h-4 w-4 mr-1" />
+              Undo
+            </Button>
+          )}
+        </div>
+
+        {/* Card Design */}
         <div className="relative w-full max-w-sm mx-auto">
           <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden">
             {/* Photo Section */}
@@ -418,7 +509,7 @@ const SwipeStack = () => {
             </div>
           </div>
 
-          {/* Action Buttons - All consistent styling now */}
+          {/* Enhanced Action Buttons */}
           <div className="flex justify-center items-center space-x-6 mt-8 px-4">
             <Button
               onClick={() => handleAction('dislike')}
@@ -429,7 +520,7 @@ const SwipeStack = () => {
             </Button>
             
             <Button
-              onClick={() => handleAction('super_like')}
+              onClick={handleSuperLike}
               size="lg"
               className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
             >
@@ -446,7 +537,7 @@ const SwipeStack = () => {
           </div>
         </div>
 
-        {/* Profile Modal */}
+        {/* Modals */}
         {showProfileModal && (
           <ModernProfileModal
             user={convertToUserType(currentProfile)}
@@ -466,7 +557,6 @@ const SwipeStack = () => {
           />
         )}
 
-        {/* Match Celebration Modal */}
         {showMatchModal && matchedUser && (
           <MatchCelebrationModal
             isOpen={showMatchModal}
@@ -477,6 +567,18 @@ const SwipeStack = () => {
             onClose={() => setShowMatchModal(false)}
           />
         )}
+
+        <SuperLikeModal
+          isOpen={showSuperLikeModal}
+          onClose={() => setShowSuperLikeModal(false)}
+          onConfirm={handleConfirmSuperLike}
+          userName={currentProfile?.name || ''}
+        />
+
+        <BoostModal
+          isOpen={showBoostModal}
+          onClose={() => setShowBoostModal(false)}
+        />
       </div>
     </div>
   );

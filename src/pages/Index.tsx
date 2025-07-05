@@ -12,7 +12,7 @@ import SettingsModal from '@/components/SettingsModal';
 import AdvancedFilters from '@/components/AdvancedFilters';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin, X } from 'lucide-react';
+import { MapPin, X, Heart } from 'lucide-react';
 import { User as UserType, Match, UserSettings } from '@/types/User';
 
 const Index = () => {
@@ -24,6 +24,7 @@ const Index = () => {
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showLikesYou, setShowLikesYou] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -287,6 +288,7 @@ const Index = () => {
     setShowProfile(false);
     setShowSettings(false);
     setShowFilters(false);
+    setShowLikesYou(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
     
@@ -302,6 +304,10 @@ const Index = () => {
     console.log('Applying filters:', filters);
     // You can implement filter logic here
     setShowFilters(false);
+  };
+
+  const handleShowLikesYou = () => {
+    setShowLikesYou(true);
   };
 
   if (loading) {
@@ -355,7 +361,7 @@ const Index = () => {
         </div>
       )}
 
-      <main className="pt-20 pb-4">
+      <main className="pt-32 pb-4">
         <div className="container mx-auto px-4">
           {/* Discover Tab - Swipe Mode (Default Home) */}
           {activeTab === 'discover' && (
@@ -369,12 +375,26 @@ const Index = () => {
           
           {/* Matches Tab */}
           {activeTab === 'matches' && (
-            <MatchesList 
-              matches={matches}
-              users={users}
-              onChatClick={handleChatSelect}
-              currentUserId={user.id}
-            />
+            <div>
+              {/* Likes You Section */}
+              <div className="mb-6">
+                <button
+                  onClick={handleShowLikesYou}
+                  className="w-full bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-dashed border-pink-300 rounded-2xl p-6 text-center hover:from-pink-200 hover:to-purple-200 transition-all duration-200"
+                >
+                  <Heart className="h-8 w-8 text-pink-500 mx-auto mb-2" />
+                  <h3 className="text-lg font-semibold text-gray-800 mb-1">See who likes you</h3>
+                  <p className="text-sm text-gray-600">Discover people who are interested in you</p>
+                </button>
+              </div>
+              
+              <MatchesList 
+                matches={matches}
+                users={users}
+                onChatClick={handleChatSelect}
+                currentUserId={user.id}
+              />
+            </div>
           )}
           
           {/* Chat Interface */}
@@ -421,6 +441,21 @@ const Index = () => {
           onClose={() => setShowFilters(false)}
           onApply={handleApplyFilters}
         />
+      )}
+
+      {/* Likes You Modal */}
+      {showLikesYou && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setShowLikesYou(false)}
+              className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
+            >
+              <X className="h-5 w-5 text-gray-600" />
+            </button>
+            <LikesYouGrid />
+          </div>
+        </div>
       )}
 
       {/* Logout Button - Always accessible */}
