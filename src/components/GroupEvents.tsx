@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, Plus, Clock, X, Heart, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,32 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
-interface GroupEvent {
-  id: string;
-  creator_id: string;
-  title: string;
-  description: string;
-  event_type: 'group' | 'individual';
-  location: string;
-  event_date: string;
-  max_attendees: number;
-  current_attendees: number;
-  created_at: string;
-  creator_name?: string;
-  creator_photo?: string;
-  attendees?: EventAttendee[];
-}
-
-interface EventAttendee {
-  id: string;
-  event_id: string;
-  user_id: string;
-  status: 'joined' | 'interested' | 'declined';
-  joined_at: string;
-  user_name?: string;
-  user_photo?: string;
-}
+import { GroupEvent, EventAttendee } from '@/types/GroupEvent';
 
 interface GroupEventsProps {
   onClose: () => void;
@@ -116,7 +90,7 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
               .eq('is_primary', true)
               .single();
 
-            // Load attendees
+            // Load attendees with proper typing
             const { data: attendeesData } = await supabase
               .from('event_attendees')
               .select('*')
@@ -125,13 +99,19 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
             // Count joined attendees
             const joinedCount = attendeesData?.filter(a => a.status === 'joined').length || 0;
 
+            // Transform attendees to match our interface
+            const typedAttendees: EventAttendee[] = (attendeesData || []).map(attendee => ({
+              ...attendee,
+              status: attendee.status as 'joined' | 'interested' | 'declined'
+            }));
+
             return {
               ...event,
               event_type: event.event_type as 'group' | 'individual',
               creator_name: profileData?.name || 'Unknown',
               creator_photo: photoData?.url || '',
               current_attendees: joinedCount,
-              attendees: attendeesData || []
+              attendees: typedAttendees
             };
           })
         );
