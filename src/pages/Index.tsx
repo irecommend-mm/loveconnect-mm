@@ -14,11 +14,10 @@ import LikesYouGrid from '@/components/LikesYouGrid';
 import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
-import TravelMode from '@/components/TravelMode';
-import VideoCallModal from '@/components/VideoCallModal';
+import MockDataButton from '@/components/MockDataButton';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin, X, Heart, Calendar, Users, Plane, Video } from 'lucide-react';
+import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
 import { User as UserType, Match, UserSettings } from '@/types/User';
 
 const Index = () => {
@@ -33,8 +32,6 @@ const Index = () => {
   const [showLikesYou, setShowLikesYou] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
-  const [showTravelMode, setShowTravelMode] = useState(false);
-  const [showVideoCall, setShowVideoCall] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -346,11 +343,6 @@ const Index = () => {
       setShowProfile(false);
       setShowSettings(false);
       setShowFilters(false);
-      setShowLikesYou(false);
-      setShowNotifications(false);
-      setShowEvents(false);
-      setShowTravelMode(false);
-      setShowVideoCall(false);
       navigate('/auth');
     } catch (error) {
       console.error('Error logging out:', error);
@@ -367,8 +359,6 @@ const Index = () => {
     setShowLikesYou(false);
     setShowNotifications(false);
     setShowEvents(false);
-    setShowTravelMode(false);
-    setShowVideoCall(false);
     setShowProfileModal(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
@@ -426,27 +416,6 @@ const Index = () => {
         onEventsClick={() => setShowEvents(true)}
       />
       
-      {/* Enhanced Action Bar */}
-      <div className="fixed top-20 right-4 flex flex-col space-y-2 z-30">
-        <Button
-          onClick={() => setShowTravelMode(true)}
-          className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 text-white px-4 py-2 rounded-full shadow-lg transition-all duration-200"
-          size="sm"
-        >
-          <Plane className="h-4 w-4 mr-2" />
-          Travel
-        </Button>
-        
-        <Button
-          onClick={() => setShowVideoCall(true)}
-          className="bg-gradient-to-r from-green-500 to-teal-600 hover:from-green-600 hover:to-teal-700 text-white px-4 py-2 rounded-full shadow-lg transition-all duration-200"
-          size="sm"
-        >
-          <Video className="h-4 w-4 mr-2" />
-          Video
-        </Button>
-      </div>
-
       {/* Location Permission Banner */}
       {!location && !locationLoading && (activeTab === 'discover' || activeTab === 'browse') && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-20 rounded">
@@ -600,19 +569,8 @@ const Index = () => {
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
 
-      {/* Travel Mode Modal */}
-      {showTravelMode && (
-        <TravelMode onClose={() => setShowTravelMode(false)} />
-      )}
-
-      {/* Video Call Modal */}
-      {showVideoCall && (
-        <VideoCallModal 
-          isOpen={showVideoCall}
-          onClose={() => setShowVideoCall(false)}
-          otherUser={selectedOtherUser}
-        />
-      )}
+      {/* Mock Data Button */}
+      <MockDataButton />
 
       {/* Logout Button - Always accessible */}
       <button
