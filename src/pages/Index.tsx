@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +15,6 @@ import LikesYouGrid from '@/components/LikesYouGrid';
 import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
-import MockDataButton from '@/components/MockDataButton';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
@@ -59,6 +59,7 @@ const Index = () => {
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
 
   useEffect(() => {
+    // Check authentication
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
@@ -95,6 +96,7 @@ const Index = () => {
       if (profile) {
         setHasProfile(true);
         setCurrentProfile(profile);
+        // Update user's location if we have geolocation data
         if (location && !profile.latitude && !profile.longitude) {
           await supabase
             .from('profiles')
@@ -169,6 +171,7 @@ const Index = () => {
     try {
       console.log('Loading matches for user:', userId);
       
+      // Get matches where the user is either user1 or user2
       const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select('*')
@@ -188,12 +191,14 @@ const Index = () => {
         return;
       }
 
+      // Get the other user IDs from matches
       const otherUserIds = matchesData.map(match => 
         match.user1_id === userId ? match.user2_id : match.user1_id
       );
 
       console.log('Other user IDs:', otherUserIds);
 
+      // Load profiles for the matched users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -204,6 +209,7 @@ const Index = () => {
         return;
       }
 
+      // Load photos for each profile
       const usersWithPhotos = await Promise.all(
         (profilesData || []).map(async (profile) => {
           const { data: photosData } = await supabase
@@ -241,6 +247,7 @@ const Index = () => {
         })
       );
 
+      // Transform matches data to match the Match interface
       const transformedMatches = matchesData.map(match => ({
         id: match.id,
         users: [match.user1_id, match.user2_id] as [string, string],
@@ -259,7 +266,7 @@ const Index = () => {
   };
 
   const handleProfileClick = () => {
-    setShowProfile(true);
+    setActiveTab('profile');
   };
 
   const handleProfileComplete = () => {
@@ -273,10 +280,10 @@ const Index = () => {
 
   const handleCloseProfile = () => {
     setShowProfile(false);
-    setActiveTab('discover');
   };
 
   const handleChatSelect = (matchedUser: UserType) => {
+    // Find the match that corresponds to this user
     const match = matches.find(m => 
       m.users.includes(matchedUser.id)
     );
@@ -300,6 +307,7 @@ const Index = () => {
           })
           .eq('user_id', user.id);
         
+        // Refresh the page to update the discovery grid
         window.location.reload();
       } catch (error) {
         console.error('Error updating location:', error);
@@ -309,6 +317,7 @@ const Index = () => {
 
   const handleUpdateSettings = (newSettings: UserSettings) => {
     setSettings(newSettings);
+    // Here you could also save to database if needed
   };
 
   const handleLogout = async () => {
@@ -333,6 +342,7 @@ const Index = () => {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     
+    // Close any open modals when switching tabs
     setShowProfile(false);
     setShowSettings(false);
     setShowFilters(false);
@@ -343,6 +353,7 @@ const Index = () => {
     setSelectedOtherUser(null);
     
     if (tab === 'matches') {
+      // Refresh matches when switching to matches tab
       if (user) {
         loadMatches(user.id);
       }
@@ -351,6 +362,7 @@ const Index = () => {
 
   const handleApplyFilters = (filters: any) => {
     console.log('Applying filters:', filters);
+    // You can implement filter logic here
     setShowFilters(false);
   };
 
@@ -393,6 +405,7 @@ const Index = () => {
         onEventsClick={() => setShowEvents(true)}
       />
       
+      {/* Location Permission Banner */}
       {!location && !locationLoading && (activeTab === 'discover' || activeTab === 'browse') && (
         <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-20 rounded">
           <div className="flex items-center justify-between">
@@ -416,16 +429,20 @@ const Index = () => {
 
       <main className="pt-32 pb-4">
         <div className="container mx-auto px-4">
+          {/* Discover Tab - Swipe Mode (Default Home) */}
           {activeTab === 'discover' && (
             <SwipeStack />
           )}
           
+          {/* Browse Tab - Discovery Grid */}
           {activeTab === 'browse' && (
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
           )}
           
+          {/* Matches Tab */}
           {activeTab === 'matches' && (
             <div>
+              {/* Likes You Section */}
               <div className="mb-6">
                 <button
                   onClick={handleShowLikesYou}
@@ -446,22 +463,15 @@ const Index = () => {
             </div>
           )}
 
+          {/* Profile Tab */}
           {activeTab === 'profile' && currentUserProfile && (
             <div className="max-w-md mx-auto">
               <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                <div className="relative">
-                  <button
-                    onClick={handleCloseProfile}
-                    className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors shadow-lg"
-                  >
-                    <X className="h-5 w-5 text-gray-600" />
-                  </button>
-                  <ProfileModal
-                    user={currentUserProfile}
-                    onClose={handleCloseProfile}
-                    isCurrentUser={true}
-                  />
-                </div>
+                <ProfileModal
+                  user={currentUserProfile}
+                  onClose={() => {}}
+                  isCurrentUser={true}
+                />
                 <div className="p-6 border-t border-gray-100 space-y-3">
                   <Button 
                     onClick={() => setShowProfile(true)}
@@ -469,18 +479,12 @@ const Index = () => {
                   >
                     Edit Profile
                   </Button>
-                  <Button 
-                    onClick={() => handleTabChange('discover')}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    Back to Discover
-                  </Button>
                 </div>
               </div>
             </div>
           )}
           
+          {/* Chat Interface */}
           {activeTab === 'chat' && selectedMatchId && selectedOtherUser && (
             <ChatInterface 
               matchId={selectedMatchId}
@@ -491,6 +495,7 @@ const Index = () => {
         </div>
       </main>
 
+      {/* Profile Modal - Fixed overlay */}
       {showProfile && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
@@ -508,6 +513,7 @@ const Index = () => {
         </div>
       )}
       
+      {/* Settings Modal */}
       {showSettings && (
         <SettingsModal 
           settings={settings}
@@ -516,6 +522,7 @@ const Index = () => {
         />
       )}
 
+      {/* Advanced Filters Modal */}
       {showFilters && (
         <AdvancedFilters 
           onClose={() => setShowFilters(false)}
@@ -523,6 +530,7 @@ const Index = () => {
         />
       )}
 
+      {/* Likes You Modal */}
       {showLikesYou && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
@@ -537,16 +545,17 @@ const Index = () => {
         </div>
       )}
 
+      {/* Notifications Modal */}
       {showNotifications && (
         <NotificationCenter onClose={() => setShowNotifications(false)} />
       )}
 
+      {/* Group Events Modal */}
       {showEvents && (
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
 
-      <MockDataButton />
-
+      {/* Logout Button - Always accessible */}
       <button
         onClick={handleLogout}
         className="fixed bottom-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-lg transition-colors z-40"

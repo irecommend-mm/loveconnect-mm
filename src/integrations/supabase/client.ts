@@ -2,27 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-// Use environment variables for Supabase configuration
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "https://vankjdghognnnopcaimo.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZhbmtqZGdob2dubm5vcGNhaW1vIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MDU4NDMsImV4cCI6MjA2NzI4MTg0M30.q02oAVmrtQ6zP10lHskYDJTQrq8ur-wcexkvKXyAfwk";
-
-// Validation to ensure environment variables are set
-if (!SUPABASE_URL) {
-  console.error("❌ VITE_SUPABASE_URL is not set in environment variables");
-}
-
-if (!SUPABASE_PUBLISHABLE_KEY) {
-  console.error("❌ VITE_SUPABASE_ANON_KEY is not set in environment variables");
-}
+const SUPABASE_URL = "https://lvhslqwsijnoxajnujzw.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx2aHNscXdzaWpub3hham51anp3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzMjYwMjQsImV4cCI6MjA2NTkwMjAyNH0.MUtSga0YQRB2yqur77GoZ19MCvtXytdW152b6jpsI9o";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
-
-// Optional: Add development helpers
-if (import.meta.env.DEV) {
-  console.log("🔗 Supabase client initialized for development");
-  console.log("📍 Project URL:", SUPABASE_URL);
-  console.log("🔑 Using anon key:", SUPABASE_PUBLISHABLE_KEY ? "✅ Set" : "❌ Missing");
-}

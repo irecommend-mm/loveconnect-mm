@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, Plus, Clock, X, Heart, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -124,19 +125,13 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
             // Count joined attendees
             const joinedCount = attendeesData?.filter(a => a.status === 'joined').length || 0;
 
-            // Cast attendees to proper type
-            const typedAttendees: EventAttendee[] = (attendeesData || []).map(attendee => ({
-              ...attendee,
-              status: attendee.status as 'joined' | 'interested' | 'declined'
-            }));
-
             return {
               ...event,
               event_type: event.event_type as 'group' | 'individual',
               creator_name: profileData?.name || 'Unknown',
               creator_photo: photoData?.url || '',
               current_attendees: joinedCount,
-              attendees: typedAttendees
+              attendees: attendeesData || []
             };
           })
         );
