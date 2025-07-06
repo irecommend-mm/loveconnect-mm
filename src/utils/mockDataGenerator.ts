@@ -2,13 +2,25 @@
 import { supabase } from '@/integrations/supabase/client';
 import { mockUsers } from '@/data/mockUsers';
 
+// Generate proper UUIDs for mock users
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random() * 16 | 0;
+    const v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+// Create proper UUID mapping for mock users
+const mockUserIds = mockUsers.map(() => generateUUID());
+
 export const populateMockData = async () => {
   try {
     console.log('Starting to populate mock data...');
 
-    // First, let's create some mock profiles
-    const mockProfiles = mockUsers.map(user => ({
-      user_id: user.id,
+    // First, let's create some mock profiles with proper UUIDs
+    const mockProfiles = mockUsers.map((user, index) => ({
+      user_id: mockUserIds[index],
       name: user.name,
       age: user.age,
       bio: user.bio,
@@ -35,13 +47,16 @@ export const populateMockData = async () => {
 
     if (profilesError) {
       console.error('Error inserting profiles:', profilesError);
-      return;
+      return false;
     }
 
     // Insert photos for each user
-    for (const user of mockUsers) {
+    for (let i = 0; i < mockUsers.length; i++) {
+      const user = mockUsers[i];
+      const userId = mockUserIds[i];
+      
       const photos = user.photos.map((photo, index) => ({
-        user_id: user.id,
+        user_id: userId,
         url: photo,
         position: index,
         is_primary: index === 0
@@ -52,12 +67,12 @@ export const populateMockData = async () => {
         .upsert(photos, { onConflict: 'user_id,position' });
 
       if (photosError) {
-        console.error(`Error inserting photos for user ${user.id}:`, photosError);
+        console.error(`Error inserting photos for user ${userId}:`, photosError);
       }
 
       // Insert interests for each user
       const interests = user.interests.map(interest => ({
-        user_id: user.id,
+        user_id: userId,
         interest
       }));
 
@@ -66,14 +81,14 @@ export const populateMockData = async () => {
         .upsert(interests, { onConflict: 'user_id,interest' });
 
       if (interestsError) {
-        console.error(`Error inserting interests for user ${user.id}:`, interestsError);
+        console.error(`Error inserting interests for user ${userId}:`, interestsError);
       }
     }
 
     // Create some mock group events
     const mockEvents = [
       {
-        creator_id: mockUsers[0].id,
+        creator_id: mockUserIds[0],
         title: 'Coffee & Chat Meetup',
         description: 'Casual coffee meetup for singles in the city. Great way to meet new people in a relaxed environment!',
         event_type: 'group',
@@ -82,7 +97,7 @@ export const populateMockData = async () => {
         max_attendees: 15
       },
       {
-        creator_id: mockUsers[1].id,
+        creator_id: mockUserIds[1],
         title: 'Hiking Adventure',
         description: 'Join us for a scenic hike in Marin Headlands. Perfect for nature lovers and fitness enthusiasts!',
         event_type: 'group',
@@ -91,7 +106,7 @@ export const populateMockData = async () => {
         max_attendees: 20
       },
       {
-        creator_id: mockUsers[2].id,
+        creator_id: mockUserIds[2],
         title: 'Yoga & Mindfulness Session',
         description: 'Start your weekend with a peaceful yoga session followed by meditation and healthy snacks.',
         event_type: 'group',
@@ -100,7 +115,7 @@ export const populateMockData = async () => {
         max_attendees: 12
       },
       {
-        creator_id: mockUsers[3].id,
+        creator_id: mockUserIds[3],
         title: 'Cooking Class Date',
         description: 'Learn to cook authentic Italian cuisine together. Perfect for foodies looking for a fun date idea!',
         event_type: 'individual',
@@ -109,7 +124,7 @@ export const populateMockData = async () => {
         max_attendees: 8
       },
       {
-        creator_id: mockUsers[4].id,
+        creator_id: mockUserIds[4],
         title: 'Art Gallery Opening',
         description: 'Join me for the opening of my latest art exhibition. Wine, art, and great conversations!',
         event_type: 'group',
@@ -125,19 +140,19 @@ export const populateMockData = async () => {
 
     if (eventsError) {
       console.error('Error inserting events:', eventsError);
-      return;
+      return false;
     }
 
     // Create some mock swipes and matches
     const mockSwipes = [
-      { swiper_id: mockUsers[0].id, swiped_id: mockUsers[1].id, action: 'like' },
-      { swiper_id: mockUsers[1].id, swiped_id: mockUsers[0].id, action: 'like' }, // Match!
-      { swiper_id: mockUsers[0].id, swiped_id: mockUsers[2].id, action: 'like' },
-      { swiper_id: mockUsers[2].id, swiped_id: mockUsers[0].id, action: 'like' }, // Match!
-      { swiper_id: mockUsers[1].id, swiped_id: mockUsers[3].id, action: 'super_like' },
-      { swiper_id: mockUsers[3].id, swiped_id: mockUsers[1].id, action: 'like' }, // Match!
-      { swiper_id: mockUsers[2].id, swiped_id: mockUsers[4].id, action: 'like' },
-      { swiper_id: mockUsers[4].id, swiped_id: mockUsers[2].id, action: 'like' }, // Match!
+      { swiper_id: mockUserIds[0], swiped_id: mockUserIds[1], action: 'like' },
+      { swiper_id: mockUserIds[1], swiped_id: mockUserIds[0], action: 'like' }, // Match!
+      { swiper_id: mockUserIds[0], swiped_id: mockUserIds[2], action: 'like' },
+      { swiper_id: mockUserIds[2], swiped_id: mockUserIds[0], action: 'like' }, // Match!
+      { swiper_id: mockUserIds[1], swiped_id: mockUserIds[3], action: 'super_like' },
+      { swiper_id: mockUserIds[3], swiped_id: mockUserIds[1], action: 'like' }, // Match!
+      { swiper_id: mockUserIds[2], swiped_id: mockUserIds[4], action: 'like' },
+      { swiper_id: mockUserIds[4], swiped_id: mockUserIds[2], action: 'like' }, // Match!
     ];
 
     const { error: swipesError } = await supabase
@@ -146,7 +161,7 @@ export const populateMockData = async () => {
 
     if (swipesError) {
       console.error('Error inserting swipes:', swipesError);
-      return;
+      return false;
     }
 
     // The matches should be created automatically by the database trigger

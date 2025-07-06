@@ -259,7 +259,7 @@ const Index = () => {
   };
 
   const handleProfileClick = () => {
-    setActiveTab('profile');
+    setShowProfile(true);
   };
 
   const handleProfileComplete = () => {
@@ -273,6 +273,7 @@ const Index = () => {
 
   const handleCloseProfile = () => {
     setShowProfile(false);
+    setActiveTab('discover');
   };
 
   const handleChatSelect = (matchedUser: UserType) => {
@@ -448,11 +449,19 @@ const Index = () => {
           {activeTab === 'profile' && currentUserProfile && (
             <div className="max-w-md mx-auto">
               <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                <ProfileModal
-                  user={currentUserProfile}
-                  onClose={() => {}}
-                  isCurrentUser={true}
-                />
+                <div className="relative">
+                  <button
+                    onClick={handleCloseProfile}
+                    className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center hover:bg-white transition-colors shadow-lg"
+                  >
+                    <X className="h-5 w-5 text-gray-600" />
+                  </button>
+                  <ProfileModal
+                    user={currentUserProfile}
+                    onClose={handleCloseProfile}
+                    isCurrentUser={true}
+                  />
+                </div>
                 <div className="p-6 border-t border-gray-100 space-y-3">
                   <Button 
                     onClick={() => setShowProfile(true)}
@@ -465,7 +474,7 @@ const Index = () => {
                     variant="outline"
                     className="w-full"
                   >
-                    Preview Profile
+                    Back to Discover
                   </Button>
                 </div>
               </div>
