@@ -14,7 +14,6 @@ import LikesYouGrid from '@/components/LikesYouGrid';
 import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
-import MockDataButton from '@/components/MockDataButton';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
@@ -568,9 +567,6 @@ const Index = () => {
       {showEvents && (
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
-
-      {/* Mock Data Button */}
-      <MockDataButton />
 
       {/* Logout Button - Always accessible */}
       <button
