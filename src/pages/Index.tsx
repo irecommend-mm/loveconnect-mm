@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +14,7 @@ import LikesYouGrid from '@/components/LikesYouGrid';
 import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
+import MockDataButton from '@/components/MockDataButton';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
@@ -38,6 +38,7 @@ const Index = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserType | null>(null);
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [settings, setSettings] = useState<UserSettings>({
     notifications: {
       matches: true,
@@ -266,7 +267,7 @@ const Index = () => {
   };
 
   const handleProfileClick = () => {
-    setActiveTab('profile');
+    setShowProfileModal(true);
   };
 
   const handleProfileComplete = () => {
@@ -280,6 +281,15 @@ const Index = () => {
 
   const handleCloseProfile = () => {
     setShowProfile(false);
+  };
+
+  const handleCloseProfileModal = () => {
+    setShowProfileModal(false);
+  };
+
+  const handleEditProfile = () => {
+    setShowProfileModal(false);
+    setShowProfile(true);
   };
 
   const handleChatSelect = (matchedUser: UserType) => {
@@ -349,6 +359,7 @@ const Index = () => {
     setShowLikesYou(false);
     setShowNotifications(false);
     setShowEvents(false);
+    setShowProfileModal(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
     
@@ -470,16 +481,9 @@ const Index = () => {
                 <ProfileModal
                   user={currentUserProfile}
                   onClose={() => {}}
+                  onEdit={handleEditProfile}
                   isCurrentUser={true}
                 />
-                <div className="p-6 border-t border-gray-100 space-y-3">
-                  <Button 
-                    onClick={() => setShowProfile(true)}
-                    className="w-full bg-pink-500 hover:bg-pink-600 text-white"
-                  >
-                    Edit Profile
-                  </Button>
-                </div>
               </div>
             </div>
           )}
@@ -495,7 +499,17 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Profile Modal - Fixed overlay */}
+      {/* Profile Modal - When clicking profile from navbar */}
+      {showProfileModal && currentUserProfile && (
+        <ProfileModal
+          user={currentUserProfile}
+          onClose={handleCloseProfileModal}
+          onEdit={handleEditProfile}
+          isCurrentUser={true}
+        />
+      )}
+
+      {/* Profile Setup Modal - Fixed overlay */}
       {showProfile && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
@@ -554,6 +568,9 @@ const Index = () => {
       {showEvents && (
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
+
+      {/* Mock Data Button */}
+      <MockDataButton />
 
       {/* Logout Button - Always accessible */}
       <button

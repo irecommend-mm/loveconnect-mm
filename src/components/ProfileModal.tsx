@@ -1,15 +1,18 @@
 
 import React, { useState } from 'react';
 import { User as UserType } from '../types/User';
-import { MapPin, Briefcase, GraduationCap, Heart, Star, Ruler, Calendar } from 'lucide-react';
+import { MapPin, Briefcase, GraduationCap, Heart, Star, Ruler, X, Edit, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProfileModalProps {
   user: UserType;
   onClose: () => void;
+  onEdit?: () => void;
   isCurrentUser?: boolean;
+  showActions?: boolean;
 }
 
-const ProfileModal = ({ user, onClose, isCurrentUser }: ProfileModalProps) => {
+const ProfileModal = ({ user, onClose, onEdit, isCurrentUser = false, showActions = false }: ProfileModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
   const handleNextPhoto = () => {
@@ -21,6 +24,18 @@ const ProfileModal = ({ user, onClose, isCurrentUser }: ProfileModalProps) => {
   const handlePrevPhoto = () => {
     if (currentPhotoIndex > 0) {
       setCurrentPhotoIndex(currentPhotoIndex - 1);
+    }
+  };
+
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onClose();
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onEdit) {
+      onEdit();
     }
   };
 
@@ -72,22 +87,44 @@ const ProfileModal = ({ user, onClose, isCurrentUser }: ProfileModalProps) => {
           <h2 className="text-xl font-bold">
             {isCurrentUser ? 'Your Profile' : `${user.name}'s Profile`}
           </h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-          >
-            ✕
-          </button>
+          <div className="flex items-center space-x-2">
+            {isCurrentUser && onEdit && (
+              <Button
+                onClick={handleEdit}
+                size="sm"
+                variant="outline"
+                className="flex items-center space-x-1"
+              >
+                <Edit className="h-4 w-4" />
+                <span>Edit</span>
+              </Button>
+            )}
+            <button
+              onClick={handleClose}
+              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {/* Photo Gallery */}
           <div className="relative">
-            <img
-              src={user.photos[currentPhotoIndex]}
-              alt={`${user.name} ${currentPhotoIndex + 1}`}
-              className="w-full h-80 object-cover"
-            />
+            {user.photos && user.photos.length > 0 ? (
+              <img
+                src={user.photos[currentPhotoIndex]}
+                alt={`${user.name} ${currentPhotoIndex + 1}`}
+                className="w-full h-80 object-cover"
+              />
+            ) : (
+              <div className="w-full h-80 bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
+                <div className="text-center text-gray-500">
+                  <Heart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                  <p>No photos available</p>
+                </div>
+              </div>
+            )}
             
             {user.verified && (
               <div className="absolute top-4 right-4 bg-blue-500 text-white p-2 rounded-full">
@@ -97,7 +134,7 @@ const ProfileModal = ({ user, onClose, isCurrentUser }: ProfileModalProps) => {
               </div>
             )}
 
-            {user.photos.length > 1 && (
+            {user.photos && user.photos.length > 1 && (
               <>
                 <div className="absolute top-4 left-4 right-4 flex space-x-1">
                   {user.photos.map((_, index) => (
@@ -177,10 +214,12 @@ const ProfileModal = ({ user, onClose, isCurrentUser }: ProfileModalProps) => {
             </div>
 
             {/* About */}
-            <div>
-              <h4 className="font-semibold text-gray-800 mb-3 text-lg">About {isCurrentUser ? 'Me' : user.name}</h4>
-              <p className="text-gray-600 leading-relaxed">{user.bio}</p>
-            </div>
+            {user.bio && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3 text-lg">About {isCurrentUser ? 'Me' : user.name}</h4>
+                <p className="text-gray-600 leading-relaxed">{user.bio}</p>
+              </div>
+            )}
 
             {/* Relationship Goals */}
             {user.relationshipType && (
@@ -222,19 +261,21 @@ const ProfileModal = ({ user, onClose, isCurrentUser }: ProfileModalProps) => {
             )}
 
             {/* Interests */}
-            <div>
-              <h4 className="font-semibold text-gray-800 mb-3 text-lg">Interests</h4>
-              <div className="flex flex-wrap gap-2">
-                {user.interests.map((interest, index) => (
-                  <span
-                    key={index}
-                    className="px-4 py-2 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 rounded-full text-sm font-medium hover:from-pink-200 hover:to-purple-200 transition-colors"
-                  >
-                    {interest}
-                  </span>
-                ))}
+            {user.interests && user.interests.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-gray-800 mb-3 text-lg">Interests</h4>
+                <div className="flex flex-wrap gap-2">
+                  {user.interests.map((interest, index) => (
+                    <span
+                      key={index}
+                      className="px-4 py-2 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 rounded-full text-sm font-medium hover:from-pink-200 hover:to-purple-200 transition-colors"
+                    >
+                      {interest}
+                    </span>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
