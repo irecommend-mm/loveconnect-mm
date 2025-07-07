@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +15,7 @@ import LikesYouGrid from '@/components/LikesYouGrid';
 import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
-import MockDataButton from '@/components/MockDataButton';
+import VideoCallModal from '@/components/VideoCallModal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
@@ -32,6 +33,7 @@ const Index = () => {
   const [showLikesYou, setShowLikesYou] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
+  const [showVideoCall, setShowVideoCall] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -305,6 +307,11 @@ const Index = () => {
     }
   };
 
+  const handleVideoCall = (matchedUser: UserType) => {
+    setSelectedOtherUser(matchedUser);
+    setShowVideoCall(true);
+  };
+
   const handleLocationEnable = async () => {
     if (location && user) {
       try {
@@ -360,6 +367,7 @@ const Index = () => {
     setShowNotifications(false);
     setShowEvents(false);
     setShowProfileModal(false);
+    setShowVideoCall(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
     
@@ -469,6 +477,7 @@ const Index = () => {
                 matches={matches}
                 users={users}
                 onChatClick={handleChatSelect}
+                onVideoCall={handleVideoCall}
                 currentUserId={user.id}
               />
             </div>
@@ -494,6 +503,7 @@ const Index = () => {
               matchId={selectedMatchId}
               otherUser={selectedOtherUser}
               onBack={() => setActiveTab('matches')}
+              onVideoCall={() => handleVideoCall(selectedOtherUser)}
             />
           )}
         </div>
@@ -569,8 +579,16 @@ const Index = () => {
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
 
-      {/* Mock Data Button */}
-      <MockDataButton />
+      {/* Video Call Modal */}
+      {showVideoCall && selectedOtherUser && (
+        <VideoCallModal
+          isOpen={showVideoCall}
+          onClose={() => setShowVideoCall(false)}
+          otherUserName={selectedOtherUser.name}
+          otherUserPhoto={selectedOtherUser.photos[0] || ''}
+          isIncoming={false}
+        />
+      )}
 
       {/* Logout Button - Always accessible */}
       <button
