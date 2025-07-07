@@ -1,16 +1,17 @@
 
 import React from 'react';
-import { MessageCircle, Star } from 'lucide-react';
+import { MessageCircle, Star, Video } from 'lucide-react';
 import { User as UserType, Match } from '../types/User';
 
 interface MatchesListProps {
   matches: Match[];
   users: UserType[];
   onChatClick: (user: UserType) => void;
+  onVideoCall: (user: UserType) => void;
   currentUserId: string;
 }
 
-const MatchesList = ({ matches, users, onChatClick, currentUserId }: MatchesListProps) => {
+const MatchesList = ({ matches, users, onChatClick, onVideoCall, currentUserId }: MatchesListProps) => {
   const getMatchedUser = (match: Match): UserType | null => {
     const otherUserId = match.users.find(id => id !== currentUserId);
     return users.find(user => user.id === otherUserId) || null;
@@ -52,8 +53,7 @@ const MatchesList = ({ matches, users, onChatClick, currentUserId }: MatchesList
             return (
               <div
                 key={match.id}
-                onClick={() => onChatClick(user)}
-                className="flex items-center space-x-4 p-3 rounded-2xl hover:bg-gray-50 cursor-pointer transition-colors group"
+                className="flex items-center space-x-4 p-3 rounded-2xl hover:bg-gray-50 transition-colors group"
               >
                 <div className="relative">
                   <img
@@ -99,10 +99,26 @@ const MatchesList = ({ matches, users, onChatClick, currentUserId }: MatchesList
                 </div>
 
                 <div className="flex items-center space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onVideoCall(user);
+                    }}
+                    className="p-2 text-gray-400 hover:text-purple-500 transition-colors"
+                    title="Start video call"
+                  >
+                    <Video className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => onChatClick(user)}
+                    className="p-2 text-gray-400 hover:text-pink-500 transition-colors"
+                    title="Start chat"
+                  >
+                    <MessageCircle className="h-5 w-5" />
+                  </button>
                   {!match.lastMessage && (
                     <div className="w-3 h-3 bg-pink-500 rounded-full"></div>
                   )}
-                  <MessageCircle className="h-5 w-5 text-gray-400 group-hover:text-pink-500 transition-colors" />
                 </div>
               </div>
             );

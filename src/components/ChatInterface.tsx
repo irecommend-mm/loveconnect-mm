@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, ArrowLeft } from 'lucide-react';
+import { Send, ArrowLeft, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -27,9 +27,10 @@ interface ChatInterfaceProps {
   matchId: string;
   otherUser: ChatUser;
   onBack: () => void;
+  onVideoCall: () => void;
 }
 
-const ChatInterface = ({ matchId, otherUser, onBack }: ChatInterfaceProps) => {
+const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfaceProps) => {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -199,7 +200,15 @@ const ChatInterface = ({ matchId, otherUser, onBack }: ChatInterfaceProps) => {
           <AvatarImage src={otherUser.photos[0]} alt={otherUser.name} />
           <AvatarFallback>{otherUser.name[0]}</AvatarFallback>
         </Avatar>
-        <h2 className="font-semibold text-lg">{otherUser.name}</h2>
+        <h2 className="font-semibold text-lg flex-1">{otherUser.name}</h2>
+        <Button
+          onClick={onVideoCall}
+          variant="ghost"
+          size="sm"
+          className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+        >
+          <Video className="h-5 w-5" />
+        </Button>
       </div>
 
       {/* Messages */}
