@@ -16,7 +16,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '@/types/User';
 
 const Index = () => {
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('discover');
   const [showProfile, setShowProfile] = useState(false);
@@ -138,7 +138,6 @@ const Index = () => {
     return (
       <ProfileSetup
         onComplete={() => setShowProfile(false)}
-        onBack={() => setShowProfile(false)}
       />
     );
   }
@@ -147,7 +146,10 @@ const Index = () => {
     return (
       <PremiumFeatures
         onClose={() => setShowPremium(false)}
-        currentTier="free"
+        onUpgrade={(plan) => {
+          console.log('Upgrading to:', plan);
+          setShowPremium(false);
+        }}
       />
     );
   }
@@ -182,7 +184,7 @@ const Index = () => {
               </Button>
               
               <Button
-                onClick={logout}
+                onClick={signOut}
                 size="sm"
                 variant="ghost"
               >

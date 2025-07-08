@@ -38,18 +38,31 @@ const Stories = () => {
     if (!user) return;
 
     try {
-      // Get active stories with user info
+      // Get active stories first
       const { data: storiesData } = await supabase
         .from('stories')
-        .select(`
-          *,
-          profiles!inner(name)
-        `)
+        .select('*')
         .eq('is_active', true)
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
       if (storiesData) {
+        // Get user names for each story
+        const storiesWithUserInfo = await Promise.all(
+          storiesData.map(async (story) => {
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('user_id', story.user_id)
+              .single();
+
+            return {
+              ...story,
+              user_name: profileData?.name || 'Unknown User'
+            };
+          })
+        );
+
         // Check which stories the user has viewed
         const { data: viewedStories } = await supabase
           .from('story_views')
@@ -58,9 +71,8 @@ const Stories = () => {
 
         const viewedIds = new Set(viewedStories?.map(v => v.story_id) || []);
 
-        const storiesWithViews = storiesData.map(story => ({
+        const storiesWithViews = storiesWithUserInfo.map(story => ({
           ...story,
-          user_name: story.profiles.name,
           is_viewed: viewedIds.has(story.id)
         }));
 
