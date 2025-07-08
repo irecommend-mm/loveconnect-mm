@@ -1,14 +1,15 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, X, Star, Undo2, Zap } from 'lucide-react';
+import { Heart, RefreshCw, X, Star, Undo2, Zap, Globe } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import ModernProfileModal from './ModernProfileModal';
 import MatchCelebrationModal from './MatchCelebrationModal';
 import SuperLikeModal from './SuperLikeModal';
-import BoostModal from './BoostModal';
+import BoostProfile from './BoostProfile';
+import PassportMode from './PassportMode';
+import RewindFeature from './RewindFeature';
 
 interface Profile {
   id: string;
@@ -33,11 +34,15 @@ const SwipeStack = () => {
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [showSuperLikeModal, setShowSuperLikeModal] = useState(false);
   const [showBoostModal, setShowBoostModal] = useState(false);
+  const [showPassportModal, setShowPassportModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<Profile | null>(null);
   const [lastSwipeAction, setLastSwipeAction] = useState<'like' | 'dislike' | 'super_like' | null>(null);
+  const [rewindCount, setRewindCount] = useState(0);
+  const [currentLocation, setCurrentLocation] = useState<string>('');
+  const [isLocationMode, setIsLocationMode] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -304,6 +309,7 @@ const SwipeStack = () => {
 
       // Move back to previous profile
       setCurrentIndex(Math.max(0, currentIndex - 1));
+      setRewindCount(prev => prev + 1);
       
       toast({
         title: "Swipe undone! ↶",
@@ -322,6 +328,22 @@ const SwipeStack = () => {
         variant: "destructive",
       });
     }
+  };
+
+  const handleLocationChange = (location: string, coordinates?: { lat: number; lng: number }) => {
+    setCurrentLocation(location);
+    setIsLocationMode(true);
+    toast({
+      title: "Location updated! 🌍",
+      description: `Now showing profiles from ${location}`,
+    });
+    // Reload profiles for new location
+    loadProfiles(true);
+  };
+
+  const handleBoost = (boostType: 'standard' | 'premium' | 'super') => {
+    // Implement boost logic here
+    console.log('Boost activated:', boostType);
   };
 
   const handleSuperLike = () => {
@@ -389,13 +411,22 @@ const SwipeStack = () => {
         <Heart className="h-24 w-24 text-gray-300 mx-auto mb-8" />
         <h3 className="text-2xl font-bold text-gray-700 mb-4 text-center">That's everyone for now!</h3>
         <p className="text-gray-500 text-center mb-8">Check back later for new people to connect with.</p>
-        <Button 
-          onClick={handleRefresh} 
-          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-        >
-          <RefreshCw className="h-5 w-5 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex space-x-4">
+          <Button 
+            onClick={() => setShowPassportModal(true)}
+            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
+          >
+            <Globe className="h-5 w-5 mr-2" />
+            Explore Worldwide
+          </Button>
+          <Button 
+            onClick={handleRefresh} 
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
     );
   }
@@ -406,7 +437,9 @@ const SwipeStack = () => {
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 pt-safe pb-safe">
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Discover People</h1>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isLocationMode ? `Discover in ${currentLocation}` : 'Discover People'}
+          </h1>
           <p className="text-gray-600">Swipe right to like, left to pass</p>
         </div>
 
@@ -420,15 +453,20 @@ const SwipeStack = () => {
             Boost
           </Button>
           
-          {lastSwipedProfile && (
-            <Button
-              onClick={handleUndo}
-              className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full text-sm"
-            >
-              <Undo2 className="h-4 w-4 mr-1" />
-              Undo
-            </Button>
-          )}
+          <Button
+            onClick={() => setShowPassportModal(true)}
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm"
+          >
+            <Globe className="h-4 w-4 mr-1" />
+            Passport
+          </Button>
+          
+          <RewindFeature
+            onRewind={handleUndo}
+            rewindCount={rewindCount}
+            maxRewinds={3}
+            isPremium={false}
+          />
         </div>
 
         {/* Card Design */}
@@ -575,9 +613,17 @@ const SwipeStack = () => {
           userName={currentProfile?.name || ''}
         />
 
-        <BoostModal
+        <BoostProfile
           isOpen={showBoostModal}
           onClose={() => setShowBoostModal(false)}
+          onBoost={handleBoost}
+        />
+
+        <PassportMode
+          isOpen={showPassportModal}
+          onClose={() => setShowPassportModal(false)}
+          onLocationChange={handleLocationChange}
+          currentLocation={currentLocation}
         />
       </div>
     </div>

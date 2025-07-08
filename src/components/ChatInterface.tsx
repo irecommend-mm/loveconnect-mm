@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +7,8 @@ import { Send, ArrowLeft, Video } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import ReadReceipts from './ReadReceipts';
+import OnlineStatus from './OnlineStatus';
 
 interface Message {
   id: string;
@@ -35,6 +36,8 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserOnline, setOtherUserOnline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -200,7 +203,10 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
           <AvatarImage src={otherUser.photos[0]} alt={otherUser.name} />
           <AvatarFallback>{otherUser.name[0]}</AvatarFallback>
         </Avatar>
-        <h2 className="font-semibold text-lg flex-1">{otherUser.name}</h2>
+        <div className="flex-1">
+          <h2 className="font-semibold text-lg">{otherUser.name}</h2>
+          <OnlineStatus isOnline={otherUserOnline} showText size="sm" />
+        </div>
         <Button
           onClick={onVideoCall}
           variant="ghost"
@@ -230,35 +236,46 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
                 );
 
                 return (
-                  <div
-                    key={message.id}
-                    className={`flex items-end space-x-2 ${
-                      isOwn ? 'justify-end' : 'justify-start'
-                    }`}
-                  >
-                    {!isOwn && (
-                      <Avatar className={`h-8 w-8 ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
-                        <AvatarImage src={otherUser.photos[0]} alt={otherUser.name} />
-                        <AvatarFallback className="text-xs">{otherUser.name[0]}</AvatarFallback>
-                      </Avatar>
-                    )}
-                    
+                  <div key={message.id}>
                     <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                        isOwn
-                          ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-900'
+                      className={`flex items-end space-x-2 ${
+                        isOwn ? 'justify-end' : 'justify-start'
                       }`}
                     >
-                      <p className="text-sm">{message.content}</p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          isOwn ? 'text-white/70' : 'text-gray-500'
+                      {!isOwn && (
+                        <Avatar className={`h-8 w-8 ${showAvatar ? 'opacity-100' : 'opacity-0'}`}>
+                          <AvatarImage src={otherUser.photos[0]} alt={otherUser.name} />
+                          <AvatarFallback className="text-xs">{otherUser.name[0]}</AvatarFallback>
+                        </Avatar>
+                      )}
+                      
+                      <div
+                        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                          isOwn
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white'
+                            : 'bg-gray-100 text-gray-900'
                         }`}
                       >
-                        {formatTime(message.created_at)}
-                      </p>
+                        <p className="text-sm">{message.content}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isOwn ? 'text-white/70' : 'text-gray-500'
+                          }`}
+                        >
+                          {formatTime(message.created_at)}
+                        </p>
+                      </div>
                     </div>
+                    
+                    {/* Read Receipts for own messages */}
+                    {isOwn && (
+                      <div className="flex justify-end mt-1 mr-2">
+                        <ReadReceipts
+                          messageStatus={message.read_at ? 'read' : 'delivered'}
+                          timestamp={formatTime(message.created_at)}
+                        />
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -267,6 +284,13 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
+
+      {/* Typing Indicator */}
+      {isTyping && (
+        <div className="px-4 py-2 text-sm text-gray-500 italic">
+          {otherUser.name} is typing...
+        </div>
+      )}
 
       {/* Message Input */}
       <form onSubmit={sendMessage} className="flex items-center p-4 border-t space-x-2">
