@@ -248,47 +248,59 @@ const Stories = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold text-gray-800 mb-4">Stories</h2>
       
-      <div className="flex space-x-4 overflow-x-auto pb-4">
-        {/* Add Story Button */}
-        <button
-          onClick={() => setShowRecorder(true)}
-          className="flex-shrink-0 flex flex-col items-center space-y-2"
-        >
-          <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
-            <Plus className="h-6 w-6 text-gray-400" />
-          </div>
-          <span className="text-xs text-gray-600">Your Story</span>
-        </button>
-
-        {/* Stories */}
-        {stories.map((story) => (
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+        </div>
+      ) : (
+        <div className="flex space-x-4 overflow-x-auto pb-4">
+          {/* Add Story Button */}
           <button
-            key={story.id}
-            onClick={() => {
-              setSelectedStory(story);
-              handleStoryView(story);
-            }}
+            onClick={() => setShowRecorder(true)}
             className="flex-shrink-0 flex flex-col items-center space-y-2"
           >
-            <div className={`w-16 h-16 rounded-full p-0.5 ${
-              story.is_viewed 
-                ? 'bg-gray-300' 
-                : 'bg-gradient-to-r from-pink-500 to-purple-600'
-            }`}>
-              <div className="w-full h-full rounded-full overflow-hidden bg-white p-0.5">
-                <img
-                  src={story.thumbnail_url}
-                  alt={`${story.user_name}'s story`}
-                  className="w-full h-full object-cover rounded-full"
-                />
-              </div>
+            <div className="w-16 h-16 border-2 border-dashed border-gray-300 rounded-full flex items-center justify-center bg-gray-50 hover:bg-gray-100 transition-colors">
+              <Plus className="h-6 w-6 text-gray-400" />
             </div>
-            <span className="text-xs text-gray-600 text-center max-w-16 truncate">
-              {story.user_name}
-            </span>
+            <span className="text-xs text-gray-600">Your Story</span>
           </button>
-        ))}
-      </div>
+
+          {/* Stories */}
+          {stories.length > 0 ? (
+            stories.map((story) => (
+              <button
+                key={story.id}
+                onClick={() => {
+                  setSelectedStory(story);
+                  handleStoryView(story);
+                }}
+                className="flex-shrink-0 flex flex-col items-center space-y-2"
+              >
+                <div className={`w-16 h-16 rounded-full p-0.5 ${
+                  story.is_viewed 
+                    ? 'bg-gray-300' 
+                    : 'bg-gradient-to-r from-pink-500 to-purple-600'
+                }`}>
+                  <div className="w-full h-full rounded-full overflow-hidden bg-white p-0.5">
+                    <img
+                      src={story.thumbnail_url}
+                      alt={`${story.user_name}'s story`}
+                      className="w-full h-full object-cover rounded-full"
+                    />
+                  </div>
+                </div>
+                <span className="text-xs text-gray-600 text-center max-w-16 truncate">
+                  {story.user_name}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="flex-1 flex items-center justify-center py-8">
+              <p className="text-gray-500 text-center">No stories yet. Be the first to share!</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };

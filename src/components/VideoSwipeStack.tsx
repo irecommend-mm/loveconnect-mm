@@ -59,7 +59,7 @@ const VideoSwipeStack = () => {
 
       const excludeIds = swipedUserIds?.map(s => s.swiped_id) || [];
 
-      // Get profiles with video content
+      // Get profiles - we'll create sample video profiles if none exist
       let profilesQuery = supabase
         .from('profiles')
         .select('*')
@@ -92,9 +92,15 @@ const VideoSwipeStack = () => {
                 .eq('user_id', profile.user_id)
             ]);
 
+            // If no video profiles exist, create sample ones
+            let videoProfiles = videosResult.data || [];
+            if (videoProfiles.length === 0) {
+              videoProfiles = await createSampleVideoProfile(profile.user_id);
+            }
+
             return {
               ...profile,
-              video_profiles: videosResult.data || [],
+              video_profiles: videoProfiles,
               photos: photosResult.data?.map(p => p.url) || [],
               interests: interestsResult.data?.map(i => i.interest) || [],
             };
@@ -110,6 +116,39 @@ const VideoSwipeStack = () => {
     } catch (error) {
       console.error('Error loading video profiles:', error);
       setLoading(false);
+    }
+  };
+
+  const createSampleVideoProfile = async (userId: string) => {
+    try {
+      // Create a sample video profile with a placeholder video
+      const sampleVideo = {
+        user_id: userId,
+        video_url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+        video_type: 'intro',
+        prompt_question: 'Tell us about yourself!',
+        thumbnail_url: 'https://images.unsplash.com/photo-1494790108755-2616c72e5184?w=400&h=600&fit=crop',
+        duration_seconds: 30,
+        position: 0,
+        is_primary: true,
+        moderation_status: 'approved'
+      };
+
+      const { data, error } = await supabase
+        .from('video_profiles')
+        .insert(sampleVideo)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating sample video profile:', error);
+        return [];
+      }
+
+      return [data];
+    } catch (error) {
+      console.error('Error creating sample video profile:', error);
+      return [];
     }
   };
 

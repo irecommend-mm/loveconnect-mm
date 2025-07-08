@@ -34,11 +34,26 @@ const VideoPlayer = ({
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [isMuted, setIsMuted] = useState(muted);
   const [showPoster, setShowPoster] = useState(!!thumbnailUrl);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     if (videoRef.current) {
+      const video = videoRef.current;
+      
+      const handleLoadStart = () => setIsLoading(true);
+      const handleCanPlay = () => setIsLoading(false);
+      const handleError = () => {
+        setHasError(true);
+        setIsLoading(false);
+      };
+
+      video.addEventListener('loadstart', handleLoadStart);
+      video.addEventListener('canplay', handleCanPlay);
+      video.addEventListener('error', handleError);
+
       if (autoPlay) {
-        const playPromise = videoRef.current.play();
+        const playPromise = video.play();
         if (playPromise !== undefined) {
           playPromise.catch(() => {
             // Auto-play was prevented
@@ -46,11 +61,17 @@ const VideoPlayer = ({
           });
         }
       }
+
+      return () => {
+        video.removeEventListener('loadstart', handleLoadStart);
+        video.removeEventListener('canplay', handleCanPlay);
+        video.removeEventListener('error', handleError);
+      };
     }
-  }, [autoPlay]);
+  }, [autoPlay, videoUrl]);
 
   const togglePlay = () => {
-    if (videoRef.current) {
+    if (videoRef.current && !hasError) {
       if (isPlaying) {
         videoRef.current.pause();
       } else {
@@ -73,6 +94,17 @@ const VideoPlayer = ({
     }
   };
 
+  if (hasError) {
+    return (
+      <div className={`relative w-full h-full bg-gray-900 rounded-2xl overflow-hidden flex items-center justify-center ${className}`}>
+        <div className="text-center text-white">
+          <p className="text-lg mb-2">Video unavailable</p>
+          <p className="text-sm text-gray-400">Please try again later</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`relative w-full h-full bg-black rounded-2xl overflow-hidden ${className}`}>
       <video
@@ -91,8 +123,15 @@ const VideoPlayer = ({
         onPause={() => setIsPlaying(false)}
       />
 
+      {/* Loading Overlay */}
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+        </div>
+      )}
+
       {/* Play/Pause Overlay */}
-      {!isPlaying && (
+      {!isPlaying && !isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/20">
           <Button
             onClick={togglePlay}
