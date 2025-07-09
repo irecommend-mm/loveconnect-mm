@@ -14,95 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      blocked_users: {
-        Row: {
-          blocked_id: string
-          blocker_id: string
-          created_at: string
-          id: string
-        }
-        Insert: {
-          blocked_id: string
-          blocker_id: string
-          created_at?: string
-          id?: string
-        }
-        Update: {
-          blocked_id?: string
-          blocker_id?: string
-          created_at?: string
-          id?: string
-        }
-        Relationships: []
-      }
-      conversation_starters: {
-        Row: {
-          based_on: Json | null
-          created_at: string
-          id: string
-          is_used: boolean | null
-          match_id: string | null
-          suggestion: string
-        }
-        Insert: {
-          based_on?: Json | null
-          created_at?: string
-          id?: string
-          is_used?: boolean | null
-          match_id?: string | null
-          suggestion: string
-        }
-        Update: {
-          based_on?: Json | null
-          created_at?: string
-          id?: string
-          is_used?: boolean | null
-          match_id?: string | null
-          suggestion?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_starters_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: false
-            referencedRelation: "matches"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      daily_challenges: {
-        Row: {
-          challenge_date: string
-          challenge_type: string
-          description: string
-          id: string
-          is_active: boolean | null
-          prompt_question: string | null
-          reward_type: string | null
-          title: string
-        }
-        Insert: {
-          challenge_date?: string
-          challenge_type: string
-          description: string
-          id?: string
-          is_active?: boolean | null
-          prompt_question?: string | null
-          reward_type?: string | null
-          title: string
-        }
-        Update: {
-          challenge_date?: string
-          challenge_type?: string
-          description?: string
-          id?: string
-          is_active?: boolean | null
-          prompt_question?: string | null
-          reward_type?: string | null
-          title?: string
-        }
-        Relationships: []
-      }
       event_attendees: {
         Row: {
           event_id: string
@@ -315,165 +226,76 @@ export type Database = {
         Row: {
           age: number
           bio: string | null
-          boost_active_until: string | null
           children: string | null
           created_at: string
-          daily_swipes_reset_date: string | null
-          daily_swipes_used: number | null
           drinking: string | null
           education: string | null
           exercise: string | null
           height: string | null
           id: string
           incognito: boolean | null
-          incognito_mode: boolean | null
-          is_video_verified: boolean | null
           job: string | null
           last_active: string | null
           latitude: number | null
           location: string | null
           longitude: number | null
           name: string
-          premium_tier: string | null
           relationship_type: string | null
           smoking: string | null
           updated_at: string
           user_id: string
-          verification_video_url: string | null
           verified: boolean | null
-          video_count: number | null
-          video_intro_url: string | null
           zodiac_sign: string | null
         }
         Insert: {
           age: number
           bio?: string | null
-          boost_active_until?: string | null
           children?: string | null
           created_at?: string
-          daily_swipes_reset_date?: string | null
-          daily_swipes_used?: number | null
           drinking?: string | null
           education?: string | null
           exercise?: string | null
           height?: string | null
           id?: string
           incognito?: boolean | null
-          incognito_mode?: boolean | null
-          is_video_verified?: boolean | null
           job?: string | null
           last_active?: string | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
           name: string
-          premium_tier?: string | null
           relationship_type?: string | null
           smoking?: string | null
           updated_at?: string
           user_id: string
-          verification_video_url?: string | null
           verified?: boolean | null
-          video_count?: number | null
-          video_intro_url?: string | null
           zodiac_sign?: string | null
         }
         Update: {
           age?: number
           bio?: string | null
-          boost_active_until?: string | null
           children?: string | null
           created_at?: string
-          daily_swipes_reset_date?: string | null
-          daily_swipes_used?: number | null
           drinking?: string | null
           education?: string | null
           exercise?: string | null
           height?: string | null
           id?: string
           incognito?: boolean | null
-          incognito_mode?: boolean | null
-          is_video_verified?: boolean | null
           job?: string | null
           last_active?: string | null
           latitude?: number | null
           location?: string | null
           longitude?: number | null
           name?: string
-          premium_tier?: string | null
           relationship_type?: string | null
           smoking?: string | null
           updated_at?: string
           user_id?: string
-          verification_video_url?: string | null
           verified?: boolean | null
-          video_count?: number | null
-          video_intro_url?: string | null
           zodiac_sign?: string | null
         }
         Relationships: []
-      }
-      stories: {
-        Row: {
-          created_at: string
-          expires_at: string
-          id: string
-          is_active: boolean | null
-          thumbnail_url: string | null
-          user_id: string
-          video_url: string
-          view_count: number | null
-        }
-        Insert: {
-          created_at?: string
-          expires_at?: string
-          id?: string
-          is_active?: boolean | null
-          thumbnail_url?: string | null
-          user_id: string
-          video_url: string
-          view_count?: number | null
-        }
-        Update: {
-          created_at?: string
-          expires_at?: string
-          id?: string
-          is_active?: boolean | null
-          thumbnail_url?: string | null
-          user_id?: string
-          video_url?: string
-          view_count?: number | null
-        }
-        Relationships: []
-      }
-      story_views: {
-        Row: {
-          id: string
-          story_id: string | null
-          viewed_at: string
-          viewer_id: string
-        }
-        Insert: {
-          id?: string
-          story_id?: string | null
-          viewed_at?: string
-          viewer_id: string
-        }
-        Update: {
-          id?: string
-          story_id?: string | null
-          viewed_at?: string
-          viewer_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "story_views_story_id_fkey"
-            columns: ["story_id"]
-            isOneToOne: false
-            referencedRelation: "stories"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       swipes: {
         Row: {
@@ -514,209 +336,6 @@ export type Database = {
           },
         ]
       }
-      user_achievements: {
-        Row: {
-          achievement_type: string
-          earned_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          achievement_type: string
-          earned_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          achievement_type?: string
-          earned_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_challenge_completions: {
-        Row: {
-          challenge_id: string | null
-          completed_at: string
-          id: string
-          submission_url: string | null
-          user_id: string
-        }
-        Insert: {
-          challenge_id?: string | null
-          completed_at?: string
-          id?: string
-          submission_url?: string | null
-          user_id: string
-        }
-        Update: {
-          challenge_id?: string | null
-          completed_at?: string
-          id?: string
-          submission_url?: string | null
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_challenge_completions_challenge_id_fkey"
-            columns: ["challenge_id"]
-            isOneToOne: false
-            referencedRelation: "daily_challenges"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_reports: {
-        Row: {
-          created_at: string
-          description: string | null
-          evidence_urls: string[] | null
-          id: string
-          report_type: string
-          reported_user_id: string
-          reporter_id: string
-          reviewed_at: string | null
-          reviewer_notes: string | null
-          status: string | null
-        }
-        Insert: {
-          created_at?: string
-          description?: string | null
-          evidence_urls?: string[] | null
-          id?: string
-          report_type: string
-          reported_user_id: string
-          reporter_id: string
-          reviewed_at?: string | null
-          reviewer_notes?: string | null
-          status?: string | null
-        }
-        Update: {
-          created_at?: string
-          description?: string | null
-          evidence_urls?: string[] | null
-          id?: string
-          report_type?: string
-          reported_user_id?: string
-          reporter_id?: string
-          reviewed_at?: string | null
-          reviewer_notes?: string | null
-          status?: string | null
-        }
-        Relationships: []
-      }
-      video_messages: {
-        Row: {
-          content: string | null
-          created_at: string
-          delivered_at: string | null
-          disappears_at: string | null
-          duration_seconds: number | null
-          id: string
-          is_disappearing: boolean | null
-          match_id: string | null
-          media_url: string | null
-          message_type: string
-          read_at: string | null
-          reply_to_message_id: string | null
-          sender_id: string
-          thumbnail_url: string | null
-        }
-        Insert: {
-          content?: string | null
-          created_at?: string
-          delivered_at?: string | null
-          disappears_at?: string | null
-          duration_seconds?: number | null
-          id?: string
-          is_disappearing?: boolean | null
-          match_id?: string | null
-          media_url?: string | null
-          message_type: string
-          read_at?: string | null
-          reply_to_message_id?: string | null
-          sender_id: string
-          thumbnail_url?: string | null
-        }
-        Update: {
-          content?: string | null
-          created_at?: string
-          delivered_at?: string | null
-          disappears_at?: string | null
-          duration_seconds?: number | null
-          id?: string
-          is_disappearing?: boolean | null
-          match_id?: string | null
-          media_url?: string | null
-          message_type?: string
-          read_at?: string | null
-          reply_to_message_id?: string | null
-          sender_id?: string
-          thumbnail_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "video_messages_match_id_fkey"
-            columns: ["match_id"]
-            isOneToOne: false
-            referencedRelation: "matches"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "video_messages_reply_to_message_id_fkey"
-            columns: ["reply_to_message_id"]
-            isOneToOne: false
-            referencedRelation: "video_messages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      video_profiles: {
-        Row: {
-          created_at: string
-          duration_seconds: number | null
-          id: string
-          is_primary: boolean | null
-          moderation_flags: Json | null
-          moderation_status: string | null
-          position: number | null
-          prompt_question: string | null
-          thumbnail_url: string | null
-          user_id: string
-          video_type: string
-          video_url: string
-        }
-        Insert: {
-          created_at?: string
-          duration_seconds?: number | null
-          id?: string
-          is_primary?: boolean | null
-          moderation_flags?: Json | null
-          moderation_status?: string | null
-          position?: number | null
-          prompt_question?: string | null
-          thumbnail_url?: string | null
-          user_id: string
-          video_type: string
-          video_url: string
-        }
-        Update: {
-          created_at?: string
-          duration_seconds?: number | null
-          id?: string
-          is_primary?: boolean | null
-          moderation_flags?: Json | null
-          moderation_status?: string | null
-          position?: number | null
-          prompt_question?: string | null
-          thumbnail_url?: string | null
-          user_id?: string
-          video_type?: string
-          video_url?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -725,14 +344,6 @@ export type Database = {
       calculate_distance: {
         Args: { lat1: number; lon1: number; lat2: number; lon2: number }
         Returns: number
-      }
-      cleanup_expired_stories: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      reset_daily_swipe_limits: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
       }
     }
     Enums: {
