@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Bell, MapPin } from 'lucide-react';
+import { Bell, MapPin, Heart } from 'lucide-react';
 
 interface MobileHeaderProps {
   title: string;
