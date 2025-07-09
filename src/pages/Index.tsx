@@ -318,22 +318,9 @@ const Index = () => {
     setShowPremium(false);
   };
 
-  const getPageTitle = () => {
-    switch (activeTab) {
-      case 'discover': return 'Discover';
-      case 'browse': return 'Browse';
-      case 'likes': return 'Likes';
-      case 'matches': return 'Matches';
-      case 'settings': return 'Settings';
-      case 'chat': return selectedOtherUser?.name || 'Chat';
-      default: return 'LoveConnect';
-    }
-  };
-
   const handleApplyFilters = (filters: any) => {
     console.log('Applied filters:', filters);
-    // Here you would typically apply the filters to your discovery logic
-    // For now, we'll just log them
+    setShowFilters(false);
   };
 
   if (loading) {
@@ -356,7 +343,7 @@ const Index = () => {
     <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
       {/* Mobile Header */}
       <MobileHeader 
-        title={getPageTitle()}
+        title="VibeConnect"
         onNotificationsClick={() => setShowNotifications(true)}
         onEventsClick={() => setShowEvents(true)}
         onFilterClick={() => setShowFilters(true)}

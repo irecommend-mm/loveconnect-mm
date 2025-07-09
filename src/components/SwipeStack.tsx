@@ -1,15 +1,14 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, X, Star, Undo2, Zap, Globe } from 'lucide-react';
+import { Heart, RefreshCw, X, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import ModernProfileModal from './ModernProfileModal';
 import MatchCelebrationModal from './MatchCelebrationModal';
 import SuperLikeModal from './SuperLikeModal';
-import BoostProfile from './BoostProfile';
-import PassportMode from './PassportMode';
-import RewindFeature from './RewindFeature';
+import ActionButtons from './ActionButtons';
 
 interface Profile {
   id: string;
@@ -33,16 +32,13 @@ const SwipeStack = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showMatchModal, setShowMatchModal] = useState(false);
   const [showSuperLikeModal, setShowSuperLikeModal] = useState(false);
-  const [showBoostModal, setShowBoostModal] = useState(false);
-  const [showPassportModal, setShowPassportModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
   const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<Profile | null>(null);
   const [lastSwipeAction, setLastSwipeAction] = useState<'like' | 'dislike' | 'super_like' | null>(null);
   const [rewindCount, setRewindCount] = useState(0);
-  const [currentLocation, setCurrentLocation] = useState<string>('');
-  const [isLocationMode, setIsLocationMode] = useState(false);
+  const [hasSwipedOnce, setHasSwipedOnce] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -185,6 +181,7 @@ const SwipeStack = () => {
     // Store for undo functionality
     setLastSwipedProfile(currentProfile);
     setLastSwipeAction(action);
+    setHasSwipedOnce(true);
 
     try {
       // Check if swipe already exists
@@ -330,22 +327,6 @@ const SwipeStack = () => {
     }
   };
 
-  const handleLocationChange = (location: string, coordinates?: { lat: number; lng: number }) => {
-    setCurrentLocation(location);
-    setIsLocationMode(true);
-    toast({
-      title: "Location updated! 🌍",
-      description: `Now showing profiles from ${location}`,
-    });
-    // Reload profiles for new location
-    loadProfiles(true);
-  };
-
-  const handleBoost = (boostType: 'standard' | 'premium' | 'super') => {
-    // Implement boost logic here
-    console.log('Boost activated:', boostType);
-  };
-
   const handleSuperLike = () => {
     if (currentIndex >= profiles.length) return;
     setShowSuperLikeModal(true);
@@ -411,22 +392,13 @@ const SwipeStack = () => {
         <Heart className="h-24 w-24 text-gray-300 mx-auto mb-8" />
         <h3 className="text-2xl font-bold text-gray-700 mb-4 text-center">That's everyone for now!</h3>
         <p className="text-gray-500 text-center mb-8">Check back later for new people to connect with.</p>
-        <div className="flex space-x-4">
-          <Button 
-            onClick={() => setShowPassportModal(true)}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-          >
-            <Globe className="h-5 w-5 mr-2" />
-            Explore Worldwide
-          </Button>
-          <Button 
-            onClick={handleRefresh} 
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-          >
-            <RefreshCw className="h-5 w-5 mr-2" />
-            Refresh
-          </Button>
-        </div>
+        <Button 
+          onClick={handleRefresh} 
+          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
+        >
+          <RefreshCw className="h-5 w-5 mr-2" />
+          Refresh
+        </Button>
       </div>
     );
   }
@@ -436,39 +408,6 @@ const SwipeStack = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 pt-safe pb-safe">
       <div className="container mx-auto px-4 py-8">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {isLocationMode ? `Discover in ${currentLocation}` : 'Discover People'}
-          </h1>
-          <p className="text-gray-600">Swipe right to like, left to pass</p>
-        </div>
-
-        {/* Enhanced Action Bar */}
-        <div className="flex justify-center items-center space-x-4 mb-6">
-          <Button
-            onClick={() => setShowBoostModal(true)}
-            className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white px-4 py-2 rounded-full text-sm"
-          >
-            <Zap className="h-4 w-4 mr-1" />
-            Boost
-          </Button>
-          
-          <Button
-            onClick={() => setShowPassportModal(true)}
-            className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white px-4 py-2 rounded-full text-sm"
-          >
-            <Globe className="h-4 w-4 mr-1" />
-            Passport
-          </Button>
-          
-          <RewindFeature
-            onRewind={handleUndo}
-            rewindCount={rewindCount}
-            maxRewinds={3}
-            isPremium={false}
-          />
-        </div>
-
         {/* Card Design */}
         <div className="relative w-full max-w-sm mx-auto">
           <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden">
@@ -547,32 +486,17 @@ const SwipeStack = () => {
             </div>
           </div>
 
-          {/* Enhanced Action Buttons */}
-          <div className="flex justify-center items-center space-x-6 mt-8 px-4">
-            <Button
-              onClick={() => handleAction('dislike')}
-              size="lg"
-              className="w-14 h-14 rounded-full bg-white shadow-xl border-2 border-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 group hover:bg-gray-50"
-            >
-              <X className="h-6 w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
-            </Button>
-            
-            <Button
-              onClick={handleSuperLike}
-              size="lg"
-              className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
-            >
-              <Star className="h-6 w-6 text-white fill-current" />
-            </Button>
-            
-            <Button
-              onClick={() => handleAction('like')}
-              size="lg"
-              className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
-            >
-              <Heart className="h-7 w-7 text-white fill-current" />
-            </Button>
-          </div>
+          {/* Action Buttons with integrated Rewind */}
+          <ActionButtons
+            onDislike={() => handleAction('dislike')}
+            onSuperLike={handleSuperLike}
+            onLike={() => handleAction('like')}
+            onRewind={handleUndo}
+            rewindCount={rewindCount}
+            maxRewinds={3}
+            isPremium={false}
+            disabled={!hasSwipedOnce || !lastSwipedProfile}
+          />
         </div>
 
         {/* Modals */}
@@ -611,19 +535,6 @@ const SwipeStack = () => {
           onClose={() => setShowSuperLikeModal(false)}
           onConfirm={handleConfirmSuperLike}
           userName={currentProfile?.name || ''}
-        />
-
-        <BoostProfile
-          isOpen={showBoostModal}
-          onClose={() => setShowBoostModal(false)}
-          onBoost={handleBoost}
-        />
-
-        <PassportMode
-          isOpen={showPassportModal}
-          onClose={() => setShowPassportModal(false)}
-          onLocationChange={handleLocationChange}
-          currentLocation={currentLocation}
         />
       </div>
     </div>
