@@ -27,46 +27,46 @@ const ActionButtons = ({
   const canRewind = !disabled && (isPremium || rewindCount < maxRewinds);
 
   return (
-    <div className="flex items-center justify-center space-x-4 px-6 py-4 mt-8">
+    <div className="flex items-center justify-center space-x-2 sm:space-x-4 px-4 sm:px-6 py-4 mt-4 sm:mt-8">
       {/* Rewind Button */}
       <Button
         onClick={onRewind}
         disabled={!canRewind}
         size="lg"
-        className={`w-12 h-12 rounded-full transition-all duration-200 ${
+        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full transition-all duration-200 ${
           canRewind 
             ? 'bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 shadow-lg hover:scale-110 active:scale-95' 
             : 'bg-gray-300 opacity-50 cursor-not-allowed'
         }`}
       >
-        <RotateCcw className="h-5 w-5 text-white" />
+        <RotateCcw className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
       </Button>
 
       {/* Dislike Button */}
       <Button
         onClick={onDislike}
         size="lg"
-        className="w-14 h-14 rounded-full bg-white shadow-xl border-2 border-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 group hover:bg-gray-50"
+        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white shadow-xl border-2 border-gray-100 hover:scale-110 active:scale-95 transition-all duration-200 group hover:bg-gray-50"
       >
-        <X className="h-6 w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
+        <X className="h-5 w-5 sm:h-6 sm:w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
       </Button>
 
       {/* Super Like Button */}
       <Button
         onClick={onSuperLike}
         size="lg"
-        className="w-14 h-14 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
+        className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
       >
-        <Star className="h-6 w-6 text-white fill-current" />
+        <Star className="h-5 w-5 sm:h-6 sm:w-6 text-white fill-current" />
       </Button>
 
       {/* Like Button */}
       <Button
         onClick={onLike}
         size="lg"
-        className="w-16 h-16 rounded-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
+        className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 shadow-xl hover:scale-110 active:scale-95 transition-all duration-200"
       >
-        <Heart className="h-7 w-7 text-white fill-current" />
+        <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-current" />
       </Button>
     </div>
   );

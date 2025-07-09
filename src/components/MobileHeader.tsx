@@ -38,8 +38,8 @@ const MobileHeader = ({
         </div>
         
         <div className="flex items-center space-x-2">
-          {/* Discovery Filter Button */}
-          {(title === 'Discover' || title === 'Browse') && onFilterClick && (
+          {/* Discovery Filter Button - Show on discover and browse tabs */}
+          {onFilterClick && (
             <button
               onClick={onFilterClick}
               className="p-2 rounded-full hover:bg-gray-100 transition-colors"
