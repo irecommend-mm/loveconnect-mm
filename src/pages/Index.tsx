@@ -1,24 +1,23 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@supabase/supabase-js';
-import Navbar from '@/components/Navbar';
+import MobileHeader from '@/components/MobileHeader';
+import MobileNavigation from '@/components/MobileNavigation';
 import SwipeStack from '@/components/SwipeStack';
 import DiscoveryGrid from '@/components/DiscoveryGrid';
 import MatchesList from '@/components/MatchesList';
 import ChatInterface from '@/components/ChatInterface';
 import ProfileSetup from '@/components/ProfileSetup';
-import SettingsModal from '@/components/SettingsModal';
-import AdvancedFilters from '@/components/AdvancedFilters';
-import LikesYouGrid from '@/components/LikesYouGrid';
-import ProfileModal from '@/components/ProfileModal';
+import SettingsPage from '@/components/SettingsPage';
+import LikesYouPage from '@/components/LikesYouPage';
+import PremiumFeatures from '@/components/PremiumFeatures';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
 import VideoCallModal from '@/components/VideoCallModal';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
-import { MapPin, X, Heart, Calendar, Users } from 'lucide-react';
+import { MapPin, X } from 'lucide-react';
 import { User as UserType, Match, UserSettings } from '@/types/User';
 
 const Index = () => {
@@ -28,9 +27,7 @@ const Index = () => {
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
   const [selectedOtherUser, setSelectedOtherUser] = useState<UserType | null>(null);
   const [showProfile, setShowProfile] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showFilters, setShowFilters] = useState(false);
-  const [showLikesYou, setShowLikesYou] = useState(false);
+  const [showPremium, setShowPremium] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
   const [showVideoCall, setShowVideoCall] = useState(false);
@@ -40,25 +37,6 @@ const Index = () => {
   const [users, setUsers] = useState<UserType[]>([]);
   const [currentProfile, setCurrentProfile] = useState<any>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserType | null>(null);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [settings, setSettings] = useState<UserSettings>({
-    notifications: {
-      matches: true,
-      messages: true,
-      likes: true,
-    },
-    privacy: {
-      showAge: true,
-      showDistance: true,
-      incognito: false,
-    },
-    discovery: {
-      ageRange: [18, 35],
-      maxDistance: 50,
-      relationshipType: 'serious',
-      showMe: 'everyone',
-    },
-  });
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
 
   useEffect(() => {
@@ -268,10 +246,6 @@ const Index = () => {
     }
   };
 
-  const handleProfileClick = () => {
-    setShowProfileModal(true);
-  };
-
   const handleProfileComplete = () => {
     setHasProfile(true);
     setShowProfile(false);
@@ -285,12 +259,7 @@ const Index = () => {
     setShowProfile(false);
   };
 
-  const handleCloseProfileModal = () => {
-    setShowProfileModal(false);
-  };
-
   const handleEditProfile = () => {
-    setShowProfileModal(false);
     setShowProfile(true);
   };
 
@@ -332,41 +301,14 @@ const Index = () => {
     }
   };
 
-  const handleUpdateSettings = (newSettings: UserSettings) => {
-    setSettings(newSettings);
-    // Here you could also save to database if needed
-  };
-
-  const handleLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setHasProfile(false);
-      setMatches([]);
-      setUsers([]);
-      setActiveTab('discover');
-      setSelectedMatchId(null);
-      setSelectedOtherUser(null);
-      setShowProfile(false);
-      setShowSettings(false);
-      setShowFilters(false);
-      navigate('/auth');
-    } catch (error) {
-      console.error('Error logging out:', error);
-    }
-  };
-
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     
     // Close any open modals when switching tabs
     setShowProfile(false);
-    setShowSettings(false);
-    setShowFilters(false);
-    setShowLikesYou(false);
+    setShowPremium(false);
     setShowNotifications(false);
     setShowEvents(false);
-    setShowProfileModal(false);
     setShowVideoCall(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
@@ -379,23 +321,26 @@ const Index = () => {
     }
   };
 
-  const handleApplyFilters = (filters: any) => {
-    console.log('Applying filters:', filters);
-    // You can implement filter logic here
-    setShowFilters(false);
+  const handleUpgrade = (plan: string) => {
+    console.log('Upgrading to plan:', plan);
+    setShowPremium(false);
   };
 
-  const handleShowLikesYou = () => {
-    setShowLikesYou(true);
-  };
-
-  const handleFiltersClick = () => {
-    setShowFilters(true);
+  const getPageTitle = () => {
+    switch (activeTab) {
+      case 'discover': return 'Discover';
+      case 'browse': return 'Browse';
+      case 'likes': return 'Likes';
+      case 'matches': return 'Matches';
+      case 'settings': return 'Settings';
+      case 'chat': return selectedOtherUser?.name || 'Chat';
+      default: return 'LoveConnect';
+    }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div>
       </div>
     );
@@ -410,29 +355,24 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50">
-      <Navbar 
-        onProfileClick={handleProfileClick}
-        matches={users}
-        onChatClick={handleChatSelect}
-        onSettingsClick={() => setShowSettings(true)}
-        onMatchesClick={() => handleTabChange('matches')}
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-        onFiltersClick={handleFiltersClick}
+    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
+      {/* Mobile Header */}
+      <MobileHeader 
+        title={getPageTitle()}
         onNotificationsClick={() => setShowNotifications(true)}
-        onEventsClick={() => setShowEvents(true)}
+        showLocation={activeTab === 'discover' || activeTab === 'browse'}
+        location={currentProfile?.location}
       />
       
       {/* Location Permission Banner */}
       {!location && !locationLoading && (activeTab === 'discover' || activeTab === 'browse') && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mx-4 mt-20 rounded">
+        <div className="mx-4 mt-20 mb-4 bg-blue-50 border border-blue-200 rounded-2xl p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center">
-              <MapPin className="h-5 w-5 text-blue-400 mr-2" />
+              <MapPin className="h-5 w-5 text-blue-500 mr-2" />
               <div>
-                <p className="text-sm font-medium text-blue-800">Enable location for better matches</p>
-                <p className="text-xs text-blue-600">Find people near you and see distances</p>
+                <p className="text-sm font-medium text-blue-800">Enable location</p>
+                <p className="text-xs text-blue-600">Find people near you</p>
               </div>
             </div>
             <Button 
@@ -446,9 +386,10 @@ const Index = () => {
         </div>
       )}
 
-      <main className="pt-32 pb-4">
-        <div className="container mx-auto px-4">
-          {/* Discover Tab - Swipe Mode (Default Home) */}
+      {/* Main Content */}
+      <main className="pt-20 pb-20 min-h-screen">
+        <div className="h-full">
+          {/* Discover Tab - Swipe Mode */}
           {activeTab === 'discover' && (
             <SwipeStack />
           )}
@@ -458,21 +399,14 @@ const Index = () => {
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
           )}
           
+          {/* Likes Tab */}
+          {activeTab === 'likes' && (
+            <LikesYouPage onShowPremium={() => setShowPremium(true)} />
+          )}
+          
           {/* Matches Tab */}
           {activeTab === 'matches' && (
-            <div>
-              {/* Likes You Section */}
-              <div className="mb-6">
-                <button
-                  onClick={handleShowLikesYou}
-                  className="w-full bg-gradient-to-r from-pink-100 to-purple-100 border-2 border-dashed border-pink-300 rounded-2xl p-6 text-center hover:from-pink-200 hover:to-purple-200 transition-all duration-200"
-                >
-                  <Heart className="h-8 w-8 text-pink-500 mx-auto mb-2" />
-                  <h3 className="text-lg font-semibold text-gray-800 mb-1">See who likes you</h3>
-                  <p className="text-sm text-gray-600">Discover people who are interested in you</p>
-                </button>
-              </div>
-              
+            <div className="p-4">
               <MatchesList 
                 matches={matches}
                 users={users}
@@ -483,18 +417,13 @@ const Index = () => {
             </div>
           )}
 
-          {/* Profile Tab */}
-          {activeTab === 'profile' && currentUserProfile && (
-            <div className="max-w-md mx-auto">
-              <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
-                <ProfileModal
-                  user={currentUserProfile}
-                  onClose={() => {}}
-                  onEdit={handleEditProfile}
-                  isCurrentUser={true}
-                />
-              </div>
-            </div>
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <SettingsPage 
+              currentUserProfile={currentUserProfile}
+              onEditProfile={handleEditProfile}
+              onShowPremium={() => setShowPremium(true)}
+            />
           )}
           
           {/* Chat Interface */}
@@ -509,17 +438,13 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Profile Modal - When clicking profile from navbar */}
-      {showProfileModal && currentUserProfile && (
-        <ProfileModal
-          user={currentUserProfile}
-          onClose={handleCloseProfileModal}
-          onEdit={handleEditProfile}
-          isCurrentUser={true}
-        />
-      )}
+      {/* Mobile Navigation */}
+      <MobileNavigation 
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+      />
 
-      {/* Profile Setup Modal - Fixed overlay */}
+      {/* Profile Setup Modal */}
       {showProfile && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
@@ -536,37 +461,13 @@ const Index = () => {
           </div>
         </div>
       )}
-      
-      {/* Settings Modal */}
-      {showSettings && (
-        <SettingsModal 
-          settings={settings}
-          onUpdateSettings={handleUpdateSettings}
-          onClose={() => setShowSettings(false)}
-        />
-      )}
 
-      {/* Advanced Filters Modal */}
-      {showFilters && (
-        <AdvancedFilters 
-          onClose={() => setShowFilters(false)}
-          onApply={handleApplyFilters}
+      {/* Premium Modal */}
+      {showPremium && (
+        <PremiumFeatures 
+          onClose={() => setShowPremium(false)}
+          onUpgrade={handleUpgrade}
         />
-      )}
-
-      {/* Likes You Modal */}
-      {showLikesYou && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto relative">
-            <button
-              onClick={() => setShowLikesYou(false)}
-              className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-            >
-              <X className="h-5 w-5 text-gray-600" />
-            </button>
-            <LikesYouGrid />
-          </div>
-        </div>
       )}
 
       {/* Notifications Modal */}
@@ -589,14 +490,6 @@ const Index = () => {
           isIncoming={false}
         />
       )}
-
-      {/* Logout Button - Always accessible */}
-      <button
-        onClick={handleLogout}
-        className="fixed bottom-4 right-4 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full shadow-lg transition-colors z-40"
-      >
-        Logout
-      </button>
     </div>
   );
 };
