@@ -15,6 +15,7 @@ import PremiumFeatures from '@/components/PremiumFeatures';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
 import VideoCallModal from '@/components/VideoCallModal';
+import AdvancedFilters from '@/components/AdvancedFilters';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { Button } from '@/components/ui/button';
 import { MapPin, X } from 'lucide-react';
@@ -30,6 +31,7 @@ const Index = () => {
   const [showPremium, setShowPremium] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showEvents, setShowEvents] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
   const [showVideoCall, setShowVideoCall] = useState(false);
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -40,7 +42,6 @@ const Index = () => {
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
 
   useEffect(() => {
-    // Check authentication
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setUser(session.user);
@@ -77,7 +78,6 @@ const Index = () => {
       if (profile) {
         setHasProfile(true);
         setCurrentProfile(profile);
-        // Update user's location if we have geolocation data
         if (location && !profile.latitude && !profile.longitude) {
           await supabase
             .from('profiles')
@@ -152,7 +152,6 @@ const Index = () => {
     try {
       console.log('Loading matches for user:', userId);
       
-      // Get matches where the user is either user1 or user2
       const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select('*')
@@ -172,14 +171,12 @@ const Index = () => {
         return;
       }
 
-      // Get the other user IDs from matches
       const otherUserIds = matchesData.map(match => 
         match.user1_id === userId ? match.user2_id : match.user1_id
       );
 
       console.log('Other user IDs:', otherUserIds);
 
-      // Load profiles for the matched users
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -190,7 +187,6 @@ const Index = () => {
         return;
       }
 
-      // Load photos for each profile
       const usersWithPhotos = await Promise.all(
         (profilesData || []).map(async (profile) => {
           const { data: photosData } = await supabase
@@ -228,7 +224,6 @@ const Index = () => {
         })
       );
 
-      // Transform matches data to match the Match interface
       const transformedMatches = matchesData.map(match => ({
         id: match.id,
         users: [match.user1_id, match.user2_id] as [string, string],
@@ -264,7 +259,6 @@ const Index = () => {
   };
 
   const handleChatSelect = (matchedUser: UserType) => {
-    // Find the match that corresponds to this user
     const match = matches.find(m => 
       m.users.includes(matchedUser.id)
     );
@@ -293,7 +287,6 @@ const Index = () => {
           })
           .eq('user_id', user.id);
         
-        // Refresh the page to update the discovery grid
         window.location.reload();
       } catch (error) {
         console.error('Error updating location:', error);
@@ -304,17 +297,16 @@ const Index = () => {
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);
     
-    // Close any open modals when switching tabs
     setShowProfile(false);
     setShowPremium(false);
     setShowNotifications(false);
     setShowEvents(false);
+    setShowFilters(false);
     setShowVideoCall(false);
     setSelectedMatchId(null);
     setSelectedOtherUser(null);
     
     if (tab === 'matches') {
-      // Refresh matches when switching to matches tab
       if (user) {
         loadMatches(user.id);
       }
@@ -360,6 +352,8 @@ const Index = () => {
       <MobileHeader 
         title={getPageTitle()}
         onNotificationsClick={() => setShowNotifications(true)}
+        onEventsClick={() => setShowEvents(true)}
+        onFilterClick={() => setShowFilters(true)}
         showLocation={activeTab === 'discover' || activeTab === 'browse'}
         location={currentProfile?.location}
       />
@@ -478,6 +472,11 @@ const Index = () => {
       {/* Group Events Modal */}
       {showEvents && (
         <GroupEvents onClose={() => setShowEvents(false)} />
+      )}
+
+      {/* Discovery Filters Modal */}
+      {showFilters && (
+        <AdvancedFilters onClose={() => setShowFilters(false)} />
       )}
 
       {/* Video Call Modal */}

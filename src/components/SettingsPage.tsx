@@ -1,11 +1,14 @@
 
 import React, { useState } from 'react';
-import { User, Edit3, Eye, LogOut, Crown, Shield, Bell, Globe, Heart, ChevronRight } from 'lucide-react';
+import { User, Edit3, Eye, LogOut, Crown, Shield, Bell, Globe, Heart, ChevronRight, Zap, RotateCcw, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { User as UserType } from '@/types/User';
 import ProfileModal from './ProfileModal';
+import BoostModal from './BoostModal';
+import SettingsModal from './SettingsModal';
+import { UserSettings } from '@/types/User';
 
 interface SettingsPageProps {
   currentUserProfile: UserType | null;
@@ -16,6 +19,31 @@ interface SettingsPageProps {
 const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: SettingsPageProps) => {
   const { user } = useAuth();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showBoostModal, setShowBoostModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [settingsType, setSettingsType] = useState<'notifications' | 'privacy' | 'discovery' | 'verification'>('notifications');
+
+  // Default user settings
+  const defaultSettings: UserSettings = {
+    notifications: {
+      matches: true,
+      messages: true,
+      likes: true,
+    },
+    privacy: {
+      showAge: true,
+      showDistance: true,
+      incognito: false,
+    },
+    discovery: {
+      ageRange: [22, 35],
+      maxDistance: 50,
+      relationshipType: 'serious',
+      showMe: 'everyone',
+    },
+  };
+
+  const [userSettings, setUserSettings] = useState<UserSettings>(defaultSettings);
 
   const handleLogout = async () => {
     try {
@@ -24,6 +52,17 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
     } catch (error) {
       console.error('Error logging out:', error);
     }
+  };
+
+  const handleSettingsClick = (type: 'notifications' | 'privacy' | 'discovery' | 'verification') => {
+    setSettingsType(type);
+    setShowSettingsModal(true);
+  };
+
+  const handleUpdateSettings = (newSettings: UserSettings) => {
+    setUserSettings(newSettings);
+    // In a real app, you would save these to the database
+    console.log('Updated settings:', newSettings);
   };
 
   const settingsSections = [
@@ -48,6 +87,13 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
           action: onShowPremium,
           showChevron: true,
           highlight: true
+        },
+        {
+          icon: Zap,
+          label: 'Boost Your Profile',
+          action: () => setShowBoostModal(true),
+          showChevron: true,
+          highlight: true
         }
       ]
     },
@@ -57,30 +103,36 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
         {
           icon: Bell,
           label: 'Notifications',
-          action: () => {},
+          action: () => handleSettingsClick('notifications'),
           showChevron: true
         },
         {
           icon: Globe,
           label: 'Location',
-          action: () => {},
+          action: () => handleSettingsClick('privacy'),
           showChevron: true
         },
         {
-          icon: Heart,
+          icon: Filter,
           label: 'Discovery Settings',
-          action: () => {},
+          action: () => handleSettingsClick('discovery'),
           showChevron: true
         }
       ]
     },
     {
-      title: 'Safety',
+      title: 'Safety & Verification',
       items: [
         {
           icon: Shield,
+          label: 'Verification',
+          action: () => handleSettingsClick('verification'),
+          showChevron: true
+        },
+        {
+          icon: Shield,
           label: 'Safety Center',
-          action: () => {},
+          action: () => handleSettingsClick('privacy'),
           showChevron: true
         }
       ]
@@ -178,6 +230,21 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
           onClose={() => setShowProfileModal(false)}
           onEdit={onEditProfile}
           isCurrentUser={true}
+        />
+      )}
+
+      {/* Boost Modal */}
+      <BoostModal
+        isOpen={showBoostModal}
+        onClose={() => setShowBoostModal(false)}
+      />
+
+      {/* Settings Modal */}
+      {showSettingsModal && (
+        <SettingsModal
+          settings={userSettings}
+          onUpdateSettings={handleUpdateSettings}
+          onClose={() => setShowSettingsModal(false)}
         />
       )}
     </div>

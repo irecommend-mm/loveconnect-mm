@@ -98,7 +98,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         .from('profiles')
         .select('*')
         .neq('user_id', currentUserId)
-        .eq('incognito', false); // Filter out incognito users
+        .eq('incognito', false);
 
       // Apply category-specific filters
       switch (category) {
@@ -121,15 +121,11 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           query = query.order('created_at', { ascending: false });
           break;
         case 'online':
-          // Filter users active within last 10 minutes
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
           query = query.gte('last_active', tenMinutesAgo);
           break;
         case 'nearby':
-          // For nearby, we'll filter after getting the data
-          break;
         case 'popular':
-          // For now, we'll show all users. In a real app, you'd have a popularity score
           break;
       }
 
@@ -141,7 +137,6 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         return;
       }
 
-      // Load photos and interests for each user
       const usersWithData = await Promise.all(
         (profilesData || []).map(async (profile) => {
           const [photosResult, interestsResult] = await Promise.all([
@@ -156,13 +151,11 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
               .eq('user_id', profile.user_id)
           ]);
 
-          // Check if user is online (active within last 10 minutes) - handle optional field
           const lastActiveDate = profile.last_active || profile.updated_at;
           const lastActive = new Date(lastActiveDate);
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
           const isOnline = lastActive > tenMinutesAgo;
 
-          // Calculate distance if both user and profile have coordinates - handle optional fields
           let distance = null;
           if (userLocation && profile.latitude != null && profile.longitude != null) {
             distance = calculateDistance(
@@ -202,21 +195,15 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
       let filteredUsers = usersWithData.filter(u => u.photos.length > 0);
 
-      // Apply distance filter and sorting for nearby category
       if (category === 'nearby' && userLocation) {
         filteredUsers = filteredUsers
-          .filter(u => u.distance !== null && u.distance <= 100) // Show users within 100km
-          .sort((a, b) => (a.distance || 0) - (b.distance || 0)); // Sort by closest first
+          .filter(u => u.distance !== null && u.distance <= 100)
+          .sort((a, b) => (a.distance || 0) - (b.distance || 0));
       } else if (category === 'nearby') {
-        // If no user location, sort by users who have location data
         filteredUsers = filteredUsers
           .filter(u => u.latitude != null && u.longitude != null)
           .sort((a, b) => a.name.localeCompare(b.name));
       }
-
-      // For demo purposes, show all users including previously swiped ones
-      // In a real app, you would filter out swiped users here
-      // filteredUsers = filteredUsers.filter(u => !swipedUsers.has(u.id));
 
       setUsers(filteredUsers.slice(0, 20));
       setLoading(false);
@@ -226,109 +213,22 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     }
   };
 
-  const handleLike = async (user: UserType, e: React.MouseEvent) => {
-    e.stopPropagation();
-    
-    try {
-      // For demo purposes, don't check if swipe already exists
-      // This allows users to like the same person multiple times for testing
-      
-      const { error } = await supabase
-        .from('swipes')
-        .insert({
-          swiper_id: currentUserId,
-          swiped_id: user.id,
-          action: 'like'
-        });
-
-      if (error && error.code !== '23505') { // Ignore duplicate key violations for demo
-        console.error('Error liking user:', error);
-        toast({
-          title: "Error",
-          description: "Failed to like this profile. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check for match
-      const { data: matchData } = await supabase
-        .from('swipes')
-        .select('*')
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', currentUserId)
-        .eq('action', 'like')
-        .maybeSingle();
-
-      if (matchData) {
-        // Create match record
-        await supabase
-          .from('matches')
-          .insert({
-            user1_id: currentUserId,
-            user2_id: user.id
-          });
-
-        // Show animated match modal
-        setMatchedUser(user);
-        setShowMatchModal(true);
-      } else {
-        toast({
-          title: "Like sent! 💕",
-          description: `You liked ${user.name}'s profile.`,
-        });
-      }
-
-      // For demo: Don't remove user from list, just add to swiped set
-      setSwipedUsers(prev => new Set([...prev, user.id]));
-    } catch (error) {
-      console.error('Error in handleLike:', error);
-      toast({
-        title: "Like sent! 💕",
-        description: `You liked ${user.name}'s profile.`,
-      });
-    }
-  };
-
   const handleUserClick = (user: UserType) => {
     setSelectedUser(user);
-  };
-
-  const handleChatNow = () => {
-    setShowMatchModal(false);
-    // Navigate to chat - this would typically use router navigation
-    toast({
-      title: "Opening chat...",
-      description: `Starting conversation with ${matchedUser?.name}`,
-    });
-  };
-
-  const handleContinueBrowsing = () => {
-    setShowMatchModal(false);
-    setMatchedUser(null);
   };
 
   const renderUserCard = (user: UserType) => (
     <div
       key={user.id}
-      className="relative bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer transform hover:scale-105"
+      className="relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-[1.02]"
+      onClick={() => handleUserClick(user)}
     >
-      <div 
-        className="aspect-[3/4] relative"
-        onClick={() => handleUserClick(user)}
-      >
+      <div className="aspect-[3/4] relative">
         <img
           src={user.photos[0]}
           alt={user.name}
           className="w-full h-full object-cover"
         />
-        
-        {/* Swiped Indicator for Demo */}
-        {swipedUsers.has(user.id) && (
-          <div className="absolute top-3 left-3 bg-pink-500 text-white px-2 py-1 rounded-full text-xs">
-            Liked ❤️
-          </div>
-        )}
         
         {/* Online Status */}
         {user.isOnline && (
@@ -340,78 +240,22 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         
         {/* Verification Badge */}
         {user.verified && (
-          <div className="absolute top-3 right-3 bg-blue-500 text-white p-1.5 rounded-full">
+          <div className="absolute top-3 left-3 bg-blue-500 text-white p-1.5 rounded-full">
             <Shield className="h-3 w-3" />
           </div>
         )}
 
-        {/* Distance Badge */}
-        {user.distance && (
-          <div className="absolute bottom-20 right-3 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center space-x-1">
-            <Navigation className="h-3 w-3" />
-            <span>{Math.round(user.distance)}km</span>
-          </div>
-        )}
-
-        {/* Action Buttons Container */}
-        <div className="absolute bottom-3 right-3 flex flex-col space-y-2">
-          {/* Dislike Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // Handle dislike
-            }}
-            className="w-12 h-12 bg-white/90 hover:bg-white rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
-          >
-            <X className="h-5 w-5 text-gray-600 group-hover:text-red-500 transition-colors" />
-          </button>
-
-          {/* Super Like/Favorite Button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              // Handle super like
-            }}
-            className="w-12 h-12 bg-gradient-to-r from-blue-400 to-blue-600 hover:from-blue-500 hover:to-blue-700 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
-          >
-            <Star className="h-5 w-5 text-white fill-current group-hover:animate-pulse" />
-          </button>
-
-          {/* Like Button */}
-          <button
-            onClick={(e) => handleLike(user, e)}
-            className="w-12 h-12 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 rounded-full shadow-lg flex items-center justify-center transform hover:scale-110 active:scale-95 transition-all duration-200 group"
-          >
-            <Heart className="h-5 w-5 text-white fill-current group-hover:animate-pulse" />
-          </button>
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-          <h3 className="text-white font-semibold text-lg">{user.name}, {user.age}</h3>
-          <div className="flex items-center space-x-1 text-white/90 text-sm">
-            <MapPin className="h-3 w-3" />
-            <span>{user.location}</span>
+        {/* Clean Bottom Overlay with minimal info */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+          <div className="text-white">
+            <h3 className="font-semibold text-lg leading-tight">{user.name}, {user.age}</h3>
             {user.distance && (
-              <>
-                <span>•</span>
+              <div className="flex items-center text-sm text-white/90 mt-1">
+                <Navigation className="h-3 w-3 mr-1" />
                 <span>{Math.round(user.distance)}km away</span>
-              </>
+              </div>
             )}
           </div>
-          
-          {user.interests.length > 0 && (
-            <div className="flex space-x-1 mt-2">
-              {user.interests.slice(0, 2).map((interest, index) => (
-                <Badge
-                  key={index}
-                  variant="secondary"
-                  className="text-xs bg-white/20 text-white border-0"
-                >
-                  {interest}
-                </Badge>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -507,12 +351,12 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         )}
       </div>
 
-      {/* Profile Modal */}
+      {/* Profile Modal with Actions */}
       {selectedUser && (
         <ModernProfileModal
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
-          showActions={false}
+          showActions={true}
         />
       )}
 
@@ -522,8 +366,14 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           isOpen={showMatchModal}
           matchedUser={matchedUser}
           currentUserPhoto={currentUserPhoto}
-          onChatNow={handleChatNow}
-          onContinueBrowsing={handleContinueBrowsing}
+          onChatNow={() => {
+            setShowMatchModal(false);
+            toast({
+              title: "Opening chat...",
+              description: `Starting conversation with ${matchedUser?.name}`,
+            });
+          }}
+          onContinueBrowsing={() => setShowMatchModal(false)}
           onClose={() => setShowMatchModal(false)}
         />
       )}

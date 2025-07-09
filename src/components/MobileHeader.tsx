@@ -1,9 +1,12 @@
+
 import React from 'react';
-import { Bell, MapPin, Heart } from 'lucide-react';
+import { Bell, MapPin, Heart, Calendar, Filter } from 'lucide-react';
 
 interface MobileHeaderProps {
   title: string;
   onNotificationsClick?: () => void;
+  onEventsClick?: () => void;
+  onFilterClick?: () => void;
   showLocation?: boolean;
   location?: string;
 }
@@ -11,6 +14,8 @@ interface MobileHeaderProps {
 const MobileHeader = ({ 
   title, 
   onNotificationsClick, 
+  onEventsClick,
+  onFilterClick,
   showLocation = false, 
   location 
 }: MobileHeaderProps) => {
@@ -32,15 +37,38 @@ const MobileHeader = ({
           </div>
         </div>
         
-        {onNotificationsClick && (
-          <button
-            onClick={onNotificationsClick}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
-          >
-            <Bell className="h-5 w-5 text-gray-600" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
-          </button>
-        )}
+        <div className="flex items-center space-x-2">
+          {/* Discovery Filter Button */}
+          {(title === 'Discover' || title === 'Browse') && onFilterClick && (
+            <button
+              onClick={onFilterClick}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Filter className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
+
+          {/* Group Events Button */}
+          {onEventsClick && (
+            <button
+              onClick={onEventsClick}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Calendar className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
+
+          {/* Notifications Button */}
+          {onNotificationsClick && (
+            <button
+              onClick={onNotificationsClick}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors relative"
+            >
+              <Bell className="h-5 w-5 text-gray-600" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
