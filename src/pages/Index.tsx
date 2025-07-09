@@ -330,6 +330,12 @@ const Index = () => {
     }
   };
 
+  const handleApplyFilters = (filters: any) => {
+    console.log('Applied filters:', filters);
+    // Here you would typically apply the filters to your discovery logic
+    // For now, we'll just log them
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -476,7 +482,10 @@ const Index = () => {
 
       {/* Discovery Filters Modal */}
       {showFilters && (
-        <AdvancedFilters onClose={() => setShowFilters(false)} />
+        <AdvancedFilters 
+          onClose={() => setShowFilters(false)}
+          onApply={handleApplyFilters}
+        />
       )}
 
       {/* Video Call Modal */}
