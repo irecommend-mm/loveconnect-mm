@@ -87,11 +87,26 @@ const Index = () => {
 
   const checkUserProfile = async (userId: string) => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .maybeSingle();
+
+      // Check for the specific "no rows" error which is expected when no profile exists
+      if (error && error.code === 'PGRST116' && error.details === 'The result contains 0 rows') {
+        // This is expected when no profile exists, don't log as error
+        setHasProfile(false);
+        setLoading(false);
+        return;
+      }
+
+      if (error) {
+        console.error('Error checking profile:', error);
+        setHasProfile(false);
+        setLoading(false);
+        return;
+      }
 
       if (profile) {
         setHasProfile(true);
@@ -111,7 +126,15 @@ const Index = () => {
         setHasProfile(false);
       }
     } catch (error) {
-      console.error('Error checking profile:', error);
+      // Check if this is the expected "no rows" error
+      if (error && typeof error === 'object' && 'code' in error && 
+          error.code === 'PGRST116' && 'details' in error && 
+          error.details === 'The result contains 0 rows') {
+        // This is expected when no profile exists, don't log as error
+        setHasProfile(false);
+      } else {
+        console.error('Error checking profile:', error);
+      }
       setHasProfile(false);
     } finally {
       setLoading(false);
