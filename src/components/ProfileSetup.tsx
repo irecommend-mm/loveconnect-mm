@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -5,8 +6,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Upload, X, Plus, Eye, ArrowLeft, Heart, MapPin, Briefcase } from 'lucide-react';
+import { Upload, X, Plus, Eye, ArrowLeft, Heart, MapPin, Briefcase, Calendar } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -14,46 +17,88 @@ import { toast } from '@/hooks/use-toast';
 interface ProfileData {
   name: string;
   age: number;
+  birthdate: string;
   bio: string;
   location: string;
-  job: string;
+  job_title: string;
+  company_name: string;
   education: string;
-  height: string;
+  education_level: string;
+  height_cm: number;
   zodiac_sign: string;
   relationship_type: string;
   children: string;
   smoking: string;
   drinking: string;
   exercise: string;
+  religion: string;
+  gender: string;
+  orientation: string[];
+  show_me: string[];
+  love_languages: string[];
+  personality_type: string;
+  body_type: string;
+  languages_spoken: string[];
+  dealbreakers: string[];
+  lifestyle: {
+    interests: string[];
+    [key: string]: any;
+  };
+  preferences: {
+    age_range: [number, number];
+    max_distance: number;
+    [key: string]: any;
+  };
+  terms_agreement: boolean;
+  video_intro_url: string;
 }
 
 interface ProfileSetupProps {
   onComplete: () => void;
-  existingProfile?: ProfileData | null;
+  existingProfile?: any;
 }
 
 const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
-  const [interests, setInterests] = useState<string[]>([]);
-  const [newInterest, setNewInterest] = useState('');
   const [showPreview, setShowPreview] = useState(false);
   
   const [profile, setProfile] = useState<ProfileData>({
     name: '',
     age: 18,
+    birthdate: '',
     bio: '',
     location: '',
-    job: '',
+    job_title: '',
+    company_name: '',
     education: '',
-    height: '',
+    education_level: '',
+    height_cm: 170,
     zodiac_sign: '',
     relationship_type: '',
     children: '',
     smoking: '',
     drinking: '',
     exercise: '',
+    religion: '',
+    gender: '',
+    orientation: [],
+    show_me: [],
+    love_languages: [],
+    personality_type: '',
+    body_type: '',
+    languages_spoken: [],
+    dealbreakers: [],
+    lifestyle: {
+      interests: []
+    },
+    preferences: {
+      age_range: [18, 50],
+      max_distance: 50
+    },
+    terms_agreement: false,
+    video_intro_url: ''
   });
 
   useEffect(() => {
@@ -62,23 +107,38 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     }
   }, [user]);
 
-  // Load existing profile data if available
   useEffect(() => {
     if (existingProfile) {
       setProfile({
         name: existingProfile.name || '',
         age: existingProfile.age || 18,
+        birthdate: existingProfile.birthdate || '',
         bio: existingProfile.bio || '',
         location: existingProfile.location || '',
-        job: existingProfile.job || '',
+        job_title: existingProfile.job_title || '',
+        company_name: existingProfile.company_name || '',
         education: existingProfile.education || '',
-        height: existingProfile.height || '',
+        education_level: existingProfile.education_level || '',
+        height_cm: existingProfile.height_cm || 170,
         zodiac_sign: existingProfile.zodiac_sign || '',
         relationship_type: existingProfile.relationship_type || '',
         children: existingProfile.children || '',
         smoking: existingProfile.smoking || '',
         drinking: existingProfile.drinking || '',
         exercise: existingProfile.exercise || '',
+        religion: existingProfile.religion || '',
+        gender: existingProfile.gender || '',
+        orientation: existingProfile.orientation || [],
+        show_me: existingProfile.show_me || [],
+        love_languages: existingProfile.love_languages || [],
+        personality_type: existingProfile.personality_type || '',
+        body_type: existingProfile.body_type || '',
+        languages_spoken: existingProfile.languages_spoken || [],
+        dealbreakers: existingProfile.dealbreakers || [],
+        lifestyle: existingProfile.lifestyle || { interests: [] },
+        preferences: existingProfile.preferences || { age_range: [18, 50], max_distance: 50 },
+        terms_agreement: existingProfile.terms_agreement || false,
+        video_intro_url: existingProfile.video_intro_url || ''
       });
     }
   }, [existingProfile]);
@@ -87,7 +147,6 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     if (!user) return;
     
     try {
-      // Load user profile
       const { data: profileData } = await supabase
         .from('profiles')
         .select('*')
@@ -98,21 +157,36 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         setProfile({
           name: profileData.name || '',
           age: profileData.age || 18,
+          birthdate: profileData.birthdate || '',
           bio: profileData.bio || '',
           location: profileData.location || '',
-          job: profileData.job || '',
+          job_title: profileData.job_title || '',
+          company_name: profileData.company_name || '',
           education: profileData.education || '',
-          height: profileData.height || '',
+          education_level: profileData.education_level || '',
+          height_cm: profileData.height_cm || 170,
           zodiac_sign: profileData.zodiac_sign || '',
           relationship_type: profileData.relationship_type || '',
           children: profileData.children || '',
           smoking: profileData.smoking || '',
           drinking: profileData.drinking || '',
           exercise: profileData.exercise || '',
+          religion: profileData.religion || '',
+          gender: profileData.gender || '',
+          orientation: profileData.orientation || [],
+          show_me: profileData.show_me || [],
+          love_languages: profileData.love_languages || [],
+          personality_type: profileData.personality_type || '',
+          body_type: profileData.body_type || '',
+          languages_spoken: profileData.languages_spoken || [],
+          dealbreakers: profileData.dealbreakers || [],
+          lifestyle: profileData.lifestyle || { interests: [] },
+          preferences: profileData.preferences || { age_range: [18, 50], max_distance: 50 },
+          terms_agreement: profileData.terms_agreement || false,
+          video_intro_url: profileData.video_intro_url || ''
         });
       }
 
-      // Load photos
       const { data: photosData } = await supabase
         .from('photos')
         .select('url')
@@ -121,16 +195,6 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
 
       if (photosData) {
         setPhotos(photosData.map(photo => photo.url));
-      }
-
-      // Load interests
-      const { data: interestsData } = await supabase
-        .from('interests')
-        .select('interest')
-        .eq('user_id', user.id);
-
-      if (interestsData) {
-        setInterests(interestsData.map(item => item.interest));
       }
     } catch (error) {
       console.error('Error loading user data:', error);
@@ -163,7 +227,6 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
       .from('profile-images')
       .getPublicUrl(fileName);
 
-    // Save to database
     const { error: dbError } = await supabase
       .from('photos')
       .insert({
@@ -208,15 +271,23 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     }
   };
 
-  const addInterest = () => {
-    if (newInterest.trim() && !interests.includes(newInterest.trim())) {
-      setInterests([...interests, newInterest.trim()]);
-      setNewInterest('');
-    }
+  const toggleArrayValue = (array: string[], value: string, field: keyof ProfileData) => {
+    const newArray = array.includes(value) 
+      ? array.filter(item => item !== value)
+      : [...array, value];
+    setProfile(prev => ({ ...prev, [field]: newArray }));
   };
 
-  const removeInterest = (interest: string) => {
-    setInterests(interests.filter(i => i !== interest));
+  const calculateAge = (birthdate: string) => {
+    if (!birthdate) return profile.age;
+    const today = new Date();
+    const birth = new Date(birthdate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -226,9 +297,43 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     setLoading(true);
 
     try {
-      console.log('Saving profile:', profile);
+      const calculatedAge = calculateAge(profile.birthdate);
       
-      // Check if profile exists first
+      const profileData = {
+        user_id: user.id,
+        name: profile.name,
+        age: calculatedAge,
+        birthdate: profile.birthdate || null,
+        bio: profile.bio,
+        location: profile.location,
+        job_title: profile.job_title,
+        company_name: profile.company_name,
+        education: profile.education,
+        education_level: profile.education_level,
+        height_cm: profile.height_cm,
+        height_feet: profile.height_cm * 0.0328084,
+        zodiac_sign: profile.zodiac_sign,
+        relationship_type: profile.relationship_type,
+        children: profile.children,
+        smoking: profile.smoking,
+        drinking: profile.drinking,
+        exercise: profile.exercise,
+        religion: profile.religion,
+        gender: profile.gender,
+        orientation: profile.orientation,
+        show_me: profile.show_me,
+        love_languages: profile.love_languages,
+        personality_type: profile.personality_type,
+        body_type: profile.body_type,
+        languages_spoken: profile.languages_spoken,
+        dealbreakers: profile.dealbreakers,
+        lifestyle: profile.lifestyle,
+        preferences: profile.preferences,
+        terms_agreement: profile.terms_agreement,
+        video_intro_url: profile.video_intro_url,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data: existingProfileData } = await supabase
         .from('profiles')
         .select('*')
@@ -238,50 +343,15 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
       let profileError;
       
       if (existingProfileData) {
-        console.log('Updating existing profile');
-        // Update existing profile
         const { error } = await supabase
           .from('profiles')
-          .update({
-            name: profile.name,
-            age: profile.age,
-            bio: profile.bio,
-            location: profile.location,
-            job: profile.job,
-            education: profile.education,
-            height: profile.height,
-            zodiac_sign: profile.zodiac_sign,
-            relationship_type: profile.relationship_type,
-            children: profile.children,
-            smoking: profile.smoking,
-            drinking: profile.drinking,
-            exercise: profile.exercise,
-            updated_at: new Date().toISOString(),
-          })
+          .update(profileData)
           .eq('user_id', user.id);
         profileError = error;
       } else {
-        console.log('Creating new profile');
-        // Insert new profile
         const { error } = await supabase
           .from('profiles')
-          .insert({
-            user_id: user.id,
-            name: profile.name,
-            age: profile.age,
-            bio: profile.bio,
-            location: profile.location,
-            job: profile.job,
-            education: profile.education,
-            height: profile.height,
-            zodiac_sign: profile.zodiac_sign,
-            relationship_type: profile.relationship_type,
-            children: profile.children,
-            smoking: profile.smoking,
-            drinking: profile.drinking,
-            exercise: profile.exercise,
-            updated_at: new Date().toISOString(),
-          });
+          .insert(profileData);
         profileError = error;
       }
 
@@ -294,34 +364,6 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         });
         setLoading(false);
         return;
-      }
-
-      console.log('Profile saved successfully');
-
-      // Update interests - delete all first, then insert new ones
-      await supabase
-        .from('interests')
-        .delete()
-        .eq('user_id', user.id);
-
-      if (interests.length > 0) {
-        const { error: interestsError } = await supabase
-          .from('interests')
-          .insert(
-            interests.map(interest => ({
-              user_id: user.id,
-              interest,
-            }))
-          );
-
-        if (interestsError) {
-          console.error('Interests save error:', interestsError);
-          toast({
-            title: "Interests Error",
-            description: interestsError.message,
-            variant: "destructive",
-          });
-        }
       }
 
       toast({
@@ -378,10 +420,10 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                 <span className="text-sm">{profile.location}</span>
               </div>
             )}
-            {profile.job && (
+            {profile.job_title && (
               <div className="flex items-center mt-1">
                 <Briefcase className="h-4 w-4 mr-1" />
-                <span className="text-sm">{profile.job}</span>
+                <span className="text-sm">{profile.job_title}</span>
               </div>
             )}
           </div>
@@ -395,11 +437,11 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
             </div>
           )}
           
-          {interests.length > 0 && (
+          {profile.lifestyle.interests && profile.lifestyle.interests.length > 0 && (
             <div>
               <h3 className="font-semibold text-gray-800 mb-2">Interests</h3>
               <div className="flex flex-wrap gap-2">
-                {interests.map((interest) => (
+                {profile.lifestyle.interests.map((interest) => (
                   <Badge key={interest} variant="secondary" className="bg-pink-50 text-pink-700 border-pink-200">
                     {interest}
                   </Badge>
@@ -417,22 +459,22 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 p-4">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 p-2 sm:p-4">
+      <div className="max-w-2xl mx-auto">
         <Card className="bg-white shadow-2xl border-0 rounded-3xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-center py-8">
-            <CardTitle className="text-2xl font-bold">
+          <CardHeader className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-center py-6 sm:py-8">
+            <CardTitle className="text-xl sm:text-2xl font-bold">
               {existingProfile ? 'Update Your Profile' : 'Complete Your Profile'}
             </CardTitle>
-            <p className="text-pink-100 mt-2">Make a great first impression</p>
+            <p className="text-pink-100 mt-2 text-sm sm:text-base">Make a great first impression</p>
           </CardHeader>
-          <CardContent className="p-6">
+          <CardContent className="p-4 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Photos Section */}
               <div className="space-y-4">
                 <Label className="text-lg font-semibold text-gray-800">Your Photos</Label>
                 <p className="text-sm text-gray-600">Add at least one photo to continue</p>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {photos.map((photo, index) => (
                     <div key={index} className="relative aspect-square">
                       <img
@@ -445,14 +487,14 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                         onClick={() => removePhoto(photo, index)}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg"
                       >
-                        <X className="h-4 w-4" />
+                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
                       </button>
                     </div>
                   ))}
                   {photos.length < 6 && (
                     <label className="aspect-square border-2 border-dashed border-pink-300 rounded-2xl flex items-center justify-center cursor-pointer hover:border-pink-400 hover:bg-pink-50 transition-colors">
                       <div className="text-center">
-                        <Upload className="h-8 w-8 mx-auto text-pink-400 mb-2" />
+                        <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-pink-400 mb-2" />
                         <span className="text-xs text-pink-600 font-medium">Add Photo</span>
                       </div>
                       <input
@@ -466,33 +508,43 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                 </div>
               </div>
 
-              {/* Basic Info - One per row */}
+              {/* Basic Info */}
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
-                  <Input
-                    id="name"
-                    value={profile.name}
-                    onChange={(e) => setProfile({...profile, name: e.target.value})}
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                    placeholder="Enter your full name"
-                    required
-                  />
-                </div>
+                <h3 className="text-lg font-semibold text-gray-800">Basic Information</h3>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-gray-700 font-medium">Full Name</Label>
+                    <Input
+                      id="name"
+                      value={profile.name}
+                      onChange={(e) => setProfile(prev => ({...prev, name: e.target.value}))}
+                      className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
+                      placeholder="Enter your full name"
+                      required
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="age" className="text-gray-700 font-medium">Age</Label>
-                  <Input
-                    id="age"
-                    type="number"
-                    min="18"
-                    max="100"
-                    value={profile.age}
-                    onChange={(e) => setProfile({...profile, age: parseInt(e.target.value)})}
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                    placeholder="Your age"
-                    required
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="birthdate" className="text-gray-700 font-medium">Date of Birth</Label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Input
+                        id="birthdate"
+                        type="date"
+                        value={profile.birthdate}
+                        onChange={(e) => {
+                          setProfile(prev => ({
+                            ...prev, 
+                            birthdate: e.target.value,
+                            age: calculateAge(e.target.value)
+                          }));
+                        }}
+                        className="pl-10 h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
+                        max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -501,154 +553,185 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                     id="bio"
                     placeholder="Tell people about yourself..."
                     value={profile.bio}
-                    onChange={(e) => setProfile({...profile, bio: e.target.value})}
+                    onChange={(e) => setProfile(prev => ({...prev, bio: e.target.value}))}
                     rows={4}
                     className="rounded-2xl border-2 border-gray-200 focus:border-pink-400 resize-none"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="location" className="text-gray-700 font-medium">Location</Label>
-                  <Input
-                    id="location"
-                    value={profile.location}
-                    onChange={(e) => setProfile({...profile, location: e.target.value})}
-                    placeholder="City, State"
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                  />
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="location" className="text-gray-700 font-medium">Location</Label>
+                    <Input
+                      id="location"
+                      value={profile.location}
+                      onChange={(e) => setProfile(prev => ({...prev, location: e.target.value}))}
+                      placeholder="City, State"
+                      className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="job" className="text-gray-700 font-medium">Job</Label>
-                  <Input
-                    id="job"
-                    value={profile.job}
-                    onChange={(e) => setProfile({...profile, job: e.target.value})}
-                    placeholder="Your profession"
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="education" className="text-gray-700 font-medium">Education</Label>
-                  <Input
-                    id="education"
-                    value={profile.education}
-                    onChange={(e) => setProfile({...profile, education: e.target.value})}
-                    placeholder="School/University"
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="height" className="text-gray-700 font-medium">Height</Label>
-                  <Input
-                    id="height"
-                    value={profile.height}
-                    onChange={(e) => setProfile({...profile, height: e.target.value})}
-                    placeholder="e.g., 5'8&quot;"
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                  />
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Gender</Label>
+                    <Select value={profile.gender} onValueChange={(value) => setProfile(prev => ({...prev, gender: value}))}>
+                      <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                        <SelectItem value="nonbinary">Non-binary</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
-              {/* Preferences - One per row */}
+              {/* Work & Education */}
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-800">Preferences</h3>
+                <h3 className="text-lg font-semibold text-gray-800">Work & Education</h3>
                 
-                <div className="space-y-2">
-                  <Label className="text-gray-700 font-medium">Looking for</Label>
-                  <Select value={profile.relationship_type} onValueChange={(value) => setProfile({...profile, relationship_type: value})}>
-                    <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
-                      <SelectValue placeholder="What are you looking for?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="serious">Serious relationship</SelectItem>
-                      <SelectItem value="casual">Casual dating</SelectItem>
-                      <SelectItem value="friends">Friends</SelectItem>
-                      <SelectItem value="unsure">Not sure yet</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="job_title" className="text-gray-700 font-medium">Job Title</Label>
+                    <Input
+                      id="job_title"
+                      value={profile.job_title}
+                      onChange={(e) => setProfile(prev => ({...prev, job_title: e.target.value}))}
+                      placeholder="Your profession"
+                      className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="company_name" className="text-gray-700 font-medium">Company</Label>
+                    <Input
+                      id="company_name"
+                      value={profile.company_name}
+                      onChange={(e) => setProfile(prev => ({...prev, company_name: e.target.value}))}
+                      placeholder="Where you work"
+                      className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="education" className="text-gray-700 font-medium">Education</Label>
+                    <Input
+                      id="education"
+                      value={profile.education}
+                      onChange={(e) => setProfile(prev => ({...prev, education: e.target.value}))}
+                      placeholder="School/University"
+                      className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Education Level</Label>
+                    <Select value={profile.education_level} onValueChange={(value) => setProfile(prev => ({...prev, education_level: value}))}>
+                      <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
+                        <SelectValue placeholder="Select level" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="high_school">High School</SelectItem>
+                        <SelectItem value="some_college">Some College</SelectItem>
+                        <SelectItem value="bachelor">Bachelor's</SelectItem>
+                        <SelectItem value="master">Master's</SelectItem>
+                        <SelectItem value="phd">PhD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Lifestyle Preferences */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-800">Lifestyle</h3>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Smoking</Label>
+                    <Select value={profile.smoking} onValueChange={(value) => setProfile(prev => ({...prev, smoking: value}))}>
+                      <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="sometimes">Sometimes</SelectItem>
+                        <SelectItem value="regularly">Regularly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Drinking</Label>
+                    <Select value={profile.drinking} onValueChange={(value) => setProfile(prev => ({...prev, drinking: value}))}>
+                      <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="socially">Socially</SelectItem>
+                        <SelectItem value="regularly">Regularly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-gray-700 font-medium">Exercise</Label>
+                    <Select value={profile.exercise} onValueChange={(value) => setProfile(prev => ({...prev, exercise: value}))}>
+                      <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
+                        <SelectValue placeholder="Select" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="never">Never</SelectItem>
+                        <SelectItem value="sometimes">Sometimes</SelectItem>
+                        <SelectItem value="often">Often</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-gray-700 font-medium">Children</Label>
-                  <Select value={profile.children} onValueChange={(value) => setProfile({...profile, children: value})}>
-                    <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
-                      <SelectValue placeholder="Your thoughts on children" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="have">Have kids</SelectItem>
-                      <SelectItem value="want">Want kids</SelectItem>
-                      <SelectItem value="dont_want">Don&apos;t want kids</SelectItem>
-                      <SelectItem value="unsure">Not sure</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-700 font-medium">Smoking</Label>
-                  <Select value={profile.smoking} onValueChange={(value) => setProfile({...profile, smoking: value})}>
-                    <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
-                      <SelectValue placeholder="Do you smoke?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Yes</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="sometimes">Sometimes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-700 font-medium">Drinking</Label>
-                  <Select value={profile.drinking} onValueChange={(value) => setProfile({...profile, drinking: value})}>
-                    <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
-                      <SelectValue placeholder="Do you drink?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="yes">Yes</SelectItem>
-                      <SelectItem value="no">No</SelectItem>
-                      <SelectItem value="sometimes">Sometimes</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-gray-700 font-medium">Exercise</Label>
-                  <Select value={profile.exercise} onValueChange={(value) => setProfile({...profile, exercise: value})}>
-                    <SelectTrigger className="h-12 rounded-2xl border-2 border-gray-200">
-                      <SelectValue placeholder="How often do you exercise?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="often">Often</SelectItem>
-                      <SelectItem value="sometimes">Sometimes</SelectItem>
-                      <SelectItem value="never">Never</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label>Height: {Math.floor(profile.height_cm / 30.48)}'{Math.round(((profile.height_cm / 30.48) % 1) * 12)}" ({profile.height_cm} cm)</Label>
+                  <Slider
+                    value={[profile.height_cm]}
+                    onValueChange={([value]) => setProfile(prev => ({...prev, height_cm: value}))}
+                    max={220}
+                    min={140}
+                    step={1}
+                    className="mt-2"
+                  />
                 </div>
               </div>
 
               {/* Interests */}
               <div className="space-y-4">
                 <Label className="text-gray-700 font-medium">Interests</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={newInterest}
-                    onChange={(e) => setNewInterest(e.target.value)}
-                    placeholder="Add an interest"
-                    className="h-12 rounded-2xl border-2 border-gray-200 focus:border-pink-400"
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
-                  />
-                  <Button type="button" onClick={addInterest} size="sm" className="h-12 w-12 rounded-2xl bg-pink-500 hover:bg-pink-600">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {interests.map((interest) => (
-                    <Badge key={interest} variant="secondary" className="cursor-pointer bg-pink-50 text-pink-700 border-pink-200 hover:bg-pink-100" onClick={() => removeInterest(interest)}>
-                      {interest} <X className="h-3 w-3 ml-1" />
-                    </Badge>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                  {[
+                    'Travel', 'Photography', 'Music', 'Movies', 'Books', 'Fitness', 'Cooking', 'Art',
+                    'Dancing', 'Hiking', 'Gaming', 'Sports', 'Fashion', 'Technology', 'Food', 'Wine'
+                  ].map((interest) => (
+                    <div key={interest} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={interest}
+                        checked={profile.lifestyle.interests?.includes(interest) || false}
+                        onCheckedChange={() => {
+                          const currentInterests = profile.lifestyle.interests || [];
+                          const newInterests = currentInterests.includes(interest)
+                            ? currentInterests.filter(i => i !== interest)
+                            : [...currentInterests, interest];
+                          setProfile(prev => ({
+                            ...prev,
+                            lifestyle: { ...prev.lifestyle, interests: newInterests }
+                          }));
+                        }}
+                      />
+                      <Label htmlFor={interest} className="text-sm">{interest}</Label>
+                    </div>
                   ))}
                 </div>
               </div>
@@ -659,16 +742,16 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                   type="button"
                   onClick={() => setShowPreview(true)}
                   variant="outline"
-                  className="w-full h-14 border-2 border-pink-200 text-pink-600 hover:bg-pink-50 font-semibold text-lg rounded-2xl"
+                  className="w-full h-12 sm:h-14 border-2 border-pink-200 text-pink-600 hover:bg-pink-50 font-semibold text-base sm:text-lg rounded-2xl"
                   disabled={photos.length === 0}
                 >
-                  <Eye className="h-5 w-5 mr-2" />
+                  <Eye className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Preview Profile
                 </Button>
 
                 <Button
                   type="submit"
-                  className="w-full h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-lg rounded-2xl shadow-lg"
+                  className="w-full h-12 sm:h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-base sm:text-lg rounded-2xl shadow-lg"
                   disabled={loading || photos.length === 0 || !profile.name.trim()}
                 >
                   {loading ? 'Saving...' : (existingProfile ? 'Update Profile' : 'Save Profile')}

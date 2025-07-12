@@ -47,24 +47,19 @@ export const useUserProfile = (user: User | null) => {
           .eq('user_id', userId)
           .order('position');
 
-        const { data: interestsData } = await supabase
-          .from('interests')
-          .select('interest')
-          .eq('user_id', userId);
-
         const userProfile: UserType = {
           id: profileData.user_id,
           name: profileData.name,
           age: profileData.age,
           bio: profileData.bio || '',
           photos: photosData?.map(p => p.url) || [],
-          interests: interestsData?.map(i => i.interest) || [],
+          interests: profileData.lifestyle?.interests || [],
           location: profileData.location || '',
-          job: profileData.job || '',
+          job: profileData.job_title || '',
           education: profileData.education || '',
           verified: profileData.verified || false,
           lastActive: new Date(profileData.last_active || profileData.created_at),
-          height: profileData.height || '',
+          height: `${Math.floor(profileData.height_cm / 30.48)}'${Math.round(((profileData.height_cm / 30.48) % 1) * 12)}"` || '',
           zodiacSign: profileData.zodiac_sign || '',
           relationshipType: (profileData.relationship_type === 'friendship' ? 'friends' : profileData.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
           children: (profileData.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',

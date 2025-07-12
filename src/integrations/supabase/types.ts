@@ -226,73 +226,130 @@ export type Database = {
         Row: {
           age: number
           bio: string | null
+          birthdate: string | null
+          body_type: string | null
           children: string | null
+          company_name: string | null
           created_at: string
+          dealbreakers: string[] | null
           drinking: string | null
           education: string | null
+          education_level: string | null
           exercise: string | null
+          gender: string | null
           height: string | null
+          height_cm: number | null
+          height_feet: number | null
           id: string
           incognito: boolean | null
           job: string | null
+          job_title: string | null
+          languages_spoken: string[] | null
           last_active: string | null
           latitude: number | null
+          lifestyle: Json | null
           location: string | null
           longitude: number | null
+          love_languages: string[] | null
           name: string
+          orientation: string[] | null
+          personality_type: string | null
+          preferences: Json | null
           relationship_type: string | null
+          religion: string | null
+          show_me: string[] | null
           smoking: string | null
+          terms_agreement: boolean | null
           updated_at: string
           user_id: string
           verified: boolean | null
+          video_intro_url: string | null
           zodiac_sign: string | null
         }
         Insert: {
           age: number
           bio?: string | null
+          birthdate?: string | null
+          body_type?: string | null
           children?: string | null
+          company_name?: string | null
           created_at?: string
+          dealbreakers?: string[] | null
           drinking?: string | null
           education?: string | null
+          education_level?: string | null
           exercise?: string | null
+          gender?: string | null
           height?: string | null
+          height_cm?: number | null
+          height_feet?: number | null
           id?: string
           incognito?: boolean | null
           job?: string | null
+          job_title?: string | null
+          languages_spoken?: string[] | null
           last_active?: string | null
           latitude?: number | null
+          lifestyle?: Json | null
           location?: string | null
           longitude?: number | null
+          love_languages?: string[] | null
           name: string
+          orientation?: string[] | null
+          personality_type?: string | null
+          preferences?: Json | null
           relationship_type?: string | null
+          religion?: string | null
+          show_me?: string[] | null
           smoking?: string | null
+          terms_agreement?: boolean | null
           updated_at?: string
           user_id: string
           verified?: boolean | null
+          video_intro_url?: string | null
           zodiac_sign?: string | null
         }
         Update: {
           age?: number
           bio?: string | null
+          birthdate?: string | null
+          body_type?: string | null
           children?: string | null
+          company_name?: string | null
           created_at?: string
+          dealbreakers?: string[] | null
           drinking?: string | null
           education?: string | null
+          education_level?: string | null
           exercise?: string | null
+          gender?: string | null
           height?: string | null
+          height_cm?: number | null
+          height_feet?: number | null
           id?: string
           incognito?: boolean | null
           job?: string | null
+          job_title?: string | null
+          languages_spoken?: string[] | null
           last_active?: string | null
           latitude?: number | null
+          lifestyle?: Json | null
           location?: string | null
           longitude?: number | null
+          love_languages?: string[] | null
           name?: string
+          orientation?: string[] | null
+          personality_type?: string | null
+          preferences?: Json | null
           relationship_type?: string | null
+          religion?: string | null
+          show_me?: string[] | null
           smoking?: string | null
+          terms_agreement?: boolean | null
           updated_at?: string
           user_id?: string
           verified?: boolean | null
+          video_intro_url?: string | null
           zodiac_sign?: string | null
         }
         Relationships: []
