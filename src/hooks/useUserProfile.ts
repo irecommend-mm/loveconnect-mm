@@ -47,13 +47,21 @@ export const useUserProfile = (user: User | null) => {
           .eq('user_id', userId)
           .order('position');
 
+        // Helper function to safely extract interests from lifestyle JSON
+        const getInterestsFromLifestyle = (lifestyle: any): string[] => {
+          if (lifestyle && typeof lifestyle === 'object' && lifestyle.interests) {
+            return Array.isArray(lifestyle.interests) ? lifestyle.interests : [];
+          }
+          return [];
+        };
+
         const userProfile: UserType = {
           id: profileData.user_id,
           name: profileData.name,
           age: profileData.age,
           bio: profileData.bio || '',
           photos: photosData?.map(p => p.url) || [],
-          interests: profileData.lifestyle?.interests || [],
+          interests: getInterestsFromLifestyle(profileData.lifestyle),
           location: profileData.location || '',
           job: profileData.job_title || '',
           education: profileData.education || '',

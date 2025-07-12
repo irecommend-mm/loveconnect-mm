@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,6 +108,17 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
 
   useEffect(() => {
     if (existingProfile) {
+      // Helper function to safely parse JSON data
+      const parseJsonField = (field: any, defaultValue: any) => {
+        if (field && typeof field === 'object') {
+          return field;
+        }
+        return defaultValue;
+      };
+
+      const parsedLifestyle = parseJsonField(existingProfile.lifestyle, { interests: [] });
+      const parsedPreferences = parseJsonField(existingProfile.preferences, { age_range: [18, 50], max_distance: 50 });
+
       setProfile({
         name: existingProfile.name || '',
         age: existingProfile.age || 18,
@@ -135,8 +145,15 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         body_type: existingProfile.body_type || '',
         languages_spoken: existingProfile.languages_spoken || [],
         dealbreakers: existingProfile.dealbreakers || [],
-        lifestyle: existingProfile.lifestyle || { interests: [] },
-        preferences: existingProfile.preferences || { age_range: [18, 50], max_distance: 50 },
+        lifestyle: {
+          interests: parsedLifestyle.interests || [],
+          ...parsedLifestyle
+        },
+        preferences: {
+          age_range: parsedPreferences.age_range || [18, 50],
+          max_distance: parsedPreferences.max_distance || 50,
+          ...parsedPreferences
+        },
         terms_agreement: existingProfile.terms_agreement || false,
         video_intro_url: existingProfile.video_intro_url || ''
       });
@@ -154,6 +171,17 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         .single();
 
       if (profileData) {
+        // Helper function to safely parse JSON data
+        const parseJsonField = (field: any, defaultValue: any) => {
+          if (field && typeof field === 'object') {
+            return field;
+          }
+          return defaultValue;
+        };
+
+        const parsedLifestyle = parseJsonField(profileData.lifestyle, { interests: [] });
+        const parsedPreferences = parseJsonField(profileData.preferences, { age_range: [18, 50], max_distance: 50 });
+
         setProfile({
           name: profileData.name || '',
           age: profileData.age || 18,
@@ -180,8 +208,15 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
           body_type: profileData.body_type || '',
           languages_spoken: profileData.languages_spoken || [],
           dealbreakers: profileData.dealbreakers || [],
-          lifestyle: profileData.lifestyle || { interests: [] },
-          preferences: profileData.preferences || { age_range: [18, 50], max_distance: 50 },
+          lifestyle: {
+            interests: parsedLifestyle.interests || [],
+            ...parsedLifestyle
+          },
+          preferences: {
+            age_range: parsedPreferences.age_range || [18, 50],
+            max_distance: parsedPreferences.max_distance || 50,
+            ...parsedPreferences
+          },
           terms_agreement: profileData.terms_agreement || false,
           video_intro_url: profileData.video_intro_url || ''
         });
