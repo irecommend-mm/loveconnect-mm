@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -127,31 +128,56 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
           updateData('latitude', latitude);
           updateData('longitude', longitude);
           
-          fetch(`https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=YOUR_API_KEY`)
+          // Use reverse geocoding to get city name
+          fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
             .then(response => response.json())
             .then(data => {
-              if (data.results && data.results[0]) {
-                const city = data.results[0].components.city || data.results[0].components.town || 'Unknown';
-                updateData('location', city);
+              if (data && data.address) {
+                const city = data.address.city || data.address.town || data.address.village || 'Location detected';
+                const state = data.address.state || '';
+                const locationString = state ? `${city}, ${state}` : city;
+                updateData('location', locationString);
+                
+                toast({
+                  title: "Location detected!",
+                  description: `Found your location: ${locationString}`,
+                });
+              } else {
+                updateData('location', 'Location detected');
+                toast({
+                  title: "Location accessed",
+                  description: "Your location has been detected successfully.",
+                });
               }
             })
             .catch(() => {
               updateData('location', 'Location detected');
+              toast({
+                title: "Location accessed",
+                description: "Your location has been detected successfully.",
+              });
             });
-          
-          toast({
-            title: "Location accessed",
-            description: "Your location has been detected successfully.",
-          });
         },
         (error) => {
+          console.error('Geolocation error:', error);
           toast({
             title: "Location access denied",
-            description: "Please enter your location manually.",
+            description: "Please enable location access or enter your location manually.",
             variant: "destructive",
           });
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000
         }
       );
+    } else {
+      toast({
+        title: "Location not supported",
+        description: "Your browser doesn't support location services. Please enter manually.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -164,7 +190,7 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `temp/${Date.now()}_${Math.random()}.${fileExt}`;
+      const fileName = `temp_signup/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
@@ -225,63 +251,106 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
     try {
       const age = calculateAge(signupData.birthdate);
       
-      const { error } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await supabase.auth.signUp({
         email: signupData.email,
         password: signupData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            name: signupData.name,
-            age,
-            birthdate: signupData.birthdate,
-            gender: signupData.gender,
-            orientation: signupData.orientation,
-            location: signupData.location,
-            photos: signupData.photos,
-            job_title: signupData.job_title,
-            company_name: signupData.company_name,
-            education: signupData.education,
-            education_level: signupData.education_level,
-            zodiac_sign: signupData.zodiac_sign,
-            lifestyle: {
-              smoking: signupData.smoking,
-              drinking: signupData.drinking,
-              exercise: signupData.exercise,
-              religion: signupData.religion,
-              interests: signupData.interests
-            },
-            preferences: signupData.preferences,
-            show_me: signupData.show_me,
-            love_languages: signupData.love_languages,
-            personality_type: signupData.personality_type,
-            body_type: signupData.body_type,
-            height_cm: signupData.height_cm,
-            height_feet: signupData.height_cm * 0.0328084,
-            relationship_type: signupData.relationship_type,
-            dealbreakers: signupData.dealbreakers,
-            languages_spoken: signupData.languages_spoken,
-            terms_agreement: signupData.terms_agreement,
-            video_intro_url: signupData.video_intro_url,
-            latitude: signupData.latitude,
-            longitude: signupData.longitude,
-          }
-        }
       });
 
-      if (error) {
+      if (authError) {
         toast({
           title: "Signup Error",
-          description: error.message,
+          description: authError.message,
           variant: "destructive",
         });
-      } else {
+        setLoading(false);
+        return;
+      }
+
+      if (authData.user) {
+        // Create profile
+        const profileData = {
+          user_id: authData.user.id,
+          name: signupData.name,
+          age,
+          birthdate: signupData.birthdate || null,
+          gender: signupData.gender,
+          orientation: signupData.orientation,
+          location: signupData.location,
+          job_title: signupData.job_title,
+          company_name: signupData.company_name,
+          education: signupData.education,
+          education_level: signupData.education_level,
+          zodiac_sign: signupData.zodiac_sign,
+          smoking: signupData.smoking,
+          drinking: signupData.drinking,
+          exercise: signupData.exercise,
+          religion: signupData.religion,
+          languages_spoken: signupData.languages_spoken,
+          personality_type: signupData.personality_type,
+          body_type: signupData.body_type,
+          height_cm: signupData.height_cm,
+          height_feet: signupData.height_cm * 0.0328084,
+          relationship_type: signupData.relationship_type,
+          love_languages: signupData.love_languages,
+          dealbreakers: signupData.dealbreakers,
+          show_me: signupData.show_me,
+          lifestyle: {
+            interests: signupData.interests,
+            smoking: signupData.smoking,
+            drinking: signupData.drinking,
+            exercise: signupData.exercise,
+            religion: signupData.religion
+          },
+          preferences: signupData.preferences,
+          terms_agreement: signupData.terms_agreement,
+          video_intro_url: signupData.video_intro_url,
+          latitude: signupData.latitude,
+          longitude: signupData.longitude,
+        };
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert(profileData);
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          toast({
+            title: "Profile Error",
+            description: profileError.message,
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Save photos if any
+        const validPhotos = signupData.photos.filter(photo => photo && photo.trim() !== '');
+        if (validPhotos.length > 0) {
+          const photoInserts = validPhotos.map((url, index) => ({
+            user_id: authData.user.id,
+            url,
+            position: index,
+            is_primary: index === 0
+          }));
+
+          const { error: photosError } = await supabase
+            .from('photos')
+            .insert(photoInserts);
+
+          if (photosError) {
+            console.error('Photos save error:', photosError);
+            // Don't block signup for photo errors
+          }
+        }
+
         toast({
           title: "Welcome to VibeConnect! 🎉",
-          description: "Your account has been created successfully. Please check your email to confirm.",
+          description: "Your account has been created successfully.",
         });
         onComplete();
       }
     } catch (error) {
+      console.error('Signup error:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred.",

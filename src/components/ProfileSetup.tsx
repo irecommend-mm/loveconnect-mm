@@ -61,7 +61,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<string[]>(['', '', '', '']);
   const [showPreview, setShowPreview] = useState(false);
   
   const [profile, setProfile] = useState<ProfileData>({
@@ -246,7 +246,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
 
     try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}_${Math.random()}.${fileExt}`;
+      const fileName = `${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
 
       console.log('Uploading file:', fileName);
 
@@ -271,15 +271,38 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
 
       console.log('File uploaded, public URL:', publicUrl);
 
-      // Save to database
-      const { error: dbError } = await supabase
+      // Check if photo already exists at this position
+      const { data: existingPhoto } = await supabase
         .from('photos')
-        .insert({
-          user_id: user.id,
-          url: publicUrl,
-          is_primary: slotIndex === 0,
-          position: slotIndex
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('position', slotIndex)
+        .single();
+
+      let dbError;
+      if (existingPhoto) {
+        // Update existing photo
+        const { error } = await supabase
+          .from('photos')
+          .update({
+            url: publicUrl,
+            is_primary: slotIndex === 0
+          })
+          .eq('user_id', user.id)
+          .eq('position', slotIndex);
+        dbError = error;
+      } else {
+        // Insert new photo
+        const { error } = await supabase
+          .from('photos')
+          .insert({
+            user_id: user.id,
+            url: publicUrl,
+            is_primary: slotIndex === 0,
+            position: slotIndex
+          });
+        dbError = error;
+      }
 
       if (dbError) {
         console.error('Database error:', dbError);
