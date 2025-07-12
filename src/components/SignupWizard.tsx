@@ -131,11 +131,19 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
       });
 
       if (error) {
-        toast({
-          title: "Signup Error",
-          description: error.message,
-          variant: "destructive",
-        });
+        if (error.message === 'User already registered') {
+          toast({
+            title: "Account Already Exists",
+            description: "This email is already registered. Please try logging in instead.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Signup Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        }
       } else {
         toast({
           title: "Welcome! 🎉",
