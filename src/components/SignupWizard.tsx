@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Upload, MapPin, User, Mail, Lock, Camera, ArrowLeft, ArrowRight, X, Heart, Calendar, Briefcase, GraduationCap, Users, Target } from 'lucide-react';
+import { Upload, MapPin, User, Mail, Lock, Camera, ArrowLeft, ArrowRight, X, Heart, Calendar, Briefcase, GraduationCap, Users, Target, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -68,6 +67,7 @@ interface SignupWizardProps {
 const SignupWizard = ({ onComplete }: SignupWizardProps) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [signupData, setSignupData] = useState<SignupData>({
     email: '',
     password: '',
@@ -76,7 +76,7 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
     gender: '',
     orientation: [],
     location: '',
-    photos: [],
+    photos: ['', '', '', ''], // Initialize with 4 empty slots
     job_title: '',
     company_name: '',
     education: '',
@@ -155,16 +155,16 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
     }
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, slotIndex: number) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-    setLoading(true);
-    const uploadedUrls: string[] = [];
+    setUploadingIndex(slotIndex);
+    console.log('Starting photo upload for slot:', slotIndex);
 
-    for (const file of files.slice(0, 6 - signupData.photos.length)) {
+    try {
       const fileExt = file.name.split('.').pop();
-      const fileName = `temp/${Math.random()}.${fileExt}`;
+      const fileName = `temp/${Date.now()}_${Math.random()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-images')
@@ -174,16 +174,41 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
         const { data: { publicUrl } } = supabase.storage
           .from('profile-images')
           .getPublicUrl(fileName);
-        uploadedUrls.push(publicUrl);
+
+        const newPhotos = [...signupData.photos];
+        newPhotos[slotIndex] = publicUrl;
+        updateData('photos', newPhotos);
+        
+        console.log('Photo uploaded successfully to slot:', slotIndex);
+        
+        toast({
+          title: "Photo uploaded!",
+          description: "Your photo has been added.",
+        });
+      } else {
+        console.error('Upload error:', uploadError);
+        toast({
+          title: "Upload Error",
+          description: uploadError.message,
+          variant: "destructive",
+        });
       }
+    } catch (error) {
+      console.error('Unexpected upload error:', error);
+      toast({
+        title: "Upload Error",
+        description: "Failed to upload photo. Please try again.",
+        variant: "destructive",
+      });
     }
 
-    updateData('photos', [...signupData.photos, ...uploadedUrls]);
-    setLoading(false);
+    setUploadingIndex(null);
+    event.target.value = '';
   };
 
   const removePhoto = (index: number) => {
-    const newPhotos = signupData.photos.filter((_, i) => i !== index);
+    const newPhotos = [...signupData.photos];
+    newPhotos[index] = '';
     updateData('photos', newPhotos);
   };
 
@@ -270,7 +295,7 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
   const canProceed = () => {
     switch (currentStep) {
       case 1: return signupData.email && signupData.password && signupData.name && signupData.birthdate && signupData.gender && signupData.orientation.length > 0 && signupData.location;
-      case 2: return signupData.photos.length > 0;
+      case 2: return signupData.photos.some(photo => photo && photo.trim() !== '');
       case 3: return signupData.job_title && signupData.education && signupData.education_level;
       case 4: return signupData.personality_type && signupData.body_type;
       case 5: return signupData.relationship_type && signupData.show_me.length > 0 && signupData.interests.length >= 3;
@@ -420,40 +445,58 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
           <div className="space-y-6">
             <div className="text-center mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Show your best self</h2>
-              <p className="text-gray-600">Add photos to make a great first impression</p>
+              <p className="text-gray-600">Add at least 1 photo, up to 4 photos</p>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              {signupData.photos.map((photo, index) => (
-                <div key={index} className="relative aspect-square">
-                  <img
-                    src={photo}
-                    alt={`Photo ${index + 1}`}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(index)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
+              {[0, 1, 2, 3].map((slotIndex) => (
+                <div key={slotIndex} className="relative aspect-square">
+                  {signupData.photos[slotIndex] ? (
+                    <div className="relative w-full h-full">
+                      <img
+                        src={signupData.photos[slotIndex]}
+                        alt={`Photo ${slotIndex + 1}`}
+                        className="w-full h-full object-cover rounded-xl"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(slotIndex)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                      {slotIndex === 0 && (
+                        <div className="absolute top-2 left-2 bg-pink-500 text-white text-xs px-2 py-1 rounded-full">
+                          Main
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <label className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-pink-400 bg-gray-50 hover:bg-pink-50 transition-colors">
+                      {uploadingIndex === slotIndex ? (
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto mb-2"></div>
+                          <span className="text-xs text-pink-600">Uploading...</span>
+                        </div>
+                      ) : (
+                        <div className="text-center">
+                          <Plus className="h-8 w-8 text-gray-400 mb-2" />
+                          <span className="text-sm text-gray-500">
+                            {slotIndex === 0 ? 'Main Photo' : `Photo ${slotIndex + 1}`}
+                          </span>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handlePhotoUpload(e, slotIndex)}
+                        className="hidden"
+                        disabled={uploadingIndex !== null}
+                      />
+                    </label>
+                  )}
                 </div>
               ))}
-              
-              {signupData.photos.length < 6 && (
-                <label className="aspect-square border-2 border-dashed border-gray-300 rounded-xl flex flex-col items-center justify-center cursor-pointer hover:border-pink-400 bg-gray-50">
-                  <Camera className="h-8 w-8 text-gray-400 mb-2" />
-                  <span className="text-sm text-gray-500">Add Photo</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handlePhotoUpload}
-                    className="hidden"
-                  />
-                </label>
-              )}
             </div>
 
             <div>

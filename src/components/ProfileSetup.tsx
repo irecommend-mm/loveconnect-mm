@@ -60,6 +60,7 @@ interface ProfileSetupProps {
 const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploadingIndex, setUploadingIndex] = useState<number | null>(null);
   const [photos, setPhotos] = useState<string[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   
@@ -236,73 +237,112 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     }
   };
 
-  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>, slotIndex: number) => {
     const file = event.target.files?.[0];
     if (!file || !user) return;
 
-    setLoading(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${user.id}/${Math.random()}.${fileExt}`;
+    setUploadingIndex(slotIndex);
+    console.log('Starting photo upload for slot:', slotIndex);
 
-    const { error: uploadError } = await supabase.storage
-      .from('profile-images')
-      .upload(fileName, file);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}_${Math.random()}.${fileExt}`;
 
-    if (uploadError) {
+      console.log('Uploading file:', fileName);
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-images')
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast({
+          title: "Upload Error",
+          description: uploadError.message,
+          variant: "destructive",
+        });
+        setUploadingIndex(null);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-images')
+        .getPublicUrl(fileName);
+
+      console.log('File uploaded, public URL:', publicUrl);
+
+      // Save to database
+      const { error: dbError } = await supabase
+        .from('photos')
+        .insert({
+          user_id: user.id,
+          url: publicUrl,
+          is_primary: slotIndex === 0,
+          position: slotIndex
+        });
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        toast({
+          title: "Database Error",
+          description: dbError.message,
+          variant: "destructive",
+        });
+      } else {
+        // Update local state
+        const newPhotos = [...photos];
+        newPhotos[slotIndex] = publicUrl;
+        setPhotos(newPhotos);
+        
+        console.log('Photo saved successfully, updated photos:', newPhotos);
+        
+        toast({
+          title: "Photo uploaded!",
+          description: "Your photo has been added to your profile.",
+        });
+      }
+    } catch (error) {
+      console.error('Unexpected error during upload:', error);
       toast({
         title: "Upload Error",
-        description: uploadError.message,
+        description: "An unexpected error occurred during upload.",
         variant: "destructive",
-      });
-      setLoading(false);
-      return;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('profile-images')
-      .getPublicUrl(fileName);
-
-    const { error: dbError } = await supabase
-      .from('photos')
-      .insert({
-        user_id: user.id,
-        url: publicUrl,
-        is_primary: photos.length === 0,
-        position: photos.length
-      });
-
-    if (dbError) {
-      toast({
-        title: "Database Error",
-        description: dbError.message,
-        variant: "destructive",
-      });
-    } else {
-      setPhotos([...photos, publicUrl]);
-      toast({
-        title: "Photo uploaded!",
-        description: "Your photo has been added to your profile.",
       });
     }
 
-    setLoading(false);
+    setUploadingIndex(null);
+    // Reset the input
+    event.target.value = '';
   };
 
   const removePhoto = async (photoUrl: string, index: number) => {
     if (!user) return;
 
-    const { error } = await supabase
-      .from('photos')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('url', photoUrl);
+    console.log('Removing photo at index:', index, 'URL:', photoUrl);
 
-    if (!error) {
-      setPhotos(photos.filter((_, i) => i !== index));
-      toast({
-        title: "Photo removed",
-        description: "Photo has been deleted from your profile.",
-      });
+    try {
+      const { error } = await supabase
+        .from('photos')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('url', photoUrl);
+
+      if (!error) {
+        const newPhotos = [...photos];
+        newPhotos[index] = '';
+        setPhotos(newPhotos);
+        
+        console.log('Photo removed successfully, updated photos:', newPhotos);
+        
+        toast({
+          title: "Photo removed",
+          description: "Photo has been deleted from your profile.",
+        });
+      } else {
+        console.error('Error removing photo:', error);
+      }
+    } catch (error) {
+      console.error('Unexpected error removing photo:', error);
     }
   };
 
@@ -328,6 +368,17 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // Check if at least one photo is uploaded
+    const hasPhotos = photos.some(photo => photo && photo.trim() !== '');
+    if (!hasPhotos) {
+      toast({
+        title: "Photo Required",
+        description: "Please upload at least one photo to continue.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setLoading(true);
 
@@ -493,6 +544,8 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
     return <ProfilePreview />;
   }
 
+  const hasRequiredPhoto = photos.some(photo => photo && photo.trim() !== '');
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 p-2 sm:p-4">
       <div className="max-w-2xl mx-auto">
@@ -505,42 +558,69 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
           </CardHeader>
           <CardContent className="p-4 sm:p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Photos Section */}
+              {/* Modern Photo Upload Section */}
               <div className="space-y-4">
                 <Label className="text-lg font-semibold text-gray-800">Your Photos</Label>
-                <p className="text-sm text-gray-600">Add at least one photo to continue</p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {photos.map((photo, index) => (
-                    <div key={index} className="relative aspect-square">
-                      <img
-                        src={photo}
-                        alt={`Profile ${index + 1}`}
-                        className="w-full h-full object-cover rounded-2xl"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(photo, index)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg"
-                      >
-                        <X className="h-3 w-3 sm:h-4 sm:w-4" />
-                      </button>
+                <p className="text-sm text-gray-600">Add at least 1 photo, up to 4 photos</p>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  {[0, 1, 2, 3].map((slotIndex) => (
+                    <div key={slotIndex} className="relative aspect-square">
+                      {photos[slotIndex] ? (
+                        <div className="relative w-full h-full">
+                          <img
+                            src={photos[slotIndex]}
+                            alt={`Profile ${slotIndex + 1}`}
+                            className="w-full h-full object-cover rounded-2xl"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(photos[slotIndex], slotIndex)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-lg hover:bg-red-600 transition-colors"
+                          >
+                            <X className="h-3 w-3 sm:h-4 sm:w-4" />
+                          </button>
+                          {slotIndex === 0 && (
+                            <div className="absolute top-2 left-2 bg-pink-500 text-white text-xs px-2 py-1 rounded-full">
+                              Main
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <label className="w-full h-full border-2 border-dashed border-gray-300 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-pink-400 hover:bg-pink-50 transition-colors relative">
+                          {uploadingIndex === slotIndex ? (
+                            <div className="text-center">
+                              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-pink-500 mx-auto mb-2"></div>
+                              <span className="text-xs text-pink-600">Uploading...</span>
+                            </div>
+                          ) : (
+                            <div className="text-center">
+                              <Plus className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-gray-400 mb-2" />
+                              <span className="text-xs text-gray-500 font-medium">
+                                {slotIndex === 0 ? 'Main Photo' : `Photo ${slotIndex + 1}`}
+                              </span>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handlePhotoUpload(e, slotIndex)}
+                            className="hidden"
+                            disabled={uploadingIndex !== null}
+                          />
+                        </label>
+                      )}
                     </div>
                   ))}
-                  {photos.length < 6 && (
-                    <label className="aspect-square border-2 border-dashed border-pink-300 rounded-2xl flex items-center justify-center cursor-pointer hover:border-pink-400 hover:bg-pink-50 transition-colors">
-                      <div className="text-center">
-                        <Upload className="h-6 w-6 sm:h-8 sm:w-8 mx-auto text-pink-400 mb-2" />
-                        <span className="text-xs text-pink-600 font-medium">Add Photo</span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handlePhotoUpload}
-                        className="hidden"
-                      />
-                    </label>
-                  )}
                 </div>
+                
+                {!hasRequiredPhoto && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <p className="text-amber-800 text-sm font-medium">
+                      📸 Please upload at least one photo to continue
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Basic Info */}
@@ -778,7 +858,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                   onClick={() => setShowPreview(true)}
                   variant="outline"
                   className="w-full h-12 sm:h-14 border-2 border-pink-200 text-pink-600 hover:bg-pink-50 font-semibold text-base sm:text-lg rounded-2xl"
-                  disabled={photos.length === 0}
+                  disabled={!hasRequiredPhoto}
                 >
                   <Eye className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                   Preview Profile
@@ -787,7 +867,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
                 <Button
                   type="submit"
                   className="w-full h-12 sm:h-14 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white font-semibold text-base sm:text-lg rounded-2xl shadow-lg"
-                  disabled={loading || photos.length === 0 || !profile.name.trim()}
+                  disabled={loading || !hasRequiredPhoto || !profile.name.trim()}
                 >
                   {loading ? 'Saving...' : (existingProfile ? 'Update Profile' : 'Save Profile')}
                 </Button>
