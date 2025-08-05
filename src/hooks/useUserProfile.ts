@@ -55,6 +55,34 @@ export const useUserProfile = (user: User | null) => {
           return [];
         };
 
+        // Map database values to frontend values
+        const mapDrinking = (value: string | null) => {
+          switch (value) {
+            case 'socially': return 'sometimes';
+            case 'regularly': return 'yes';
+            case 'never': return 'no';
+            default: return 'sometimes';
+          }
+        };
+
+        const mapSmoking = (value: string | null) => {
+          switch (value) {
+            case 'never': return 'no';
+            case 'sometimes': return 'sometimes';
+            case 'regularly': return 'yes';
+            default: return 'no';
+          }
+        };
+
+        const mapExercise = (value: string | null) => {
+          switch (value) {
+            case 'never': return 'never';
+            case 'sometimes': return 'sometimes';
+            case 'regularly': case 'often': case 'daily': return 'often';
+            default: return 'sometimes';
+          }
+        };
+
         const userProfile: UserType = {
           id: profileData.user_id,
           name: profileData.name,
@@ -71,9 +99,9 @@ export const useUserProfile = (user: User | null) => {
           zodiacSign: profileData.zodiac_sign || '',
           relationshipType: (profileData.relationship_type === 'friendship' ? 'friends' : profileData.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
           children: (profileData.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
-          smoking: (profileData.smoking || 'no') as 'yes' | 'no' | 'sometimes',
-          drinking: (profileData.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
-          exercise: (profileData.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
+          smoking: mapSmoking(profileData.smoking) as 'yes' | 'no' | 'sometimes',
+          drinking: mapDrinking(profileData.drinking) as 'yes' | 'no' | 'sometimes',
+          exercise: mapExercise(profileData.exercise) as 'often' | 'sometimes' | 'never',
           isOnline: false,
         };
 
