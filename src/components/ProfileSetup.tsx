@@ -171,12 +171,12 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         },
         terms_agreement: existingProfile.terms_agreement || false,
         video_intro_url: existingProfile.video_intro_url || '',
-        instagram_username: existingProfile.instagram_username || '',
-        spotify_connected: existingProfile.spotify_connected || false,
-        spotify_data: existingProfile.spotify_data || {},
-        voice_intro_url: existingProfile.voice_intro_url || '',
-        facebook_id: existingProfile.facebook_id || '',
-        social_verified: existingProfile.social_verified || false
+        instagram_username: (existingProfile as any).instagram_username || '',
+        spotify_connected: (existingProfile as any).spotify_connected || false,
+        spotify_data: (existingProfile as any).spotify_data || {},
+        voice_intro_url: (existingProfile as any).voice_intro_url || '',
+        facebook_id: (existingProfile as any).facebook_id || '',
+        social_verified: (existingProfile as any).social_verified || false
       });
     }
   }, [existingProfile]);
@@ -240,12 +240,12 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
           },
           terms_agreement: profileData.terms_agreement || false,
           video_intro_url: profileData.video_intro_url || '',
-          instagram_username: profileData.instagram_username || '',
-          spotify_connected: profileData.spotify_connected || false,
-          spotify_data: profileData.spotify_data || {},
-          voice_intro_url: profileData.voice_intro_url || '',
-          facebook_id: profileData.facebook_id || '',
-          social_verified: profileData.social_verified || false
+          instagram_username: (profileData as any).instagram_username || '',
+          spotify_connected: (profileData as any).spotify_connected || false,
+          spotify_data: (profileData as any).spotify_data || {},
+          voice_intro_url: (profileData as any).voice_intro_url || '',
+          facebook_id: (profileData as any).facebook_id || '',
+          social_verified: (profileData as any).social_verified || false
         });
       }
 
@@ -466,12 +466,12 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         preferences: profile.preferences,
         terms_agreement: profile.terms_agreement,
         video_intro_url: profile.video_intro_url,
-        instagram_username: profile.instagram_username,
-        spotify_connected: profile.spotify_connected,
-        spotify_data: profile.spotify_data,
-        voice_intro_url: profile.voice_intro_url,
-        facebook_id: profile.facebook_id,
-        social_verified: profile.social_verified,
+        ...(profile.instagram_username && { instagram_username: profile.instagram_username }),
+        ...(typeof profile.spotify_connected === 'boolean' && { spotify_connected: profile.spotify_connected }),
+        ...(profile.spotify_data && { spotify_data: profile.spotify_data }),
+        ...(profile.voice_intro_url && { voice_intro_url: profile.voice_intro_url }),
+        ...(profile.facebook_id && { facebook_id: profile.facebook_id }),
+        ...(typeof profile.social_verified === 'boolean' && { social_verified: profile.social_verified }),
         updated_at: new Date().toISOString(),
       };
 
@@ -486,13 +486,13 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
       if (existingProfileData) {
         const { error } = await supabase
           .from('profiles')
-          .update(profileData)
+          .update(profileData as any)
           .eq('user_id', user.id);
         profileError = error;
       } else {
         const { error } = await supabase
           .from('profiles')
-          .insert(profileData);
+          .insert(profileData as any);
         profileError = error;
       }
 
