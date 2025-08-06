@@ -22,6 +22,18 @@ export interface User {
   distance?: number;
   latitude?: number;
   longitude?: number;
+  // New social media fields
+  instagramUsername?: string;
+  spotifyConnected?: boolean;
+  spotifyData?: {
+    topArtists?: string[];
+    topTracks?: string[];
+    connectedAt?: string;
+  };
+  voiceIntroUrl?: string;
+  facebookId?: string;
+  socialVerified?: boolean;
+  mutualFriends?: string[];
 }
 
 export interface Message {
@@ -68,4 +80,30 @@ export interface UserSettings {
     incognito: boolean;
   };
   discovery: DiscoveryPreferences;
+}
+
+export interface UserReport {
+  id: string;
+  reporterId: string;
+  reportedId: string;
+  reason: string;
+  description?: string;
+  status: 'pending' | 'reviewed' | 'resolved';
+  created_at: Date;
+}
+
+export interface BlockedUser {
+  id: string;
+  blockerId: string;
+  blockedId: string;
+  created_at: Date;
+}
+
+export interface MutualFriend {
+  id: string;
+  user1Id: string;
+  user2Id: string;
+  mutualFriendName: string;
+  facebookFriendId?: string;
+  created_at: Date;
 }
