@@ -15,7 +15,7 @@ export const useSocialIntegration = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ instagram_username: username })
+        .update({ instagram_username: username } as any)
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -53,7 +53,7 @@ export const useSocialIntegration = () => {
         .update({ 
           spotify_connected: true,
           spotify_data: mockSpotifyData
-        })
+        } as any)
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -93,7 +93,7 @@ export const useSocialIntegration = () => {
 
       const { error } = await supabase
         .from('profiles')
-        .update({ voice_intro_url: publicUrl })
+        .update({ voice_intro_url: publicUrl } as any)
         .eq('user_id', user.id);
 
       if (error) throw error;

@@ -13,27 +13,17 @@ export const useSafetyFeatures = () => {
     
     setLoading(true);
     try {
-      // Use direct SQL query to handle new table that may not be in types yet
-      const { error } = await supabase.rpc('insert_user_report', {
-        reporter_id: user.id,
-        reported_id: reportedId,
-        reason,
-        description: description || null
-      });
-
-      if (error) {
-        // Fallback to direct table access if RPC doesn't exist
-        const { error: fallbackError } = await (supabase as any)
-          .from('user_reports')
-          .insert({
-            reporter_id: user.id,
-            reported_id: reportedId,
-            reason,
-            description
-          });
+      // Use direct table access since the new table might not be in types yet
+      const { error } = await (supabase as any)
+        .from('user_reports')
+        .insert({
+          reporter_id: user.id,
+          reported_id: reportedId,
+          reason,
+          description: description || null
+        });
           
-        if (fallbackError) throw fallbackError;
-      }
+      if (error) throw error;
 
       toast({
         title: "Report Submitted",
@@ -56,23 +46,15 @@ export const useSafetyFeatures = () => {
     
     setLoading(true);
     try {
-      // Use direct SQL query to handle new table that may not be in types yet
-      const { error } = await supabase.rpc('insert_blocked_user', {
-        blocker_id: user.id,
-        blocked_id: blockedId
-      });
-
-      if (error) {
-        // Fallback to direct table access if RPC doesn't exist
-        const { error: fallbackError } = await (supabase as any)
-          .from('blocked_users')
-          .insert({
-            blocker_id: user.id,
-            blocked_id: blockedId
-          });
+      // Use direct table access since the new table might not be in types yet
+      const { error } = await (supabase as any)
+        .from('blocked_users')
+        .insert({
+          blocker_id: user.id,
+          blocked_id: blockedId
+        });
           
-        if (fallbackError) throw fallbackError;
-      }
+      if (error) throw error;
 
       toast({
         title: "User Blocked",
@@ -95,22 +77,14 @@ export const useSafetyFeatures = () => {
     
     setLoading(true);
     try {
-      // Use direct SQL query to handle new table that may not be in types yet
-      const { error } = await supabase.rpc('delete_blocked_user', {
-        blocker_id: user.id,
-        blocked_id: blockedId
-      });
-
-      if (error) {
-        // Fallback to direct table access if RPC doesn't exist
-        const { error: fallbackError } = await (supabase as any)
-          .from('blocked_users')
-          .delete()
-          .eq('blocker_id', user.id)
-          .eq('blocked_id', blockedId);
+      // Use direct table access since the new table might not be in types yet
+      const { error } = await (supabase as any)
+        .from('blocked_users')
+        .delete()
+        .eq('blocker_id', user.id)
+        .eq('blocked_id', blockedId);
           
-        if (fallbackError) throw fallbackError;
-      }
+      if (error) throw error;
 
       toast({
         title: "User Unblocked",
