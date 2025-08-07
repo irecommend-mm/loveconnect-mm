@@ -13,8 +13,7 @@ export const useSafetyFeatures = () => {
     
     setLoading(true);
     try {
-      // Use direct table access since the new table might not be in types yet
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_reports')
         .insert({
           reporter_id: user.id,
@@ -46,8 +45,7 @@ export const useSafetyFeatures = () => {
     
     setLoading(true);
     try {
-      // Use direct table access since the new table might not be in types yet
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('blocked_users')
         .insert({
           blocker_id: user.id,
@@ -77,8 +75,7 @@ export const useSafetyFeatures = () => {
     
     setLoading(true);
     try {
-      // Use direct table access since the new table might not be in types yet
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('blocked_users')
         .delete()
         .eq('blocker_id', user.id)
@@ -102,10 +99,47 @@ export const useSafetyFeatures = () => {
     }
   };
 
+  const getBlockedUsers = async () => {
+    if (!user) return [];
+    
+    try {
+      const { data, error } = await supabase
+        .from('blocked_users')
+        .select('blocked_id')
+        .eq('blocker_id', user.id);
+      
+      if (error) throw error;
+      return data?.map(item => item.blocked_id) || [];
+    } catch (error) {
+      console.error('Error fetching blocked users:', error);
+      return [];
+    }
+  };
+
+  const isUserBlocked = async (userId: string) => {
+    if (!user) return false;
+    
+    try {
+      const { data, error } = await supabase
+        .rpc('is_user_blocked', {
+          blocker_id: user.id,
+          blocked_id: userId
+        });
+      
+      if (error) throw error;
+      return data || false;
+    } catch (error) {
+      console.error('Error checking if user is blocked:', error);
+      return false;
+    }
+  };
+
   return {
     reportUser,
     blockUser,
     unblockUser,
+    getBlockedUsers,
+    isUserBlocked,
     loading
   };
 };
