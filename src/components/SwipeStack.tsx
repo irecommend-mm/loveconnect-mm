@@ -1,10 +1,12 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart, RefreshCw, X, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
+import { useAdvancedMatching } from '@/hooks/useAdvancedMatching';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useGamification } from '@/hooks/useGamification';
 import ModernProfileModal from './ModernProfileModal';
 import MatchCelebrationModal from './MatchCelebrationModal';
 import SuperLikeModal from './SuperLikeModal';
@@ -26,6 +28,20 @@ interface Profile {
 
 const SwipeStack = () => {
   const { user } = useAuth();
+  const {
+    matchedUsers,
+    findAdvancedMatches,
+    trackUserActivity,
+    updateLocationHistory
+  } = useAdvancedMatching();
+  const {
+    notifyOnLike,
+    notifyOnSuperLike,
+    notifyOnMatch,
+    notifyOnProfileView
+  } = usePushNotifications();
+  const { addEngagementPoints, updateDailyStreak } = useGamification();
+
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -42,8 +58,25 @@ const SwipeStack = () => {
 
   useEffect(() => {
     if (user) {
-      loadProfiles();
+      // Use advanced matching instead of basic profile loading
+      findAdvancedMatches();
       loadCurrentUserPhoto();
+      updateDailyStreak(); // Update daily streak on app usage
+      
+      // Record location if available
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            updateLocationHistory(
+              position.coords.latitude,
+              position.coords.longitude,
+              position.coords.accuracy
+            );
+          },
+          (error) => console.log('Geolocation error:', error),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 600000 }
+        );
+      }
     }
   }, [user]);
 
@@ -72,85 +105,32 @@ const SwipeStack = () => {
     setLoading(true);
 
     try {
-      let swipedUserIds: string[] = [];
+      // Use advanced matching algorithm
+      await findAdvancedMatches();
       
-      // Only exclude matched users, not all swiped users (for demo purposes)
-      if (!forceRefresh) {
-        const { data: matchedUsers } = await supabase
-          .from('matches')
-          .select('user1_id, user2_id')
-          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
-
-        if (matchedUsers) {
-          swipedUserIds = matchedUsers.map(match => 
-            match.user1_id === user.id ? match.user2_id : match.user1_id
-          );
-        }
-      }
-
-      let profilesQuery = supabase
-        .from('profiles')
-        .select('*')
-        .neq('user_id', user.id);
-
-      // Only exclude matched users, not all swiped users
-      if (swipedUserIds.length > 0 && !forceRefresh) {
-        profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
-      }
-
-      const { data: profilesData, error } = await profilesQuery;
-
-      if (error) {
-        console.error('Error loading profiles:', error);
-        toast({
-          title: "Error loading profiles",
-          description: error.message,
-          variant: "destructive",
-        });
-        setLoading(false);
-        return;
-      }
-
-      // Load photos and interests for each profile
-      const profilesWithData = await Promise.all(
-        (profilesData || []).map(async (profile) => {
-          const [photosResult, interestsResult] = await Promise.all([
-            supabase
-              .from('photos')
-              .select('url')
-              .eq('user_id', profile.user_id)
-              .order('position'),
-            supabase
-              .from('interests')
-              .select('interest')
-              .eq('user_id', profile.user_id)
-          ]);
-
-          return {
-            ...profile,
-            photos: photosResult.data?.map(p => p.url) || [],
-            interests: interestsResult.data?.map(i => i.interest) || [],
-          };
-        })
-      );
-
-      const filteredProfiles = profilesWithData.filter(p => p.photos.length > 0);
+      // Set profiles from advanced matching results
+      setProfiles(matchedUsers.map(user => ({
+        id: user.id,
+        user_id: user.id,
+        name: user.name,
+        age: user.age,
+        bio: user.bio,
+        location: user.location,
+        job: user.job || '',
+        education: user.education || '',
+        photos: user.photos,
+        interests: user.interests,
+        verified: user.verified || false,
+      })));
       
       if (forceRefresh) {
-        setAllProfiles(filteredProfiles);
-        setProfiles(filteredProfiles);
         setCurrentIndex(0);
         toast({
           title: "Profiles refreshed! 🔄",
-          description: `Showing ${filteredProfiles.length} profiles`,
+          description: `Showing ${matchedUsers.length} optimized matches`,
         });
-      } else {
-        setAllProfiles(filteredProfiles);
-        setProfiles(filteredProfiles);
-        setCurrentIndex(0);
       }
       
-      setLoading(false);
     } catch (error) {
       console.error('Error in loadProfiles:', error);
       toast({
@@ -158,6 +138,7 @@ const SwipeStack = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
+    } finally {
       setLoading(false);
     }
   };
@@ -184,6 +165,17 @@ const SwipeStack = () => {
     setHasSwipedOnce(true);
 
     try {
+      // Track user activity
+      await trackUserActivity(
+        action === 'like' ? 'swipe_right' : action === 'dislike' ? 'swipe_left' : 'super_like',
+        currentProfile.user_id,
+        { profile_name: currentProfile.name }
+      );
+
+      // Add gamification points
+      const points = action === 'super_like' ? 10 : action === 'like' ? 5 : 2;
+      await addEngagementPoints(points, action);
+
       // Check if swipe already exists
       const { data: existingSwipe, error: existingSwipeError } = await supabase
         .from('swipes')
@@ -226,6 +218,13 @@ const SwipeStack = () => {
         return;
       }
 
+      // Send notifications based on action
+      if (action === 'like') {
+        await notifyOnLike(currentProfile.user_id, user.user_metadata?.name || 'Someone');
+      } else if (action === 'super_like') {
+        await notifyOnSuperLike(currentProfile.user_id, user.user_metadata?.name || 'Someone');
+      }
+
       // Check for matches only if it's a like or super_like
       if (action === 'like' || action === 'super_like') {
         const { data: matchData } = await supabase
@@ -245,6 +244,12 @@ const SwipeStack = () => {
               user2_id: currentProfile.user_id
             });
 
+          // Send match notification
+          await notifyOnMatch(currentProfile.user_id, user.user_metadata?.name || 'Someone');
+
+          // Extra points for matches
+          await addEngagementPoints(50, 'match');
+
           // Show animated match modal
           setMatchedUser(currentProfile);
           setShowMatchModal(true);
@@ -263,7 +268,7 @@ const SwipeStack = () => {
       // Load more profiles if running low
       if (currentIndex >= profiles.length - 2) {
         setTimeout(() => {
-          loadProfiles();
+          findAdvancedMatches();
         }, 100);
       }
 
@@ -341,6 +346,25 @@ const SwipeStack = () => {
     loadProfiles(true); // Force refresh - show all profiles again
   };
 
+  const handleProfileView = async () => {
+    if (!user || currentIndex >= profiles.length) return;
+    
+    const currentProfile = profiles[currentIndex];
+    
+    // Track profile view activity
+    await trackUserActivity('profile_view', currentProfile.user_id, {
+      profile_name: currentProfile.name
+    });
+    
+    // Send notification to viewed user
+    await notifyOnProfileView(currentProfile.user_id, user.user_metadata?.name || 'Someone');
+    
+    // Add engagement points
+    await addEngagementPoints(3, 'profile_view');
+    
+    setShowProfileModal(true);
+  };
+
   const convertToUserType = (profile: Profile) => ({
     id: profile.user_id,
     name: profile.name,
@@ -374,6 +398,24 @@ const SwipeStack = () => {
     setShowMatchModal(false);
     setMatchedUser(null);
   };
+
+  useEffect(() => {
+    if (matchedUsers.length > 0) {
+      setProfiles(matchedUsers.map(user => ({
+        id: user.id,
+        user_id: user.id,
+        name: user.name,
+        age: user.age,
+        bio: user.bio,
+        location: user.location,
+        job: user.job || '',
+        education: user.education || '',
+        photos: user.photos,
+        interests: user.interests,
+        verified: user.verified || false,
+      })));
+    }
+  }, [matchedUsers]);
 
   if (loading) {
     return (
@@ -429,9 +471,9 @@ const SwipeStack = () => {
                 </div>
               )}
 
-              {/* Info Button */}
+              {/* Info Button - Updated to handle profile views */}
               <button
-                onClick={() => setShowProfileModal(true)}
+                onClick={handleProfileView}
                 className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
               >
                 <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

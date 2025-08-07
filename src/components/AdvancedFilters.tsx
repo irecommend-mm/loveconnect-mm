@@ -1,359 +1,390 @@
 
 import React, { useState } from 'react';
+import { X, Filter, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { X, Filter, MapPin, Heart, User, Eye, EyeOff } from 'lucide-react';
 
-interface FilterSettings {
+interface FilterPreferences {
   ageRange: [number, number];
   maxDistance: number;
-  showMe: 'men' | 'women' | 'everyone';
-  relationshipType: 'serious' | 'casual' | 'friends' | 'unsure' | 'any';
-  verifiedOnly: boolean;
-  showAge: boolean;
-  showDistance: boolean;
-  incognitoMode: boolean;
-  onlineOnly: boolean;
-  hasPhotos: boolean;
+  relationshipType: string[];
   education: string[];
+  occupation: string[];
+  height: [number, number];
+  exercise: string[];
+  drinking: string[];
+  smoking: string[];
+  children: string[];
+  religion: string[];
+  zodiacSigns: string[];
   interests: string[];
-  useLocationFilter: boolean;
+  verified: boolean;
+  recentlyActive: boolean;
+  hasPhotos: boolean;
+  completedProfile: boolean;
 }
 
 interface AdvancedFiltersProps {
   onClose: () => void;
-  onApply: (filters: FilterSettings) => void;
-  initialFilters?: Partial<FilterSettings>;
+  onApply: (filters: FilterPreferences) => void;
+  isPremium?: boolean;
 }
 
-const AdvancedFilters = ({ onClose, onApply, initialFilters }: AdvancedFiltersProps) => {
-  const [filters, setFilters] = useState<FilterSettings>({
-    ageRange: [22, 35],
+const AdvancedFilters: React.FC<AdvancedFiltersProps> = ({
+  onClose,
+  onApply,
+  isPremium = false
+}) => {
+  const [filters, setFilters] = useState<FilterPreferences>({
+    ageRange: [18, 35],
     maxDistance: 25,
-    showMe: 'everyone',
-    relationshipType: 'any',
-    verifiedOnly: false,
-    showAge: true,
-    showDistance: true,
-    incognitoMode: false,
-    onlineOnly: false,
-    hasPhotos: true,
+    relationshipType: [],
     education: [],
+    occupation: [],
+    height: [150, 200],
+    exercise: [],
+    drinking: [],
+    smoking: [],
+    children: [],
+    religion: [],
+    zodiacSigns: [],
     interests: [],
-    useLocationFilter: true,
-    ...initialFilters
+    verified: false,
+    recentlyActive: false,
+    hasPhotos: true,
+    completedProfile: false
   });
 
-  const educationOptions = [
-    'High School', 'Some College', 'Bachelor\'s Degree', 'Master\'s Degree', 
-    'PhD', 'Trade School', 'Professional Degree'
+  const relationshipTypes = [
+    'Serious Relationship', 'Casual Dating', 'Friendship', 'Not Sure'
   ];
 
-  const interestOptions = [
-    'Travel', 'Photography', 'Hiking', 'Cooking', 'Music', 'Art', 'Fitness',
-    'Reading', 'Movies', 'Dancing', 'Yoga', 'Gaming', 'Wine', 'Coffee'
+  const educationLevels = [
+    'High School', 'Some College', 'Bachelor\'s', 'Master\'s', 'PhD', 'Trade School'
   ];
 
-  const updateFilters = (updates: Partial<FilterSettings>) => {
-    setFilters(prev => ({ ...prev, ...updates }));
-  };
+  const occupationCategories = [
+    'Technology', 'Healthcare', 'Education', 'Business', 'Arts', 'Finance',
+    'Engineering', 'Law', 'Marketing', 'Sales', 'Student', 'Other'
+  ];
 
-  const toggleEducation = (education: string) => {
-    setFilters(prev => ({
-      ...prev,
-      education: prev.education.includes(education)
-        ? prev.education.filter(e => e !== education)
-        : [...prev.education, education]
-    }));
-  };
+  const exerciseOptions = [
+    'Daily', 'Often', 'Sometimes', 'Never'
+  ];
 
-  const toggleInterest = (interest: string) => {
-    setFilters(prev => ({
-      ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
-    }));
+  const drinkingOptions = [
+    'Never', 'Occasionally', 'Socially', 'Regularly'
+  ];
+
+  const smokingOptions = [
+    'Never', 'Occasionally', 'Regularly'
+  ];
+
+  const childrenOptions = [
+    'Have Kids', 'Want Kids', 'Don\'t Want Kids', 'Open to Kids'
+  ];
+
+  const religions = [
+    'Christian', 'Catholic', 'Jewish', 'Muslim', 'Hindu', 'Buddhist',
+    'Atheist', 'Agnostic', 'Spiritual', 'Other'
+  ];
+
+  const zodiacSigns = [
+    'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
+    'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces'
+  ];
+
+  const popularInterests = [
+    'Travel', 'Photography', 'Music', 'Fitness', 'Cooking', 'Reading',
+    'Movies', 'Art', 'Sports', 'Gaming', 'Dancing', 'Yoga', 'Hiking'
+  ];
+
+  const handleMultiSelect = (category: keyof FilterPreferences, value: string) => {
+    setFilters(prev => {
+      const currentValues = prev[category] as string[];
+      const newValues = currentValues.includes(value)
+        ? currentValues.filter(v => v !== value)
+        : [...currentValues, value];
+      
+      return {
+        ...prev,
+        [category]: newValues
+      };
+    });
   };
 
   const handleApply = () => {
     onApply(filters);
-    onClose();
   };
 
   const resetFilters = () => {
     setFilters({
-      ageRange: [18, 50],
-      maxDistance: 50,
-      showMe: 'everyone',
-      relationshipType: 'any',
-      verifiedOnly: false,
-      showAge: true,
-      showDistance: true,
-      incognitoMode: false,
-      onlineOnly: false,
-      hasPhotos: true,
+      ageRange: [18, 35],
+      maxDistance: 25,
+      relationshipType: [],
       education: [],
+      occupation: [],
+      height: [150, 200],
+      exercise: [],
+      drinking: [],
+      smoking: [],
+      children: [],
+      religion: [],
+      zodiacSigns: [],
       interests: [],
-      useLocationFilter: true
+      verified: false,
+      recentlyActive: false,
+      hasPhotos: true,
+      completedProfile: false
     });
   };
 
+  const PremiumFeature: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+    <div className={`relative ${!isPremium ? 'opacity-50' : ''}`}>
+      {children}
+      {!isPremium && (
+        <div className="absolute inset-0 bg-gradient-to-t from-amber-100/80 to-transparent rounded-lg flex items-center justify-center">
+          <div className="bg-amber-500 text-white px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-1">
+            <Crown className="h-3 w-3" />
+            Premium
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center">
+      <div className="bg-white w-full max-w-2xl max-h-[90vh] rounded-t-3xl overflow-hidden">
         {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent flex items-center space-x-2">
-            <Filter className="h-6 w-6 text-pink-500" />
-            <span>Advanced Filters</span>
-          </h2>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
-          >
-            <X className="h-4 w-4" />
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-xl font-bold">Filters</h2>
+          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
-          {/* Basic Preferences */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Basic Preferences</h3>
-            
-            <div className="space-y-4">
+        <div className="overflow-y-auto max-h-[70vh]">
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="w-full grid grid-cols-2">
+              <TabsTrigger value="basic">Basic Filters</TabsTrigger>
+              <TabsTrigger value="advanced" className="flex items-center gap-1">
+                Advanced
+                <Crown className="h-3 w-3 text-amber-500" />
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Basic Filters Tab */}
+            <TabsContent value="basic" className="p-4 space-y-6">
+              {/* Age Range */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-semibold mb-2">
                   Age Range: {filters.ageRange[0]} - {filters.ageRange[1]}
                 </label>
                 <Slider
                   value={filters.ageRange}
-                  onValueChange={(value) => updateFilters({ ageRange: value as [number, number] })}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, ageRange: value as [number, number] }))}
                   min={18}
-                  max={65}
+                  max={100}
                   step={1}
                   className="w-full"
                 />
               </div>
 
+              {/* Distance */}
               <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    {filters.useLocationFilter ? `Maximum Distance: ${filters.maxDistance} km` : 'Show all users (no distance filter)'}
-                  </label>
+                <label className="block text-sm font-semibold mb-2">
+                  Maximum Distance: {filters.maxDistance} km
+                </label>
+                <Slider
+                  value={[filters.maxDistance]}
+                  onValueChange={(value) => setFilters(prev => ({ ...prev, maxDistance: value[0] }))}
+                  min={1}
+                  max={100}
+                  step={1}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Relationship Type */}
+              <div>
+                <label className="block text-sm font-semibold mb-3">Looking For</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {relationshipTypes.map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => handleMultiSelect('relationshipType', type)}
+                      className={`p-3 text-sm border rounded-lg transition-colors ${
+                        filters.relationshipType.includes(type)
+                          ? 'bg-pink-100 border-pink-300 text-pink-800'
+                          : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Basic Preferences */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Only show verified profiles</span>
                   <Switch
-                    checked={filters.useLocationFilter}
-                    onCheckedChange={(checked) => updateFilters({ useLocationFilter: checked })}
+                    checked={filters.verified}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, verified: checked }))}
                   />
                 </div>
-                {filters.useLocationFilter && (
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Recently active</span>
+                  <Switch
+                    checked={filters.recentlyActive}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, recentlyActive: checked }))}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold">Has photos</span>
+                  <Switch
+                    checked={filters.hasPhotos}
+                    onCheckedChange={(checked) => setFilters(prev => ({ ...prev, hasPhotos: checked }))}
+                  />
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* Advanced Filters Tab */}
+            <TabsContent value="advanced" className="p-4 space-y-6">
+              <PremiumFeature>
+                {/* Education */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3">Education Level</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {educationLevels.map((level) => (
+                      <button
+                        key={level}
+                        onClick={() => isPremium && handleMultiSelect('education', level)}
+                        className={`p-2 text-xs border rounded-lg transition-colors ${
+                          filters.education.includes(level)
+                            ? 'bg-blue-100 border-blue-300 text-blue-800'
+                            : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                        }`}
+                        disabled={!isPremium}
+                      >
+                        {level}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </PremiumFeature>
+
+              <PremiumFeature>
+                {/* Height Range */}
+                <div>
+                  <label className="block text-sm font-semibold mb-2">
+                    Height Range: {filters.height[0]}cm - {filters.height[1]}cm
+                  </label>
                   <Slider
-                    value={[filters.maxDistance]}
-                    onValueChange={(value) => updateFilters({ maxDistance: value[0] })}
-                    min={1}
-                    max={100}
+                    value={filters.height}
+                    onValueChange={(value) => isPremium && setFilters(prev => ({ ...prev, height: value as [number, number] }))}
+                    min={140}
+                    max={220}
                     step={1}
                     className="w-full"
+                    disabled={!isPremium}
                   />
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Show me</label>
-                <div className="space-y-2">
-                  {[
-                    { value: 'men', label: 'Men' },
-                    { value: 'women', label: 'Women' },
-                    { value: 'everyone', label: 'Everyone' }
-                  ].map(option => (
-                    <label key={option.value} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        value={option.value}
-                        checked={filters.showMe === option.value}
-                        onChange={(e) => updateFilters({ showMe: e.target.value as any })}
-                        className="text-pink-600"
-                      />
-                      <span className="text-sm">{option.label}</span>
-                    </label>
-                  ))}
                 </div>
-              </div>
+              </PremiumFeature>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Looking for</label>
-                <div className="space-y-2">
-                  {[
-                    { value: 'any', label: 'Any' },
-                    { value: 'serious', label: 'Something serious' },
-                    { value: 'casual', label: 'Something casual' },
-                    { value: 'friends', label: 'New friends' },
-                    { value: 'unsure', label: "I'm not sure yet" }
-                  ].map(option => (
-                    <label key={option.value} className="flex items-center space-x-2">
-                      <input
-                        type="radio"
-                        value={option.value}
-                        checked={filters.relationshipType === option.value}
-                        onChange={(e) => updateFilters({ relationshipType: e.target.value as any })}
-                        className="text-pink-600"
-                      />
-                      <span className="text-sm">{option.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Privacy & Display Settings */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Privacy & Display</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <EyeOff className="h-4 w-4 text-gray-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Incognito Mode</p>
-                    <p className="text-sm text-gray-500">Only people you like can see you</p>
+              <PremiumFeature>
+                {/* Exercise */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3">Exercise Frequency</label>
+                  <div className="flex flex-wrap gap-2">
+                    {exerciseOptions.map((option) => (
+                      <Badge
+                        key={option}
+                        variant={filters.exercise.includes(option) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => isPremium && handleMultiSelect('exercise', option)}
+                      >
+                        {option}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
-                <Switch
-                  checked={filters.incognitoMode}
-                  onCheckedChange={(checked) => updateFilters({ incognitoMode: checked })}
-                />
-              </div>
+              </PremiumFeature>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <User className="h-4 w-4 text-gray-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Show my age</p>
-                    <p className="text-sm text-gray-500">Display age on your profile</p>
+              <PremiumFeature>
+                {/* Drinking */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3">Drinking</label>
+                  <div className="flex flex-wrap gap-2">
+                    {drinkingOptions.map((option) => (
+                      <Badge
+                        key={option}
+                        variant={filters.drinking.includes(option) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => isPremium && handleMultiSelect('drinking', option)}
+                      >
+                        {option}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
-                <Switch
-                  checked={filters.showAge}
-                  onCheckedChange={(checked) => updateFilters({ showAge: checked })}
-                />
-              </div>
+              </PremiumFeature>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-gray-600" />
-                  <div>
-                    <p className="font-medium text-gray-900">Show distance</p>
-                    <p className="text-sm text-gray-500">Display distance on profiles</p>
+              <PremiumFeature>
+                {/* Zodiac Signs */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3">Zodiac Signs</label>
+                  <div className="grid grid-cols-4 gap-2">
+                    {zodiacSigns.map((sign) => (
+                      <Badge
+                        key={sign}
+                        variant={filters.zodiacSigns.includes(sign) ? "default" : "outline"}
+                        className="cursor-pointer text-center justify-center"
+                        onClick={() => isPremium && handleMultiSelect('zodiacSigns', sign)}
+                      >
+                        {sign}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
-                <Switch
-                  checked={filters.showDistance}
-                  onCheckedChange={(checked) => updateFilters({ showDistance: checked })}
-                />
-              </div>
-            </div>
-          </div>
+              </PremiumFeature>
 
-          <Separator />
-
-          {/* Advanced Filters */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Advanced Filters</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Verified profiles only</span>
-                <Switch
-                  checked={filters.verifiedOnly}
-                  onCheckedChange={(checked) => updateFilters({ verifiedOnly: checked })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Online now</span>
-                <Switch
-                  checked={filters.onlineOnly}
-                  onCheckedChange={(checked) => updateFilters({ onlineOnly: checked })}
-                />
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Must have photos</span>
-                <Switch
-                  checked={filters.hasPhotos}
-                  onCheckedChange={(checked) => updateFilters({ hasPhotos: checked })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Education */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-3">Education</h3>
-            <div className="flex flex-wrap gap-2">
-              {educationOptions.map(education => (
-                <Badge
-                  key={education}
-                  variant={filters.education.includes(education) ? "default" : "outline"}
-                  className={`cursor-pointer transition-colors ${
-                    filters.education.includes(education)
-                      ? 'bg-pink-500 hover:bg-pink-600'
-                      : 'hover:bg-pink-50'
-                  }`}
-                  onClick={() => toggleEducation(education)}
-                >
-                  {education}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Interests */}
-          <div>
-            <h3 className="font-semibold text-gray-900 mb-3">Interests</h3>
-            <div className="flex flex-wrap gap-2">
-              {interestOptions.map(interest => (
-                <Badge
-                  key={interest}
-                  variant={filters.interests.includes(interest) ? "default" : "outline"}
-                  className={`cursor-pointer transition-colors ${
-                    filters.interests.includes(interest)
-                      ? 'bg-pink-500 hover:bg-pink-600'
-                      : 'hover:bg-pink-50'
-                  }`}
-                  onClick={() => toggleInterest(interest)}
-                >
-                  {interest}
-                </Badge>
-              ))}
-            </div>
-          </div>
+              <PremiumFeature>
+                {/* Interests */}
+                <div>
+                  <label className="block text-sm font-semibold mb-3">Interests</label>
+                  <div className="flex flex-wrap gap-2">
+                    {popularInterests.map((interest) => (
+                      <Badge
+                        key={interest}
+                        variant={filters.interests.includes(interest) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => isPremium && handleMultiSelect('interests', interest)}
+                      >
+                        {interest}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </PremiumFeature>
+            </TabsContent>
+          </Tabs>
         </div>
 
         {/* Footer */}
-        <div className="p-6 border-t border-gray-100 flex space-x-3">
-          <Button
-            onClick={resetFilters}
-            variant="outline"
-            className="flex-1"
-          >
+        <div className="border-t p-4 flex gap-3">
+          <Button variant="outline" onClick={resetFilters} className="flex-1">
             Reset
           </Button>
-          <Button
-            onClick={handleApply}
-            className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-          >
+          <Button onClick={handleApply} className="flex-1 bg-pink-500 hover:bg-pink-600">
+            <Filter className="h-4 w-4 mr-2" />
             Apply Filters
           </Button>
         </div>

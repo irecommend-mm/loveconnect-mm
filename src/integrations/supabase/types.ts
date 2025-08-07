@@ -35,6 +35,90 @@ export type Database = {
         }
         Relationships: []
       }
+      compatibility_scores: {
+        Row: {
+          behavior_score: number
+          created_at: string
+          goal_compatibility: number
+          id: string
+          interests_score: number
+          last_calculated: string
+          location_score: number
+          overall_score: number
+          preference_score: number
+          user1_id: string
+          user2_id: string
+          zodiac_score: number
+        }
+        Insert: {
+          behavior_score?: number
+          created_at?: string
+          goal_compatibility?: number
+          id?: string
+          interests_score?: number
+          last_calculated?: string
+          location_score?: number
+          overall_score?: number
+          preference_score?: number
+          user1_id: string
+          user2_id: string
+          zodiac_score?: number
+        }
+        Update: {
+          behavior_score?: number
+          created_at?: string
+          goal_compatibility?: number
+          id?: string
+          interests_score?: number
+          last_calculated?: string
+          location_score?: number
+          overall_score?: number
+          preference_score?: number
+          user1_id?: string
+          user2_id?: string
+          zodiac_score?: number
+        }
+        Relationships: []
+      }
+      crossed_paths: {
+        Row: {
+          average_distance: number | null
+          created_at: string
+          crossing_count: number | null
+          first_crossing_time: string
+          id: string
+          last_crossing_time: string
+          locations: Json | null
+          updated_at: string
+          user1_id: string
+          user2_id: string
+        }
+        Insert: {
+          average_distance?: number | null
+          created_at?: string
+          crossing_count?: number | null
+          first_crossing_time?: string
+          id?: string
+          last_crossing_time?: string
+          locations?: Json | null
+          updated_at?: string
+          user1_id: string
+          user2_id: string
+        }
+        Update: {
+          average_distance?: number | null
+          created_at?: string
+          crossing_count?: number | null
+          first_crossing_time?: string
+          id?: string
+          last_crossing_time?: string
+          locations?: Json | null
+          updated_at?: string
+          user1_id?: string
+          user2_id?: string
+        }
+        Relationships: []
+      }
       event_attendees: {
         Row: {
           event_id: string
@@ -120,6 +204,36 @@ export type Database = {
           created_at?: string
           id?: string
           interest?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      location_history: {
+        Row: {
+          accuracy: number | null
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          recorded_at: string
+          user_id: string
+        }
+        Insert: {
+          accuracy?: number | null
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          recorded_at?: string
+          user_id: string
+        }
+        Update: {
+          accuracy?: number | null
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          recorded_at?: string
           user_id?: string
         }
         Relationships: []
@@ -375,6 +489,42 @@ export type Database = {
         }
         Relationships: []
       }
+      push_notifications: {
+        Row: {
+          body: string
+          created_at: string
+          data: Json | null
+          id: string
+          read: boolean | null
+          sent_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          read?: boolean | null
+          sent_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          data?: Json | null
+          id?: string
+          read?: boolean | null
+          sent_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       swipes: {
         Row: {
           action: string
@@ -413,6 +563,72 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
         ]
+      }
+      user_activity: {
+        Row: {
+          activity_type: string
+          created_at: string
+          id: string
+          metadata: Json | null
+          target_user_id: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_user_id?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          target_user_id?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_gamification: {
+        Row: {
+          activity_level: string | null
+          created_at: string
+          daily_streak: number | null
+          engagement_score: number | null
+          id: string
+          last_activity: string | null
+          profile_completeness_score: number | null
+          total_score: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          activity_level?: string | null
+          created_at?: string
+          daily_streak?: number | null
+          engagement_score?: number | null
+          id?: string
+          last_activity?: string | null
+          profile_completeness_score?: number | null
+          total_score?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          activity_level?: string | null
+          created_at?: string
+          daily_streak?: number | null
+          engagement_score?: number | null
+          id?: string
+          last_activity?: string | null
+          profile_completeness_score?: number | null
+          total_score?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       user_reports: {
         Row: {
@@ -460,6 +676,10 @@ export type Database = {
     Functions: {
       calculate_distance: {
         Args: { lat1: number; lon1: number; lat2: number; lon2: number }
+        Returns: number
+      }
+      calculate_zodiac_compatibility: {
+        Args: { sign1: string; sign2: string }
         Returns: number
       }
       is_user_blocked: {
