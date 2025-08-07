@@ -158,7 +158,11 @@ export const useAdvancedMatching = () => {
         .eq('user_id', user.id)
         .single();
 
-      if (!currentProfile) return;
+      if (!currentProfile) {
+        // Fallback to basic matching if no profile
+        await loadBasicProfiles();
+        return;
+      }
 
       // Get current user interests
       const { data: currentInterests } = await supabase
@@ -188,9 +192,12 @@ export const useAdvancedMatching = () => {
         profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
       }
 
-      const { data: profiles } = await profilesQuery;
+      const { data: profiles } = await profilesQuery.limit(20);
 
-      if (!profiles) return;
+      if (!profiles || profiles.length === 0) {
+        setMatchedUsers([]);
+        return;
+      }
 
       // Calculate compatibility scores for each profile
       const scoredProfiles = await Promise.all(
@@ -208,24 +215,9 @@ export const useAdvancedMatching = () => {
 
           const compatibility = await calculateCompatibilityScore(currentUserData, targetUserData);
           
-          if (compatibility) {
-            // Store compatibility score in database
-            await supabase
-              .from('compatibility_scores')
-              .upsert({
-                user1_id: user.id,
-                user2_id: profile.user_id,
-                overall_score: compatibility.overallScore,
-                preference_score: compatibility.preferenceScore,
-                goal_compatibility: compatibility.goalCompatibility,
-                location_score: compatibility.locationScore,
-                interests_score: compatibility.interestsScore,
-                zodiac_score: compatibility.zodiacScore,
-                behavior_score: compatibility.behaviorScore,
-                last_calculated: new Date().toISOString()
-              });
-          }
-
+          // Don't try to store compatibility scores due to RLS issues
+          // Just calculate them in memory for now
+          
           return { profile, compatibility };
         })
       );
@@ -233,8 +225,7 @@ export const useAdvancedMatching = () => {
       // Sort by compatibility score and get top matches
       const sortedMatches = scoredProfiles
         .filter(item => item.compatibility)
-        .sort((a, b) => (b.compatibility?.overallScore || 0) - (a.compatibility?.overallScore || 0))
-        .slice(0, 20);
+        .sort((a, b) => (b.compatibility?.overallScore || 0) - (a.compatibility?.overallScore || 0));
 
       // Load photos for matched profiles
       const matchedProfiles = await Promise.all(
@@ -279,8 +270,80 @@ export const useAdvancedMatching = () => {
 
     } catch (error) {
       console.error('Error finding advanced matches:', error);
+      // Fallback to basic matching
+      await loadBasicProfiles();
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fallback basic profile loading
+  const loadBasicProfiles = async () => {
+    try {
+      const { data: swipedUsers } = await supabase
+        .from('swipes')
+        .select('swiped_id')
+        .eq('swiper_id', user!.id);
+
+      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('*')
+        .neq('user_id', user!.id);
+
+      if (swipedUserIds.length > 0) {
+        profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
+      }
+
+      const { data: profiles } = await profilesQuery.limit(20);
+
+      if (!profiles) {
+        setMatchedUsers([]);
+        return;
+      }
+
+      const matchedProfiles = await Promise.all(
+        profiles.map(async (profile) => {
+          const { data: photos } = await supabase
+            .from('photos')
+            .select('url')
+            .eq('user_id', profile.user_id)
+            .order('position');
+
+          const { data: interests } = await supabase
+            .from('interests')
+            .select('interest')
+            .eq('user_id', profile.user_id);
+
+          return {
+            id: profile.user_id,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio || '',
+            photos: photos?.map(p => p.url) || [],
+            interests: interests?.map(i => i.interest) || [],
+            location: profile.location || '',
+            job: profile.job || '',
+            education: profile.education || '',
+            verified: profile.verified || false,
+            lastActive: new Date(profile.last_active || profile.created_at),
+            height: profile.height || '',
+            zodiacSign: profile.zodiac_sign || '',
+            relationshipType: (profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
+            children: (profile.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
+            smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'sometimes',
+            drinking: (profile.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
+            exercise: (profile.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
+            isOnline: false,
+          };
+        })
+      );
+
+      setMatchedUsers(matchedProfiles);
+    } catch (error) {
+      console.error('Error loading basic profiles:', error);
+      setMatchedUsers([]);
     }
   };
 

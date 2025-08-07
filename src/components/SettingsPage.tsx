@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { User, Edit3, Eye, LogOut, Crown, Shield, Bell, Globe, Heart, ChevronRight, Zap, RotateCcw, Filter } from 'lucide-react';
+import { User, Edit3, Eye, LogOut, Crown, Shield, Bell, Globe, Heart, ChevronRight, Zap, RotateCcw, Filter, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -8,6 +8,8 @@ import { User as UserType } from '@/types/User';
 import ProfileModal from './ProfileModal';
 import BoostModal from './BoostModal';
 import SettingsModal from './SettingsModal';
+import { LocationSettings } from './LocationSettings';
+import { CrossedPathsModal } from './CrossedPathsModal';
 import { UserSettings } from '@/types/User';
 
 interface SettingsPageProps {
@@ -21,6 +23,8 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showLocationSettings, setShowLocationSettings] = useState(false);
+  const [showCrossedPaths, setShowCrossedPaths] = useState(false);
   const [settingsType, setSettingsType] = useState<'notifications' | 'privacy' | 'discovery' | 'verification'>('notifications');
 
   // Default user settings
@@ -109,13 +113,19 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
         {
           icon: Globe,
           label: 'Location',
-          action: () => handleSettingsClick('privacy'),
+          action: () => setShowLocationSettings(true),
           showChevron: true
         },
         {
           icon: Filter,
           label: 'Discovery Settings',
           action: () => handleSettingsClick('discovery'),
+          showChevron: true
+        },
+        {
+          icon: MapPin,
+          label: 'Crossed Paths',
+          action: () => setShowCrossedPaths(true),
           showChevron: true
         }
       ]
@@ -247,6 +257,18 @@ const SettingsPage = ({ currentUserProfile, onEditProfile, onShowPremium }: Sett
           onClose={() => setShowSettingsModal(false)}
         />
       )}
+
+      {/* Location Settings Modal */}
+      <LocationSettings
+        open={showLocationSettings}
+        onClose={() => setShowLocationSettings(false)}
+      />
+
+      {/* Crossed Paths Modal */}
+      <CrossedPathsModal
+        open={showCrossedPaths}
+        onClose={() => setShowCrossedPaths(false)}
+      />
     </div>
   );
 };

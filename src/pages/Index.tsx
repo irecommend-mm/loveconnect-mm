@@ -13,6 +13,7 @@ import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
 import VideoCallModal from '@/components/VideoCallModal';
 import AdvancedFilters from '@/components/AdvancedFilters';
+import { GamificationStatus } from '@/components/GamificationStatus';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAppState } from '@/hooks/useAppState';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -177,6 +178,9 @@ const Index = () => {
         onLocationEnable={handleLocationEnable}
       />
 
+      {/* Gamification Status - Show in Settings tab */}
+      {activeTab === 'settings' && <GamificationStatus />}
+
       {/* Main Content */}
       <MainContent
         activeTab={activeTab}
@@ -236,11 +240,12 @@ const Index = () => {
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
 
-      {/* Discovery Filters Modal */}
+      {/* Discovery Filters Modal - Now accessible to all users */}
       {showFilters && (
         <AdvancedFilters 
           onClose={() => setShowFilters(false)}
           onApply={handleApplyFilters}
+          isPremium={false} // Make accessible to all users for now
         />
       )}
 
