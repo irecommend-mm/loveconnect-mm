@@ -50,7 +50,7 @@ const MainContent = ({
           </div>
         )}
         
-        {/* Browse Tab - Discovery Grid */}
+        {/* Browse Tab - Discovery Grid with both simple and advanced filters */}
         {activeTab === 'browse' && (
           <div className="px-2 sm:px-4">
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
