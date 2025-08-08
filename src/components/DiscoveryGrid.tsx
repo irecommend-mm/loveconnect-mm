@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X } from 'lucide-react';
+import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X, Filter, Sliders } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '../types/User';
 import ModernProfileModal from './ModernProfileModal';
 import MatchCelebrationModal from './MatchCelebrationModal';
+import AdvancedFilters from './filters/AdvancedFilters';
 import { toast } from '@/hooks/use-toast';
 
 interface DiscoveryGridProps {
@@ -14,6 +15,22 @@ interface DiscoveryGridProps {
 }
 
 type CategoryType = 'verified' | 'popular' | 'nearby' | 'recent' | 'online' | 'serious' | 'casual' | 'friends' | 'unsure';
+
+interface FilterPreferences {
+  ageRange: [number, number];
+  maxDistance: number;
+  relationshipType: string[];
+  education: string[];
+  height: [number, number];
+  zodiacSigns: string[];
+  smoking: string[];
+  drinking: string[];
+  exercise: string[];
+  children: string[];
+  interests: string[];
+  verified: boolean;
+  onlineOnly: boolean;
+}
 
 const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('nearby');
@@ -24,6 +41,8 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
   const [swipedUsers, setSwipedUsers] = useState<Set<string>>(new Set());
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [appliedFilters, setAppliedFilters] = useState<Partial<FilterPreferences>>({});
 
   const categories = [
     { id: 'nearby' as CategoryType, label: 'Nearby', icon: MapPin, color: 'bg-green-500' },
@@ -90,15 +109,55 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     return R * c;
   };
 
-  const loadUsersForCategory = async (category: CategoryType) => {
+  const applyAdvancedFilters = (filters: FilterPreferences) => {
+    setAppliedFilters(filters);
+    loadUsersForCategory(selectedCategory, filters);
+  };
+
+  const loadUsersForCategory = async (category: CategoryType, filters?: Partial<FilterPreferences>) => {
     setLoading(true);
     
     try {
+      console.log('Loading users with filters:', filters);
+      
       let query = supabase
         .from('profiles')
         .select('*')
         .neq('user_id', currentUserId)
         .eq('incognito', false);
+
+      // Apply basic filters
+      if (filters?.ageRange) {
+        query = query.gte('age', filters.ageRange[0]).lte('age', filters.ageRange[1]);
+      }
+
+      if (filters?.verified) {
+        query = query.eq('verified', true);
+      }
+
+      if (filters?.relationshipType && filters.relationshipType.length > 0) {
+        query = query.in('relationship_type', filters.relationshipType);
+      }
+
+      if (filters?.smoking && filters.smoking.length > 0) {
+        query = query.in('smoking', filters.smoking);
+      }
+
+      if (filters?.drinking && filters.drinking.length > 0) {
+        query = query.in('drinking', filters.drinking);
+      }
+
+      if (filters?.exercise && filters.exercise.length > 0) {
+        query = query.in('exercise', filters.exercise);
+      }
+
+      if (filters?.children && filters.children.length > 0) {
+        query = query.in('children', filters.children);
+      }
+
+      if (filters?.zodiacSigns && filters.zodiacSigns.length > 0) {
+        query = query.in('zodiac_sign', filters.zodiacSigns);
+      }
 
       // Apply category-specific filters
       switch (category) {
@@ -121,11 +180,10 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           query = query.order('created_at', { ascending: false });
           break;
         case 'online':
-          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
-          query = query.gte('last_active', tenMinutesAgo);
-          break;
-        case 'nearby':
-        case 'popular':
+          if (filters?.onlineOnly) {
+            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            query = query.gte('last_active', tenMinutesAgo);
+          }
           break;
       }
 
@@ -166,13 +224,28 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             );
           }
 
+          const userInterests = interestsResult.data?.map(i => i.interest) || [];
+
+          // Apply interest filter
+          if (filters?.interests && filters.interests.length > 0) {
+            const hasMatchingInterest = filters.interests.some(interest => 
+              userInterests.includes(interest)
+            );
+            if (!hasMatchingInterest) return null;
+          }
+
+          // Apply distance filter
+          if (filters?.maxDistance && distance && distance > filters.maxDistance) {
+            return null;
+          }
+
           return {
             id: profile.user_id,
             name: profile.name,
             age: profile.age,
             bio: profile.bio || '',
             photos: photosResult.data?.map(p => p.url) || [],
-            interests: interestsResult.data?.map(i => i.interest) || [],
+            interests: userInterests,
             location: profile.location || '',
             job: profile.job,
             education: profile.education,
@@ -193,11 +266,12 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         })
       );
 
-      let filteredUsers = usersWithData.filter(u => u.photos.length > 0);
+      let filteredUsers = usersWithData
+        .filter(u => u && u.photos.length > 0) as UserType[];
 
       if (category === 'nearby' && userLocation) {
         filteredUsers = filteredUsers
-          .filter(u => u.distance !== null && u.distance <= 100)
+          .filter(u => u.distance !== null && u.distance <= (filters?.maxDistance || 100))
           .sort((a, b) => (a.distance || 0) - (b.distance || 0));
       } else if (category === 'nearby') {
         filteredUsers = filteredUsers
@@ -328,6 +402,25 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
   return (
     <div className="space-y-4 px-2 sm:px-0">
+      {/* Header with Advanced Filters Button */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-gray-900">Discover</h1>
+        <Button 
+          onClick={() => setShowAdvancedFilters(true)}
+          variant="outline" 
+          size="sm"
+          className="flex items-center space-x-2"
+        >
+          <Sliders className="h-4 w-4" />
+          <span>Filters</span>
+          {Object.keys(appliedFilters).length > 0 && (
+            <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+              {Object.keys(appliedFilters).length}
+            </Badge>
+          )}
+        </Button>
+      </div>
+
       {/* Category Tabs - Mobile Optimized */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Type</h2>
@@ -337,7 +430,10 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             return (
               <Button
                 key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  loadUsersForCategory(category.id, appliedFilters);
+                }}
                 variant={selectedCategory === category.id ? "default" : "outline"}
                 className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
                   selectedCategory === category.id
@@ -362,7 +458,10 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             return (
               <Button
                 key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  loadUsersForCategory(category.id, appliedFilters);
+                }}
                 variant={selectedCategory === category.id ? "default" : "outline"}
                 className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
                   selectedCategory === category.id
@@ -415,6 +514,14 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           </div>
         )}
       </div>
+
+      {/* Advanced Filters Modal */}
+      <AdvancedFilters
+        isOpen={showAdvancedFilters}
+        onClose={() => setShowAdvancedFilters(false)}
+        onApplyFilters={applyAdvancedFilters}
+        currentFilters={appliedFilters}
+      />
 
       {/* Profile Modal with Actions */}
       {selectedUser && (
