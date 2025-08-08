@@ -226,7 +226,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         .insert({
           swiper_id: currentUserId,
           swiped_id: selectedUser.id,
-          is_like: true
+          action: 'like'
         });
 
       setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
@@ -249,7 +249,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         .insert({
           swiper_id: currentUserId,
           swiped_id: selectedUser.id,
-          is_like: false
+          action: 'dislike'
         });
 
       setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
@@ -268,8 +268,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         .insert({
           swiper_id: currentUserId,
           swiped_id: selectedUser.id,
-          is_like: true,
-          is_super_like: true
+          action: 'super_like'
         });
 
       setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
