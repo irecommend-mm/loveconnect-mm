@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart, RefreshCw, X, Star } from 'lucide-react';
@@ -30,6 +31,7 @@ const SwipeStack = () => {
   const { user } = useAuth();
   const {
     matchedUsers,
+    loading: advancedLoading,
     findAdvancedMatches,
     trackUserActivity,
     updateLocationHistory
@@ -50,18 +52,17 @@ const SwipeStack = () => {
   const [showSuperLikeModal, setShowSuperLikeModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
-  const [allProfiles, setAllProfiles] = useState<Profile[]>([]);
   const [lastSwipedProfile, setLastSwipedProfile] = useState<Profile | null>(null);
   const [lastSwipeAction, setLastSwipeAction] = useState<'like' | 'dislike' | 'super_like' | null>(null);
   const [rewindCount, setRewindCount] = useState(0);
   const [hasSwipedOnce, setHasSwipedOnce] = useState(false);
 
+  // Load profiles when component mounts or when user changes
   useEffect(() => {
     if (user) {
-      // Use advanced matching instead of basic profile loading
-      findAdvancedMatches();
       loadCurrentUserPhoto();
-      updateDailyStreak(); // Update daily streak on app usage
+      updateDailyStreak();
+      loadProfiles();
       
       // Record location if available
       if ('geolocation' in navigator) {
@@ -79,6 +80,31 @@ const SwipeStack = () => {
       }
     }
   }, [user]);
+
+  // Convert matchedUsers to profiles format when matchedUsers changes
+  useEffect(() => {
+    if (matchedUsers && matchedUsers.length > 0) {
+      const convertedProfiles = matchedUsers.map(user => ({
+        id: user.id,
+        user_id: user.id,
+        name: user.name,
+        age: user.age,
+        bio: user.bio,
+        location: user.location,
+        job: user.job || '',
+        education: user.education || '',
+        photos: user.photos,
+        interests: user.interests,
+        verified: user.verified || false,
+      }));
+      
+      setProfiles(convertedProfiles);
+      setLoading(false);
+    } else if (!advancedLoading) {
+      // If advanced matching is not loading but returned no users, try basic loading
+      loadBasicProfiles();
+    }
+  }, [matchedUsers, advancedLoading]);
 
   const loadCurrentUserPhoto = async () => {
     if (!user) return;
@@ -99,46 +125,101 @@ const SwipeStack = () => {
     }
   };
 
-  const loadProfiles = async (forceRefresh = false) => {
+  const loadProfiles = async () => {
     if (!user) return;
 
     setLoading(true);
+    
+    try {
+      // Try advanced matching first
+      await findAdvancedMatches();
+    } catch (error) {
+      console.error('Error loading profiles with advanced matching, falling back to basic:', error);
+      await loadBasicProfiles();
+    }
+  };
+
+  // Fallback basic profile loading
+  const loadBasicProfiles = async () => {
+    if (!user) return;
 
     try {
-      // Use advanced matching algorithm
-      await findAdvancedMatches();
+      console.log('Loading basic profiles...');
       
-      // Set profiles from advanced matching results
-      setProfiles(matchedUsers.map(user => ({
-        id: user.id,
-        user_id: user.id,
-        name: user.name,
-        age: user.age,
-        bio: user.bio,
-        location: user.location,
-        job: user.job || '',
-        education: user.education || '',
-        photos: user.photos,
-        interests: user.interests,
-        verified: user.verified || false,
-      })));
-      
-      if (forceRefresh) {
-        setCurrentIndex(0);
-        toast({
-          title: "Profiles refreshed! 🔄",
-          description: `Showing ${matchedUsers.length} optimized matches`,
-        });
+      // Get users already swiped on
+      const { data: swipedUsers } = await supabase
+        .from('swipes')
+        .select('swiped_id')
+        .eq('swiper_id', user.id);
+
+      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+
+      // Get profiles, excluding current user and already swiped users
+      let profilesQuery = supabase
+        .from('profiles')
+        .select('*')
+        .neq('user_id', user.id)
+        .eq('incognito', false);
+
+      if (swipedUserIds.length > 0) {
+        profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
       }
+
+      const { data: profilesData, error } = await profilesQuery.limit(20);
+
+      if (error) {
+        console.error('Error loading basic profiles:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (!profilesData || profilesData.length === 0) {
+        setProfiles([]);
+        setLoading(false);
+        return;
+      }
+
+      // Load photos and interests for each profile
+      const profilesWithData = await Promise.all(
+        profilesData.map(async (profile) => {
+          const [photosResult, interestsResult] = await Promise.all([
+            supabase
+              .from('photos')
+              .select('url')
+              .eq('user_id', profile.user_id)
+              .order('position'),
+            supabase
+              .from('interests')
+              .select('interest')
+              .eq('user_id', profile.user_id)
+          ]);
+
+          return {
+            id: profile.user_id,
+            user_id: profile.user_id,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio || '',
+            location: profile.location || '',
+            job: profile.job || '',
+            education: profile.education || '',
+            photos: photosResult.data?.map(p => p.url) || [],
+            interests: interestsResult.data?.map(i => i.interest) || [],
+            verified: profile.verified || false,
+          };
+        })
+      );
+
+      // Filter out profiles without photos
+      const profilesWithPhotos = profilesWithData.filter(p => p.photos.length > 0);
+      
+      console.log('Loaded basic profiles:', profilesWithPhotos.length);
+      setProfiles(profilesWithPhotos);
+      setLoading(false);
       
     } catch (error) {
-      console.error('Error in loadProfiles:', error);
-      toast({
-        title: "Error loading profiles",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
+      console.error('Error in loadBasicProfiles:', error);
+      setProfiles([]);
       setLoading(false);
     }
   };
@@ -268,7 +349,7 @@ const SwipeStack = () => {
       // Load more profiles if running low
       if (currentIndex >= profiles.length - 2) {
         setTimeout(() => {
-          findAdvancedMatches();
+          loadProfiles();
         }, 100);
       }
 
@@ -343,7 +424,8 @@ const SwipeStack = () => {
   };
 
   const handleRefresh = () => {
-    loadProfiles(true); // Force refresh - show all profiles again
+    setCurrentIndex(0);
+    loadProfiles();
   };
 
   const handleProfileView = async () => {
@@ -398,24 +480,6 @@ const SwipeStack = () => {
     setShowMatchModal(false);
     setMatchedUser(null);
   };
-
-  useEffect(() => {
-    if (matchedUsers.length > 0) {
-      setProfiles(matchedUsers.map(user => ({
-        id: user.id,
-        user_id: user.id,
-        name: user.name,
-        age: user.age,
-        bio: user.bio,
-        location: user.location,
-        job: user.job || '',
-        education: user.education || '',
-        photos: user.photos,
-        interests: user.interests,
-        verified: user.verified || false,
-      })));
-    }
-  }, [matchedUsers]);
 
   if (loading) {
     return (
