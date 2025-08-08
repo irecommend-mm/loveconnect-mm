@@ -12,7 +12,7 @@ import PremiumFeatures from '@/components/PremiumFeatures';
 import NotificationCenter from '@/components/NotificationCenter';
 import GroupEvents from '@/components/GroupEvents';
 import VideoCallModal from '@/components/VideoCallModal';
-import AdvancedFilters from '@/components/AdvancedFilters';
+import AdvancedFilters from '@/components/filters/AdvancedFilters';
 import { GamificationStatus } from '@/components/GamificationStatus';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAppState } from '@/hooks/useAppState';
@@ -240,12 +240,12 @@ const Index = () => {
         <GroupEvents onClose={() => setShowEvents(false)} />
       )}
 
-      {/* Discovery Filters Modal - Now accessible to all users */}
+      {/* Advanced Filters Modal - Now accessible to all users */}
       {showFilters && (
         <AdvancedFilters 
+          isOpen={showFilters}
           onClose={() => setShowFilters(false)}
-          onApply={handleApplyFilters}
-          isPremium={false} // Make accessible to all users for now
+          onApplyFilters={handleApplyFilters}
         />
       )}
 

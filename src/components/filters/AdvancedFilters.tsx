@@ -128,7 +128,7 @@ const AdvancedFilters = ({ isOpen, onClose, onApplyFilters, currentFilters }: Ad
       const currentValue = prev[key];
       
       // Only handle array properties for multi-select
-      if (Array.isArray(currentValue) && typeof currentValue[0] === 'string') {
+      if (Array.isArray(currentValue)) {
         const currentArray = currentValue as string[];
         return {
           ...prev,
@@ -265,7 +265,7 @@ const AdvancedFilters = ({ isOpen, onClose, onApplyFilters, currentFilters }: Ad
                     <div key={option.value} className="flex items-center space-x-2">
                       <Checkbox
                         id={`${category}-${option.value}`}
-                        checked={filters[category as keyof FilterPreferences] && Array.isArray(filters[category as keyof FilterPreferences]) && (filters[category as keyof FilterPreferences] as string[]).includes(option.value)}
+                        checked={Array.isArray(filters[category as keyof FilterPreferences]) && (filters[category as keyof FilterPreferences] as string[]).includes(option.value)}
                         onCheckedChange={(checked) => 
                           handleMultiSelectChange(category as keyof FilterPreferences, option.value, checked as boolean)
                         }
