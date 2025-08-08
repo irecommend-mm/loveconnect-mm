@@ -124,12 +124,22 @@ const AdvancedFilters = ({ isOpen, onClose, onApplyFilters, currentFilters }: Ad
   };
 
   const handleMultiSelectChange = (key: keyof FilterPreferences, value: string, checked: boolean) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: checked 
-        ? [...(prev[key] as string[]), value]
-        : (prev[key] as string[]).filter(item => item !== value)
-    }));
+    setFilters(prev => {
+      const currentValue = prev[key];
+      
+      // Only handle array properties for multi-select
+      if (Array.isArray(currentValue) && typeof currentValue[0] === 'string') {
+        const currentArray = currentValue as string[];
+        return {
+          ...prev,
+          [key]: checked 
+            ? [...currentArray, value]
+            : currentArray.filter(item => item !== value)
+        };
+      }
+      
+      return prev;
+    });
   };
 
   const handleApplyFilters = () => {
@@ -255,7 +265,7 @@ const AdvancedFilters = ({ isOpen, onClose, onApplyFilters, currentFilters }: Ad
                     <div key={option.value} className="flex items-center space-x-2">
                       <Checkbox
                         id={`${category}-${option.value}`}
-                        checked={filters[category as keyof typeof filters]?.includes?.(option.value)}
+                        checked={filters[category as keyof FilterPreferences] && Array.isArray(filters[category as keyof FilterPreferences]) && (filters[category as keyof FilterPreferences] as string[]).includes(option.value)}
                         onCheckedChange={(checked) => 
                           handleMultiSelectChange(category as keyof FilterPreferences, option.value, checked as boolean)
                         }
