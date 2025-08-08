@@ -217,6 +217,72 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     setSelectedUser(user);
   };
 
+  const handleLike = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: selectedUser.id,
+          is_like: true
+        });
+
+      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      toast({
+        title: "Liked!",
+        description: `You liked ${selectedUser.name}`,
+      });
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error liking user:', error);
+    }
+  };
+
+  const handlePass = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: selectedUser.id,
+          is_like: false
+        });
+
+      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error passing user:', error);
+    }
+  };
+
+  const handleSuperLike = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: selectedUser.id,
+          is_like: true,
+          is_super_like: true
+        });
+
+      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      toast({
+        title: "Super Liked!",
+        description: `You super liked ${selectedUser.name}`,
+      });
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error super liking user:', error);
+    }
+  };
+
   const renderUserCard = (user: UserType) => (
     <div
       key={user.id}
@@ -356,7 +422,9 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         <ModernProfileModal
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
-          showActions={true}
+          onLike={handleLike}
+          onPass={handlePass}
+          onSuperLike={handleSuperLike}
         />
       )}
 
