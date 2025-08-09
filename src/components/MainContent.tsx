@@ -5,7 +5,7 @@ import SwipeStack from './SwipeStack';
 import DiscoveryGrid from './DiscoveryGrid';
 import LikesYouPage from './LikesYouPage';
 import MatchesList from './MatchesList';
-import ModernSettingsPage from './ModernSettingsPage';
+import SettingsPage from './SettingsPage';
 import ChatInterface from './ChatInterface';
 import { Match, User as UserType } from '@/types/User';
 
@@ -50,7 +50,7 @@ const MainContent = ({
           </div>
         )}
         
-        {/* Browse Tab - Discovery Grid with both simple and advanced filters */}
+        {/* Browse Tab - Discovery Grid */}
         {activeTab === 'browse' && (
           <div className="px-2 sm:px-4">
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
@@ -77,10 +77,10 @@ const MainContent = ({
           </div>
         )}
 
-        {/* Settings Tab - Using Modern Settings Page */}
+        {/* Settings Tab */}
         {activeTab === 'settings' && (
           <div className="px-2 sm:px-4">
-            <ModernSettingsPage 
+            <SettingsPage 
               currentUserProfile={currentUserProfile}
               onEditProfile={onEditProfile}
               onShowPremium={onShowPremium}

@@ -14,7 +14,6 @@ interface NavbarProps {
   onFiltersClick: () => void;
   onNotificationsClick: () => void;
   onEventsClick: () => void;
-  onChatRoomClick: () => void;
 }
 
 const Navbar = ({ 
@@ -27,8 +26,7 @@ const Navbar = ({
   onTabChange,
   onFiltersClick,
   onNotificationsClick,
-  onEventsClick,
-  onChatRoomClick
+  onEventsClick
 }: NavbarProps) => {
   const [showMatchesDropdown, setShowMatchesDropdown] = useState(false);
 
@@ -73,30 +71,6 @@ const Navbar = ({
 
           {/* Action Buttons */}
           <div className="flex items-center space-x-3">
-            {/* Filters */}
-            <button
-              onClick={onFiltersClick}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <Filter className="h-5 w-5 text-gray-600" />
-            </button>
-
-            {/* Virtual ChatRoom */}
-            <button
-              onClick={onChatRoomClick}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <Users className="h-5 w-5 text-gray-600" />
-            </button>
-
-            {/* Local Events */}
-            <button
-              onClick={onEventsClick}
-              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
-            >
-              <Calendar className="h-5 w-5 text-gray-600" />
-            </button>
-
             {/* Notifications */}
             <button
               onClick={onNotificationsClick}
@@ -104,6 +78,22 @@ const Navbar = ({
             >
               <Bell className="h-5 w-5 text-gray-600" />
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+            </button>
+
+            {/* Events */}
+            <button
+              onClick={onEventsClick}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Calendar className="h-5 w-5 text-gray-600" />
+            </button>
+
+            {/* Filters */}
+            <button
+              onClick={onFiltersClick}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Filter className="h-5 w-5 text-gray-600" />
             </button>
 
             {/* Settings */}

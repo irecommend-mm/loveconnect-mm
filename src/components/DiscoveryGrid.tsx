@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@/types/User';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Heart, MapPin, Eye, Filter, Settings } from 'lucide-react';
-import { mockUsers } from '@/data/mockUsers';
-import ProfileModal from './ProfileModal';
+import { Button } from '@/components/ui/button';
+import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X, Filter, Sliders } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { User as UserType } from '../types/User';
+import ModernProfileModal from './ModernProfileModal';
+import MatchCelebrationModal from './MatchCelebrationModal';
 import AdvancedFilters from './filters/AdvancedFilters';
+import { toast } from '@/hooks/use-toast';
 
 interface DiscoveryGridProps {
   currentUserId: string;
-  userLocation?: { lat: number; lng: number } | null;
+  userLocation?: {lat: number, lng: number} | null;
 }
+
+type CategoryType = 'verified' | 'popular' | 'nearby' | 'recent' | 'online' | 'serious' | 'casual' | 'friends' | 'unsure';
 
 interface FilterPreferences {
   ageRange: [number, number];
@@ -33,301 +33,524 @@ interface FilterPreferences {
 }
 
 const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('nearby');
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
+  const [showMatchModal, setShowMatchModal] = useState(false);
+  const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
+  const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
+  const [swipedUsers, setSwipedUsers] = useState<Set<string>>(new Set());
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
-  
-  // Simple filter states
-  const [ageRange, setAgeRange] = useState({ min: 18, max: 50 });
-  const [maxDistance, setMaxDistance] = useState(50);
-  const [relationshipGoal, setRelationshipGoal] = useState('all');
-  
-  // Advanced filter state
-  const [advancedFilters, setAdvancedFilters] = useState<Partial<FilterPreferences>>({});
+  const [appliedFilters, setAppliedFilters] = useState<Partial<FilterPreferences>>({});
+
+  const categories = [
+    { id: 'nearby' as CategoryType, label: 'Nearby', icon: MapPin, color: 'bg-green-500' },
+    { id: 'verified' as CategoryType, label: 'Verified', icon: Shield, color: 'bg-blue-500' },
+    { id: 'popular' as CategoryType, label: 'Popular', icon: Star, color: 'bg-yellow-500' },
+    { id: 'recent' as CategoryType, label: 'Recent', icon: Clock, color: 'bg-purple-500' },
+    { id: 'online' as CategoryType, label: 'Online', icon: UserCheck, color: 'bg-emerald-500' },
+  ];
+
+  const relationshipCategories = [
+    { id: 'serious' as CategoryType, label: 'Serious', icon: Heart, color: 'bg-red-500' },
+    { id: 'casual' as CategoryType, label: 'Casual', icon: Coffee, color: 'bg-orange-500' },
+    { id: 'friends' as CategoryType, label: 'Friends', icon: Users, color: 'bg-indigo-500' },
+    { id: 'unsure' as CategoryType, label: 'Unsure', icon: Users, color: 'bg-gray-500' },
+  ];
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    loadUsersForCategory(selectedCategory);
+    loadCurrentUserPhoto();
+    loadSwipedUsers();
+  }, [selectedCategory, userLocation]);
 
-  useEffect(() => {
-    applyFilters();
-  }, [users, ageRange, maxDistance, relationshipGoal, advancedFilters]);
-
-  const loadUsers = async () => {
+  const loadCurrentUserPhoto = async () => {
     try {
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('user_id', currentUserId)
-        .limit(20);
+      const { data } = await supabase
+        .from('photos')
+        .select('url')
+        .eq('user_id', currentUserId)
+        .eq('is_primary', true)
+        .single();
       
-      if (profilesData && profilesData.length > 0) {
-        // Load photos and interests for each profile
-        const usersWithDetails = await Promise.all(
-          profilesData.map(async (profile) => {
-            const [photosResult, interestsResult] = await Promise.all([
-              supabase
-                .from('photos')
-                .select('url')
-                .eq('user_id', profile.user_id)
-                .order('position'),
-              supabase
-                .from('interests')
-                .select('interest')
-                .eq('user_id', profile.user_id)
-            ]);
-
-            return {
-              id: profile.user_id,
-              name: profile.name || 'Unknown',
-              age: profile.age || 25,
-              location: profile.location || 'Unknown',
-              photos: photosResult.data?.map(p => p.url) || ['/placeholder.svg'],
-              bio: profile.bio || '',
-              interests: interestsResult.data?.map(i => i.interest) || [],
-              verified: profile.verified || false,
-              lastActive: new Date(profile.last_active || profile.created_at),
-              relationshipType: (profile.relationship_type === 'friendship' ? 'friends' : profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
-              education: profile.education || '',
-              height: profile.height || (profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}'${Math.round(((profile.height_cm / 30.48) % 1) * 12)}"` : ''),
-              zodiacSign: profile.zodiac_sign || '',
-              smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'sometimes',
-              drinking: (profile.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
-              exercise: (profile.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
-              children: (profile.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
-              latitude: profile.latitude,
-              longitude: profile.longitude,
-              job: profile.job_title || profile.job || '',
-              isOnline: false
-            };
-          })
-        );
-        setUsers(usersWithDetails);
-      } else {
-        setUsers(mockUsers.filter(user => user.id !== currentUserId));
+      if (data) {
+        setCurrentUserPhoto(data.url);
       }
     } catch (error) {
-      console.error('Error loading users:', error);
-      setUsers(mockUsers.filter(user => user.id !== currentUserId));
+      console.log('No primary photo found for current user');
     }
   };
 
-  const applyFilters = () => {
-    let filtered = users.filter(user => {
-      // Simple filters
-      const ageMatch = user.age >= ageRange.min && user.age <= ageRange.max;
-      const relationshipMatch = relationshipGoal === 'all' || user.relationshipType === relationshipGoal;
+  const loadSwipedUsers = async () => {
+    try {
+      const { data } = await supabase
+        .from('swipes')
+        .select('swiped_id')
+        .eq('swiper_id', currentUserId);
       
-      // Distance filter (if location available)
-      let distanceMatch = true;
-      if (userLocation && user.latitude && user.longitude) {
-        const distance = calculateDistance(
-          userLocation.lat, userLocation.lng,
-          user.latitude, user.longitude
-        );
-        distanceMatch = distance <= maxDistance;
+      if (data) {
+        setSwipedUsers(new Set(data.map(swipe => swipe.swiped_id)));
       }
-
-      // Advanced filters (if any)
-      let advancedMatch = true;
-      if (Object.keys(advancedFilters).length > 0) {
-        if (advancedFilters.ageRange) {
-          advancedMatch = advancedMatch && user.age >= advancedFilters.ageRange[0] && user.age <= advancedFilters.ageRange[1];
-        }
-        if (advancedFilters.verified) {
-          advancedMatch = advancedMatch && user.verified;
-        }
-        if (advancedFilters.relationshipType && advancedFilters.relationshipType.length > 0) {
-          advancedMatch = advancedMatch && advancedFilters.relationshipType.includes(user.relationshipType || 'serious');
-        }
-        if (advancedFilters.height && user.height) {
-          // Parse height string to number for comparison (simplified)
-          const userHeightNum = parseInt(user.height) || 170;
-          advancedMatch = advancedMatch && userHeightNum >= advancedFilters.height[0] && userHeightNum <= advancedFilters.height[1];
-        }
-      }
-
-      return ageMatch && relationshipMatch && distanceMatch && advancedMatch;
-    });
-
-    setFilteredUsers(filtered);
+    } catch (error) {
+      console.error('Error loading swiped users:', error);
+    }
   };
 
   const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
   };
 
-  const handleLike = async (userId: string) => {
-    console.log('Liked user:', userId);
-    // Handle like logic
+  const applyAdvancedFilters = (filters: FilterPreferences) => {
+    setAppliedFilters(filters);
+    loadUsersForCategory(selectedCategory, filters);
   };
 
-  const handleApplyAdvancedFilters = (filters: FilterPreferences) => {
-    setAdvancedFilters(filters);
-    setShowAdvancedFilters(false);
+  const loadUsersForCategory = async (category: CategoryType, filters?: Partial<FilterPreferences>) => {
+    setLoading(true);
+    
+    try {
+      console.log('Loading users with filters:', filters);
+      
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .neq('user_id', currentUserId)
+        .eq('incognito', false);
+
+      // Apply basic filters
+      if (filters?.ageRange) {
+        query = query.gte('age', filters.ageRange[0]).lte('age', filters.ageRange[1]);
+      }
+
+      if (filters?.verified) {
+        query = query.eq('verified', true);
+      }
+
+      if (filters?.relationshipType && filters.relationshipType.length > 0) {
+        query = query.in('relationship_type', filters.relationshipType);
+      }
+
+      if (filters?.smoking && filters.smoking.length > 0) {
+        query = query.in('smoking', filters.smoking);
+      }
+
+      if (filters?.drinking && filters.drinking.length > 0) {
+        query = query.in('drinking', filters.drinking);
+      }
+
+      if (filters?.exercise && filters.exercise.length > 0) {
+        query = query.in('exercise', filters.exercise);
+      }
+
+      if (filters?.children && filters.children.length > 0) {
+        query = query.in('children', filters.children);
+      }
+
+      if (filters?.zodiacSigns && filters.zodiacSigns.length > 0) {
+        query = query.in('zodiac_sign', filters.zodiacSigns);
+      }
+
+      // Apply category-specific filters
+      switch (category) {
+        case 'verified':
+          query = query.eq('verified', true);
+          break;
+        case 'serious':
+          query = query.eq('relationship_type', 'serious');
+          break;
+        case 'casual':
+          query = query.eq('relationship_type', 'casual');
+          break;
+        case 'friends':
+          query = query.eq('relationship_type', 'friends');
+          break;
+        case 'unsure':
+          query = query.eq('relationship_type', 'unsure');
+          break;
+        case 'recent':
+          query = query.order('created_at', { ascending: false });
+          break;
+        case 'online':
+          if (filters?.onlineOnly) {
+            const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+            query = query.gte('last_active', tenMinutesAgo);
+          }
+          break;
+      }
+
+      const { data: profilesData, error } = await query.limit(50);
+
+      if (error) {
+        console.error('Error loading users:', error);
+        setLoading(false);
+        return;
+      }
+
+      const usersWithData = await Promise.all(
+        (profilesData || []).map(async (profile) => {
+          const [photosResult, interestsResult] = await Promise.all([
+            supabase
+              .from('photos')
+              .select('url')
+              .eq('user_id', profile.user_id)
+              .order('position'),
+            supabase
+              .from('interests')
+              .select('interest')
+              .eq('user_id', profile.user_id)
+          ]);
+
+          const lastActiveDate = profile.last_active || profile.updated_at;
+          const lastActive = new Date(lastActiveDate);
+          const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
+          const isOnline = lastActive > tenMinutesAgo;
+
+          let distance = null;
+          if (userLocation && profile.latitude != null && profile.longitude != null) {
+            distance = calculateDistance(
+              userLocation.lat, 
+              userLocation.lng, 
+              Number(profile.latitude), 
+              Number(profile.longitude)
+            );
+          }
+
+          const userInterests = interestsResult.data?.map(i => i.interest) || [];
+
+          // Apply interest filter
+          if (filters?.interests && filters.interests.length > 0) {
+            const hasMatchingInterest = filters.interests.some(interest => 
+              userInterests.includes(interest)
+            );
+            if (!hasMatchingInterest) return null;
+          }
+
+          // Apply distance filter
+          if (filters?.maxDistance && distance && distance > filters.maxDistance) {
+            return null;
+          }
+
+          return {
+            id: profile.user_id,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio || '',
+            photos: photosResult.data?.map(p => p.url) || [],
+            interests: userInterests,
+            location: profile.location || '',
+            job: profile.job,
+            education: profile.education,
+            height: profile.height,
+            zodiacSign: profile.zodiac_sign,
+            relationshipType: profile.relationship_type as any,
+            children: profile.children as any,
+            smoking: profile.smoking as any,
+            drinking: profile.drinking as any,
+            exercise: profile.exercise as any,
+            verified: profile.verified || false,
+            lastActive: new Date(lastActiveDate),
+            isOnline,
+            distance,
+            latitude: profile.latitude,
+            longitude: profile.longitude,
+          };
+        })
+      );
+
+      let filteredUsers = usersWithData
+        .filter(u => u && u.photos.length > 0) as UserType[];
+
+      if (category === 'nearby' && userLocation) {
+        filteredUsers = filteredUsers
+          .filter(u => u.distance !== null && u.distance <= (filters?.maxDistance || 100))
+          .sort((a, b) => (a.distance || 0) - (b.distance || 0));
+      } else if (category === 'nearby') {
+        filteredUsers = filteredUsers
+          .filter(u => u.latitude != null && u.longitude != null)
+          .sort((a, b) => a.name.localeCompare(b.name));
+      }
+
+      setUsers(filteredUsers.slice(0, 20));
+      setLoading(false);
+    } catch (error) {
+      console.error('Error in loadUsersForCategory:', error);
+      setLoading(false);
+    }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto p-4 space-y-6">
-      {/* Simple Filters */}
-      <Card className="p-4">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Discovery Filters</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowAdvancedFilters(true)}
-              className="flex items-center space-x-2"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Advanced</span>
-            </Button>
+  const handleUserClick = (user: UserType) => {
+    setSelectedUser(user);
+  };
+
+  const handleLike = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: selectedUser.id,
+          action: 'like'
+        });
+
+      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      toast({
+        title: "Liked!",
+        description: `You liked ${selectedUser.name}`,
+      });
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error liking user:', error);
+    }
+  };
+
+  const handlePass = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: selectedUser.id,
+          action: 'dislike'
+        });
+
+      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error passing user:', error);
+    }
+  };
+
+  const handleSuperLike = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: currentUserId,
+          swiped_id: selectedUser.id,
+          action: 'super_like'
+        });
+
+      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      toast({
+        title: "Super Liked!",
+        description: `You super liked ${selectedUser.name}`,
+      });
+      setSelectedUser(null);
+    } catch (error) {
+      console.error('Error super liking user:', error);
+    }
+  };
+
+  const renderUserCard = (user: UserType) => (
+    <div
+      key={user.id}
+      className="relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-[1.02]"
+      onClick={() => handleUserClick(user)}
+    >
+      <div className="aspect-[3/4] relative">
+        <img
+          src={user.photos[0]}
+          alt={user.name}
+          className="w-full h-full object-cover"
+        />
+        
+        {/* Online Status */}
+        {user.isOnline && (
+          <div className="absolute top-3 right-3 flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+            <span>Online</span>
           </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Age Range</label>
-              <div className="flex space-x-2">
-                <Input
-                  type="number"
-                  placeholder="Min"
-                  value={ageRange.min}
-                  onChange={(e) => setAgeRange(prev => ({ ...prev, min: parseInt(e.target.value) || 18 }))}
-                  className="w-20"
-                />
-                <Input
-                  type="number"
-                  placeholder="Max"
-                  value={ageRange.max}
-                  onChange={(e) => setAgeRange(prev => ({ ...prev, max: parseInt(e.target.value) || 50 }))}
-                  className="w-20"
-                />
+        )}
+        
+        {/* Verification Badge */}
+        {user.verified && (
+          <div className="absolute top-3 left-3 bg-blue-500 text-white p-1.5 rounded-full">
+            <Shield className="h-3 w-3" />
+          </div>
+        )}
+
+        {/* Clean Bottom Overlay with minimal info */}
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
+          <div className="text-white">
+            <h3 className="font-semibold text-lg leading-tight">{user.name}, {user.age}</h3>
+            {user.distance && (
+              <div className="flex items-center text-sm text-white/90 mt-1">
+                <Navigation className="h-3 w-3 mr-1" />
+                <span>{Math.round(user.distance)}km away</span>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Max Distance (km)</label>
-              <Input
-                type="number"
-                value={maxDistance}
-                onChange={(e) => setMaxDistance(parseInt(e.target.value) || 50)}
-                className="w-full"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Looking For</label>
-              <Select value={relationshipGoal} onValueChange={setRelationshipGoal}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="serious">Serious relationship</SelectItem>
-                  <SelectItem value="casual">Something casual</SelectItem>
-                  <SelectItem value="friends">New friends</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            )}
           </div>
         </div>
-      </Card>
+      </div>
+    </div>
+  );
 
-      {/* Results Count */}
-      <div className="text-center text-gray-600">
-        Found {filteredUsers.length} people near you
+  return (
+    <div className="space-y-4 px-2 sm:px-0">
+      {/* Header with Advanced Filters Button */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-gray-900">Discover</h1>
+        <Button 
+          onClick={() => setShowAdvancedFilters(true)}
+          variant="outline" 
+          size="sm"
+          className="flex items-center space-x-2"
+        >
+          <Sliders className="h-4 w-4" />
+          <span>Filters</span>
+          {Object.keys(appliedFilters).length > 0 && (
+            <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
+              {Object.keys(appliedFilters).length}
+            </Badge>
+          )}
+        </Button>
       </div>
 
-      {/* User Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.map((user) => (
-          <Card key={user.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="relative">
-              <img
-                src={user.photos[0] || '/placeholder.svg'}
-                alt={user.name}
-                className="w-full h-64 object-cover"
-              />
-              {user.verified && (
-                <Badge className="absolute top-2 right-2 bg-blue-500">
-                  Verified
-                </Badge>
-              )}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                <h3 className="text-white font-bold text-lg">{user.name}, {user.age}</h3>
-                <div className="flex items-center text-white/90 text-sm">
-                  <MapPin className="h-3 w-3 mr-1" />
-                  {user.location}
-                </div>
-              </div>
+      {/* Category Tabs - Mobile Optimized */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Type</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+          {categories.map((category) => {
+            const Icon = category.icon;
+            return (
+              <Button
+                key={category.id}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  loadUsersForCategory(category.id, appliedFilters);
+                }}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
+                  selectedCategory === category.id
+                    ? `${category.color} text-white hover:opacity-90`
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-medium leading-tight text-center">{category.label}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Relationship Type Categories - Mobile Optimized */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Intent</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {relationshipCategories.map((category) => {
+            const Icon = category.icon;
+            return (
+              <Button
+                key={category.id}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  loadUsersForCategory(category.id, appliedFilters);
+                }}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
+                  selectedCategory === category.id
+                    ? `${category.color} text-white hover:opacity-90`
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-medium leading-tight text-center">{category.label}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Users Grid - Mobile Optimized */}
+      <div>
+        <div className="flex items-center justify-between mb-3 px-2">
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
+            {categories.find(c => c.id === selectedCategory)?.label || 
+             relationshipCategories.find(c => c.id === selectedCategory)?.label}
+            {selectedCategory === 'nearby' && !userLocation && (
+              <span className="text-sm text-gray-500 ml-2">(Enable location for distance)</span>
+            )}
+          </h3>
+          <Badge variant="secondary" className="text-xs sm:text-sm">{users.length} people</Badge>
+        </div>
+
+        {loading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[...Array(8)].map((_, index) => (
+              <div key={index} className="aspect-[3/4] bg-gray-200 rounded-2xl animate-pulse" />
+            ))}
+          </div>
+        ) : users.length > 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {users.map(renderUserCard)}
+          </div>
+        ) : (
+          <div className="text-center py-8 sm:py-12">
+            <div className="text-gray-400 mb-4">
+              <Users className="h-12 w-12 sm:h-16 sm:w-16 mx-auto" />
             </div>
-            
-            <CardContent className="p-4">
-              <p className="text-gray-600 text-sm mb-3 line-clamp-2">{user.bio}</p>
-              
-              <div className="flex flex-wrap gap-1 mb-4">
-                {user.interests.slice(0, 3).map((interest, idx) => (
-                  <Badge key={idx} variant="secondary" className="text-xs">
-                    {interest}
-                  </Badge>
-                ))}
-                {user.interests.length > 3 && (
-                  <Badge variant="secondary" className="text-xs">
-                    +{user.interests.length - 3} more
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex space-x-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setSelectedUser(user)}
-                  className="flex-1 flex items-center justify-center space-x-1"
-                >
-                  <Eye className="h-4 w-4" />
-                  <span>View</span>
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => handleLike(user.id)}
-                  className="flex-1 flex items-center justify-center space-x-1 bg-pink-500 hover:bg-pink-600"
-                >
-                  <Heart className="h-4 w-4" />
-                  <span>Like</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-600 mb-2">No users found</h3>
+            <p className="text-gray-500 text-sm sm:text-base px-4">
+              {selectedCategory === 'nearby' && !userLocation 
+                ? 'Enable location to see nearby users!'
+                : 'Try adjusting your filters or check back later!'}
+            </p>
+          </div>
+        )}
       </div>
-
-      {/* Profile Modal */}
-      {selectedUser && (
-        <ProfileModal
-          user={selectedUser}
-          onClose={() => setSelectedUser(null)}
-          onEdit={() => {}}
-          isCurrentUser={false}
-        />
-      )}
 
       {/* Advanced Filters Modal */}
       <AdvancedFilters
         isOpen={showAdvancedFilters}
         onClose={() => setShowAdvancedFilters(false)}
-        onApplyFilters={handleApplyAdvancedFilters}
-        currentFilters={advancedFilters}
+        onApplyFilters={applyAdvancedFilters}
+        currentFilters={appliedFilters}
       />
+
+      {/* Profile Modal with Actions */}
+      {selectedUser && (
+        <ModernProfileModal
+          user={selectedUser}
+          onClose={() => setSelectedUser(null)}
+          onLike={handleLike}
+          onPass={handlePass}
+          onSuperLike={handleSuperLike}
+        />
+      )}
+
+      {/* Match Celebration Modal */}
+      {showMatchModal && matchedUser && (
+        <MatchCelebrationModal
+          isOpen={showMatchModal}
+          matchedUser={matchedUser}
+          currentUserPhoto={currentUserPhoto}
+          onChatNow={() => {
+            setShowMatchModal(false);
+            toast({
+              title: "Opening chat...",
+              description: `Starting conversation with ${matchedUser?.name}`,
+            });
+          }}
+          onContinueBrowsing={() => setShowMatchModal(false)}
+          onClose={() => setShowMatchModal(false)}
+        />
+      )}
     </div>
   );
 };
