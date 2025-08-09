@@ -1,12 +1,14 @@
 
 import React, { useState } from 'react';
-import { User, Settings, Crown, Shield, Heart, Bell, MapPin, Eye, Users, Star, Award, Zap } from 'lucide-react';
+import { User, Settings, Crown, Shield, Heart, Bell, MapPin, Eye, Users, Star, Award, Zap, LogOut, Edit3, Globe, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserType } from '@/types/User';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ModernSettingsPageProps {
   currentUserProfile: UserType | null;
@@ -19,6 +21,7 @@ const ModernSettingsPage = ({
   onEditProfile, 
   onShowPremium 
 }: ModernSettingsPageProps) => {
+  const { signOut } = useAuth();
   const [notifications, setNotifications] = useState({
     matches: true,
     messages: true,
@@ -44,6 +47,14 @@ const ModernSettingsPage = ({
     { name: 'Premium', icon: Crown, color: 'bg-yellow-500', active: false },
     { name: 'Popular', icon: Star, color: 'bg-purple-500', active: userStats.likes > 50 }
   ];
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 pb-20">
@@ -121,7 +132,7 @@ const ModernSettingsPage = ({
               onClick={onEditProfile}
               className="w-full justify-start bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
             >
-              <User className="h-4 w-4 mr-2" />
+              <Edit3 className="h-4 w-4 mr-2" />
               Edit Profile
             </Button>
             <Button 
@@ -131,6 +142,58 @@ const ModernSettingsPage = ({
             >
               <Crown className="h-4 w-4 mr-2" />
               Upgrade to Premium
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Account Settings */}
+        <Card className="shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center text-lg">
+              <User className="h-5 w-5 mr-2 text-blue-600" />
+              Account
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View Profile
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Boost Profile
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Preferences */}
+        <Card className="shadow-lg">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center text-lg">
+              <Globe className="h-5 w-5 mr-2 text-green-600" />
+              Preferences
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button 
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <MapPin className="h-4 w-4 mr-2" />
+              Location Settings
+            </Button>
+            <Button 
+              variant="outline"
+              className="w-full justify-start"
+            >
+              <Filter className="h-4 w-4 mr-2" />
+              Discovery Settings
             </Button>
           </CardContent>
         </Card>
@@ -192,7 +255,7 @@ const ModernSettingsPage = ({
         <Card className="shadow-lg">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center text-lg">
-              <Eye className="h-5 w-5 mr-2 text-indigo-600" />
+              <Shield className="h-5 w-5 mr-2 text-indigo-600" />
               Privacy & Safety
             </CardTitle>
           </CardHeader>
@@ -285,6 +348,20 @@ const ModernSettingsPage = ({
             </CardContent>
           </Card>
         )}
+
+        {/* Logout Section */}
+        <Card className="shadow-lg border-red-100">
+          <CardContent className="p-4">
+            <Button
+              onClick={handleLogout}
+              variant="destructive"
+              className="w-full flex items-center justify-center space-x-2"
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Log Out</span>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ import GroupEvents from '@/components/GroupEvents';
 import VideoCallModal from '@/components/VideoCallModal';
 import AdvancedFilters from '@/components/filters/AdvancedFilters';
 import { GamificationStatus } from '@/components/GamificationStatus';
+import { VirtualChatRoom } from '@/components/chat/VirtualChatRoom';
 import { useGeolocation } from '@/hooks/useGeolocation';
 import { useAppState } from '@/hooks/useAppState';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -25,6 +26,9 @@ const Index = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const { location, error: locationError, loading: locationLoading } = useGeolocation();
+  
+  // Add showChatRoom state
+  const [showChatRoom, setShowChatRoom] = useState(false);
   
   // Custom hooks for state management
   const {
@@ -166,6 +170,7 @@ const Index = () => {
         onNotificationsClick={() => setShowNotifications(true)}
         onEventsClick={() => setShowEvents(true)}
         onFilterClick={() => setShowFilters(true)}
+        onChatRoomClick={() => setShowChatRoom(true)}
         showLocation={activeTab === 'discover' || activeTab === 'browse'}
         location={currentProfile?.location}
       />
@@ -238,6 +243,11 @@ const Index = () => {
       {/* Group Events Modal */}
       {showEvents && (
         <GroupEvents onClose={() => setShowEvents(false)} />
+      )}
+
+      {/* Virtual Chat Room Modal */}
+      {showChatRoom && (
+        <VirtualChatRoom onClose={() => setShowChatRoom(false)} />
       )}
 
       {/* Advanced Filters Modal - Now accessible to all users */}
