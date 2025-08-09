@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, X, Star } from 'lucide-react';
+import { Heart, RefreshCw, X, Star, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -56,8 +55,70 @@ const SwipeStack = () => {
   const [lastSwipeAction, setLastSwipeAction] = useState<'like' | 'dislike' | 'super_like' | null>(null);
   const [rewindCount, setRewindCount] = useState(0);
   const [hasSwipedOnce, setHasSwipedOnce] = useState(false);
+  
+  // Auto-refresh functionality
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date>(new Date());
+  const [timeUntilRefresh, setTimeUntilRefresh] = useState<number>(3600); // 1 hour in seconds
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load profiles when component mounts or when user changes
+  // Auto-refresh timer
+  useEffect(() => {
+    const updateCountdown = () => {
+      const now = new Date();
+      const timeSinceRefresh = Math.floor((now.getTime() - lastRefreshTime.getTime()) / 1000);
+      const remaining = Math.max(0, 3600 - timeSinceRefresh);
+      
+      setTimeUntilRefresh(remaining);
+      
+      // Auto refresh when time is up
+      if (remaining === 0 && profiles.length === 0) {
+        handleAutoRefresh();
+      }
+    };
+
+    refreshIntervalRef.current = setInterval(updateCountdown, 1000);
+    
+    return () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+    };
+  }, [lastRefreshTime, profiles.length]);
+
+  const formatTimeUntilRefresh = (seconds: number): string => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    } else if (minutes > 0) {
+      return `${minutes}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
+
+  const handleAutoRefresh = () => {
+    setLastRefreshTime(new Date());
+    setCurrentIndex(0);
+    loadProfiles();
+    toast({
+      title: "New profiles available! 🎉",
+      description: "Fresh profiles have been loaded for you to discover.",
+    });
+  };
+
+  const handleManualRefresh = () => {
+    setLastRefreshTime(new Date());
+    setCurrentIndex(0);
+    loadProfiles();
+    toast({
+      title: "Profiles refreshed! ✨",
+      description: "Loading new profiles for you to explore.",
+    });
+  };
+
   useEffect(() => {
     if (user) {
       loadCurrentUserPhoto();
@@ -81,7 +142,6 @@ const SwipeStack = () => {
     }
   }, [user]);
 
-  // Convert matchedUsers to profiles format when matchedUsers changes
   useEffect(() => {
     if (matchedUsers && matchedUsers.length > 0) {
       const convertedProfiles = matchedUsers.map(user => ({
@@ -101,7 +161,6 @@ const SwipeStack = () => {
       setProfiles(convertedProfiles);
       setLoading(false);
     } else if (!advancedLoading) {
-      // If advanced matching is not loading but returned no users, try basic loading
       loadBasicProfiles();
     }
   }, [matchedUsers, advancedLoading]);
@@ -131,7 +190,6 @@ const SwipeStack = () => {
     setLoading(true);
     
     try {
-      // Try advanced matching first
       await findAdvancedMatches();
     } catch (error) {
       console.error('Error loading profiles with advanced matching, falling back to basic:', error);
@@ -139,14 +197,12 @@ const SwipeStack = () => {
     }
   };
 
-  // Fallback basic profile loading
   const loadBasicProfiles = async () => {
     if (!user) return;
 
     try {
       console.log('Loading basic profiles...');
       
-      // Get users already swiped on
       const { data: swipedUsers } = await supabase
         .from('swipes')
         .select('swiped_id')
@@ -154,7 +210,6 @@ const SwipeStack = () => {
 
       const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
 
-      // Get profiles, excluding current user and already swiped users
       let profilesQuery = supabase
         .from('profiles')
         .select('*')
@@ -179,7 +234,6 @@ const SwipeStack = () => {
         return;
       }
 
-      // Load photos and interests for each profile
       const profilesWithData = await Promise.all(
         profilesData.map(async (profile) => {
           const [photosResult, interestsResult] = await Promise.all([
@@ -201,7 +255,7 @@ const SwipeStack = () => {
             age: profile.age,
             bio: profile.bio || '',
             location: profile.location || '',
-            job: profile.job || '',
+            job: profile.job_title || '',
             education: profile.education || '',
             photos: photosResult.data?.map(p => p.url) || [],
             interests: interestsResult.data?.map(i => i.interest) || [],
@@ -210,7 +264,6 @@ const SwipeStack = () => {
         })
       );
 
-      // Filter out profiles without photos
       const profilesWithPhotos = profilesWithData.filter(p => p.photos.length > 0);
       
       console.log('Loaded basic profiles:', profilesWithPhotos.length);
@@ -240,24 +293,20 @@ const SwipeStack = () => {
       return;
     }
 
-    // Store for undo functionality
     setLastSwipedProfile(currentProfile);
     setLastSwipeAction(action);
     setHasSwipedOnce(true);
 
     try {
-      // Track user activity
       await trackUserActivity(
         action === 'like' ? 'swipe_right' : action === 'dislike' ? 'swipe_left' : 'super_like',
         currentProfile.user_id,
         { profile_name: currentProfile.name }
       );
 
-      // Add gamification points
       const points = action === 'super_like' ? 10 : action === 'like' ? 5 : 2;
       await addEngagementPoints(points, action);
 
-      // Check if swipe already exists
       const { data: existingSwipe, error: existingSwipeError } = await supabase
         .from('swipes')
         .select('id')
@@ -280,7 +329,6 @@ const SwipeStack = () => {
         return;
       }
 
-      // Create the swipe
       const { error: swipeError } = await supabase
         .from('swipes')
         .insert({
@@ -299,14 +347,12 @@ const SwipeStack = () => {
         return;
       }
 
-      // Send notifications based on action
       if (action === 'like') {
         await notifyOnLike(currentProfile.user_id, user.user_metadata?.name || 'Someone');
       } else if (action === 'super_like') {
         await notifyOnSuperLike(currentProfile.user_id, user.user_metadata?.name || 'Someone');
       }
 
-      // Check for matches only if it's a like or super_like
       if (action === 'like' || action === 'super_like') {
         const { data: matchData } = await supabase
           .from('swipes')
@@ -317,7 +363,6 @@ const SwipeStack = () => {
           .maybeSingle();
 
         if (matchData) {
-          // Create match record
           await supabase
             .from('matches')
             .insert({
@@ -325,13 +370,9 @@ const SwipeStack = () => {
               user2_id: currentProfile.user_id
             });
 
-          // Send match notification
           await notifyOnMatch(currentProfile.user_id, user.user_metadata?.name || 'Someone');
-
-          // Extra points for matches
           await addEngagementPoints(50, 'match');
 
-          // Show animated match modal
           setMatchedUser(currentProfile);
           setShowMatchModal(true);
         } else {
@@ -343,10 +384,8 @@ const SwipeStack = () => {
         }
       }
 
-      // Move to next profile
       setCurrentIndex(currentIndex + 1);
 
-      // Load more profiles if running low
       if (currentIndex >= profiles.length - 2) {
         setTimeout(() => {
           loadProfiles();
@@ -374,14 +413,12 @@ const SwipeStack = () => {
     }
 
     try {
-      // Remove the last swipe from database
       await supabase
         .from('swipes')
         .delete()
         .eq('swiper_id', user.id)
         .eq('swiped_id', lastSwipedProfile.user_id);
 
-      // If it was a match, remove the match too
       if (lastSwipeAction === 'like' || lastSwipeAction === 'super_like') {
         await supabase
           .from('matches')
@@ -390,7 +427,6 @@ const SwipeStack = () => {
           .or(`user1_id.eq.${lastSwipedProfile.user_id},user2_id.eq.${lastSwipedProfile.user_id}`);
       }
 
-      // Move back to previous profile
       setCurrentIndex(Math.max(0, currentIndex - 1));
       setRewindCount(prev => prev + 1);
       
@@ -399,7 +435,6 @@ const SwipeStack = () => {
         description: `Undoing your ${lastSwipeAction} on ${lastSwipedProfile.name}`,
       });
 
-      // Clear undo state
       setLastSwipedProfile(null);
       setLastSwipeAction(null);
 
@@ -423,25 +458,16 @@ const SwipeStack = () => {
     handleAction('super_like');
   };
 
-  const handleRefresh = () => {
-    setCurrentIndex(0);
-    loadProfiles();
-  };
-
   const handleProfileView = async () => {
     if (!user || currentIndex >= profiles.length) return;
     
     const currentProfile = profiles[currentIndex];
     
-    // Track profile view activity
     await trackUserActivity('profile_view', currentProfile.user_id, {
       profile_name: currentProfile.name
     });
     
-    // Send notification to viewed user
     await notifyOnProfileView(currentProfile.user_id, user.user_metadata?.name || 'Someone');
-    
-    // Add engagement points
     await addEngagementPoints(3, 'profile_view');
     
     setShowProfileModal(true);
@@ -496,15 +522,34 @@ const SwipeStack = () => {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50 p-6">
         <Heart className="h-24 w-24 text-gray-300 mx-auto mb-8" />
-        <h3 className="text-2xl font-bold text-gray-700 mb-4 text-center">That's everyone for now!</h3>
-        <p className="text-gray-500 text-center mb-8">Check back later for new people to connect with.</p>
-        <Button 
-          onClick={handleRefresh} 
-          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-        >
-          <RefreshCw className="h-5 w-5 mr-2" />
-          Refresh
-        </Button>
+        <h3 className="text-2xl font-bold text-gray-700 mb-4 text-center">You've seen everyone nearby!</h3>
+        <p className="text-gray-500 text-center mb-6">New profiles will be available soon.</p>
+        
+        {/* Countdown Timer */}
+        <div className="bg-white rounded-2xl p-6 shadow-lg border mb-6 text-center">
+          <div className="flex items-center justify-center space-x-2 mb-3">
+            <Clock className="h-5 w-5 text-red-500" />
+            <span className="text-lg font-semibold text-gray-700">Next refresh in:</span>
+          </div>
+          <div className="text-3xl font-bold text-red-500 mb-2">
+            {formatTimeUntilRefresh(timeUntilRefresh)}
+          </div>
+          <p className="text-sm text-gray-500">New profiles update every hour</p>
+        </div>
+
+        <div className="flex space-x-3">
+          <Button 
+            onClick={handleManualRefresh} 
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            Refresh Now
+          </Button>
+        </div>
+        
+        <p className="text-xs text-gray-400 mt-4 text-center">
+          Try expanding your search radius or updating your preferences for more matches
+        </p>
       </div>
     );
   }
@@ -514,10 +559,8 @@ const SwipeStack = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 pt-safe pb-safe">
       <div className="container mx-auto px-4 py-8">
-        {/* Card Design */}
         <div className="relative w-full max-w-sm mx-auto">
           <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden">
-            {/* Photo Section */}
             <div className="relative h-96 md:h-[500px] overflow-hidden">
               <img
                 src={currentProfile.photos[0]}
@@ -526,7 +569,6 @@ const SwipeStack = () => {
                 draggable={false}
               />
               
-              {/* Verification Badge */}
               {currentProfile.verified && (
                 <div className="absolute top-4 right-4 bg-blue-500 text-white p-2 rounded-full">
                   <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
@@ -535,7 +577,6 @@ const SwipeStack = () => {
                 </div>
               )}
 
-              {/* Info Button - Updated to handle profile views */}
               <button
                 onClick={handleProfileView}
                 className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
@@ -545,11 +586,9 @@ const SwipeStack = () => {
                 </svg>
               </button>
 
-              {/* Gradient Overlay */}
               <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
             </div>
 
-            {/* Profile Info */}
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
               <div className="flex items-center space-x-2 mb-3">
                 <h2 className="text-2xl md:text-3xl font-bold">{currentProfile.name}</h2>
@@ -592,7 +631,6 @@ const SwipeStack = () => {
             </div>
           </div>
 
-          {/* Action Buttons with integrated Rewind */}
           <ActionButtons
             onDislike={() => handleAction('dislike')}
             onSuperLike={handleSuperLike}
@@ -605,7 +643,6 @@ const SwipeStack = () => {
           />
         </div>
 
-        {/* Modals */}
         {showProfileModal && (
           <ModernProfileModal
             user={convertToUserType(currentProfile)}
