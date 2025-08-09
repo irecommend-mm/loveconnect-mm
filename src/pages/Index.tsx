@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,6 +19,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMatches } from '@/hooks/useMatches';
 import { User as UserType } from '@/types/User';
 import { X } from 'lucide-react';
+import LocalEventsModal from '@/components/LocalEventsModal';
 
 const Index = () => {
   const navigate = useNavigate();
@@ -235,9 +235,9 @@ const Index = () => {
         <NotificationCenter onClose={() => setShowNotifications(false)} />
       )}
 
-      {/* Group Events Modal */}
+      {/* Local Events Modal - Updated from Group Events */}
       {showEvents && (
-        <GroupEvents onClose={() => setShowEvents(false)} />
+        <LocalEventsModal onClose={() => setShowEvents(false)} />
       )}
 
       {/* Advanced Filters Modal - Now accessible to all users */}
