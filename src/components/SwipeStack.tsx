@@ -1,647 +1,273 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Heart, X, Star, RotateCcw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Heart, RefreshCw, X, Star } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { User } from '@/types/User';
 import { toast } from '@/hooks/use-toast';
-import { useAdvancedMatching } from '@/hooks/useAdvancedMatching';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { useGamification } from '@/hooks/useGamification';
-import ModernProfileModal from './ModernProfileModal';
-import MatchCelebrationModal from './MatchCelebrationModal';
-import SuperLikeModal from './SuperLikeModal';
-import ActionButtons from './ActionButtons';
-
-interface Profile {
-  id: string;
-  user_id: string;
-  name: string;
-  age: number;
-  bio: string;
-  location: string;
-  job: string;
-  education: string;
-  photos: string[];
-  interests: string[];
-  verified: boolean;
-}
+import SwipeCard from './SwipeCard';
 
 const SwipeStack = () => {
   const { user } = useAuth();
-  const {
-    matchedUsers,
-    loading: advancedLoading,
-    findAdvancedMatches,
-    trackUserActivity,
-    updateLocationHistory
-  } = useAdvancedMatching();
-  const {
-    notifyOnLike,
-    notifyOnSuperLike,
-    notifyOnMatch,
-    notifyOnProfileView
-  } = usePushNotifications();
-  const { addEngagementPoints, updateDailyStreak } = useGamification();
-
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showMatchModal, setShowMatchModal] = useState(false);
-  const [showSuperLikeModal, setShowSuperLikeModal] = useState(false);
-  const [matchedUser, setMatchedUser] = useState<Profile | null>(null);
-  const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
-  const [lastSwipedProfile, setLastSwipedProfile] = useState<Profile | null>(null);
-  const [lastSwipeAction, setLastSwipeAction] = useState<'like' | 'dislike' | 'super_like' | null>(null);
-  const [rewindCount, setRewindCount] = useState(0);
-  const [hasSwipedOnce, setHasSwipedOnce] = useState(false);
+  const [lastResetTime, setLastResetTime] = useState<Date>(new Date());
+  const [timeUntilReset, setTimeUntilReset] = useState<string>('');
 
-  // Load profiles when component mounts or when user changes
   useEffect(() => {
-    if (user) {
-      loadCurrentUserPhoto();
-      updateDailyStreak();
-      loadProfiles();
-      
-      // Record location if available
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            updateLocationHistory(
-              position.coords.latitude,
-              position.coords.longitude,
-              position.coords.accuracy
-            );
-          },
-          (error) => console.log('Geolocation error:', error),
-          { enableHighAccuracy: true, timeout: 10000, maximumAge: 600000 }
-        );
-      }
-    }
-  }, [user]);
-
-  // Convert matchedUsers to profiles format when matchedUsers changes
-  useEffect(() => {
-    if (matchedUsers && matchedUsers.length > 0) {
-      const convertedProfiles = matchedUsers.map(user => ({
-        id: user.id,
-        user_id: user.id,
-        name: user.name,
-        age: user.age,
-        bio: user.bio,
-        location: user.location,
-        job: user.job || '',
-        education: user.education || '',
-        photos: user.photos,
-        interests: user.interests,
-        verified: user.verified || false,
-      }));
-      
-      setProfiles(convertedProfiles);
-      setLoading(false);
-    } else if (!advancedLoading) {
-      // If advanced matching is not loading but returned no users, try basic loading
-      loadBasicProfiles();
-    }
-  }, [matchedUsers, advancedLoading]);
-
-  const loadCurrentUserPhoto = async () => {
-    if (!user) return;
+    loadUsers();
     
-    try {
-      const { data } = await supabase
-        .from('photos')
-        .select('url')
-        .eq('user_id', user.id)
-        .eq('is_primary', true)
-        .single();
+    // Set up timer for hourly reset
+    const interval = setInterval(() => {
+      const now = new Date();
+      const hoursSinceReset = (now.getTime() - lastResetTime.getTime()) / (1000 * 60 * 60);
       
-      if (data) {
-        setCurrentUserPhoto(data.url);
+      if (hoursSinceReset >= 1) {
+        resetUsers();
+      } else {
+        updateTimeUntilReset();
       }
-    } catch (error) {
-      console.log('No primary photo found for current user');
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [lastResetTime]);
+
+  const updateTimeUntilReset = () => {
+    const now = new Date();
+    const nextReset = new Date(lastResetTime);
+    nextReset.setHours(nextReset.getHours() + 1);
+    
+    const msUntilReset = nextReset.getTime() - now.getTime();
+    const minutesUntilReset = Math.ceil(msUntilReset / (1000 * 60));
+    
+    if (minutesUntilReset > 0) {
+      setTimeUntilReset(`${minutesUntilReset} minutes`);
+    } else {
+      setTimeUntilReset('Soon');
     }
   };
 
-  const loadProfiles = async () => {
+  const loadUsers = async () => {
     if (!user) return;
 
     setLoading(true);
-    
     try {
-      // Try advanced matching first
-      await findAdvancedMatches();
+      // Get users that haven't been swiped on in the last hour
+      const oneHourAgo = new Date();
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          user_photos (photo_url),
+          user_interests (interest)
+        `)
+        .neq('user_id', user.id)
+        .limit(20);
+
+      if (error) throw error;
+
+      const formattedUsers: User[] = profiles?.map(profile => ({
+        id: profile.user_id,
+        name: profile.first_name + (profile.last_name ? ` ${profile.last_name}` : ''),
+        age: profile.age || 25,
+        location: profile.location || 'Unknown',
+        photos: profile.user_photos?.map((p: any) => p.photo_url) || ['/placeholder.svg'],
+        bio: profile.bio || '',
+        interests: profile.user_interests?.map((i: any) => i.interest) || [],
+        verified: !!profile.verification_status,
+        lastActive: new Date().toISOString(),
+        relationshipGoal: profile.relationship_goal || 'casual',
+        education: profile.education || '',
+        height: profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}' ${Math.round((profile.height_cm % 30.48) / 2.54)}"` : '',
+        occupation: profile.job_title || '',
+        distance: Math.floor(Math.random() * 20) + 1,
+        isOnline: Math.random() > 0.5,
+        hasStory: Math.random() > 0.7,
+        isPremium: Math.random() > 0.8,
+        latitude: profile.latitude || 0,
+        longitude: profile.longitude || 0,
+      })) || [];
+
+      setUsers(formattedUsers);
+      setCurrentIndex(0);
     } catch (error) {
-      console.error('Error loading profiles with advanced matching, falling back to basic:', error);
-      await loadBasicProfiles();
+      console.error('Error loading users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load users. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Fallback basic profile loading
-  const loadBasicProfiles = async () => {
+  const resetUsers = () => {
+    setLastResetTime(new Date());
+    setCurrentIndex(0);
+    loadUsers();
+    toast({
+      title: "New Users Available!",
+      description: "Fresh profiles have been loaded for you to discover.",
+    });
+  };
+
+  const handleSwipe = async (direction: 'left' | 'right', userId: string) => {
     if (!user) return;
 
     try {
-      console.log('Loading basic profiles...');
-      
-      // Get users already swiped on
-      const { data: swipedUsers } = await supabase
-        .from('swipes')
-        .select('swiped_id')
-        .eq('swiper_id', user.id);
-
-      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
-
-      // Get profiles, excluding current user and already swiped users
-      let profilesQuery = supabase
-        .from('profiles')
-        .select('*')
-        .neq('user_id', user.id)
-        .eq('incognito', false);
-
-      if (swipedUserIds.length > 0) {
-        profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
-      }
-
-      const { data: profilesData, error } = await profilesQuery.limit(20);
-
-      if (error) {
-        console.error('Error loading basic profiles:', error);
-        setLoading(false);
-        return;
-      }
-
-      if (!profilesData || profilesData.length === 0) {
-        setProfiles([]);
-        setLoading(false);
-        return;
-      }
-
-      // Load photos and interests for each profile
-      const profilesWithData = await Promise.all(
-        profilesData.map(async (profile) => {
-          const [photosResult, interestsResult] = await Promise.all([
-            supabase
-              .from('photos')
-              .select('url')
-              .eq('user_id', profile.user_id)
-              .order('position'),
-            supabase
-              .from('interests')
-              .select('interest')
-              .eq('user_id', profile.user_id)
-          ]);
-
-          return {
-            id: profile.user_id,
-            user_id: profile.user_id,
-            name: profile.name,
-            age: profile.age,
-            bio: profile.bio || '',
-            location: profile.location || '',
-            job: profile.job || '',
-            education: profile.education || '',
-            photos: photosResult.data?.map(p => p.url) || [],
-            interests: interestsResult.data?.map(i => i.interest) || [],
-            verified: profile.verified || false,
-          };
-        })
-      );
-
-      // Filter out profiles without photos
-      const profilesWithPhotos = profilesWithData.filter(p => p.photos.length > 0);
-      
-      console.log('Loaded basic profiles:', profilesWithPhotos.length);
-      setProfiles(profilesWithPhotos);
-      setLoading(false);
-      
-    } catch (error) {
-      console.error('Error in loadBasicProfiles:', error);
-      setProfiles([]);
-      setLoading(false);
-    }
-  };
-
-  const handleAction = async (action: 'like' | 'dislike' | 'super_like') => {
-    if (!user || currentIndex >= profiles.length) return;
-
-    const currentProfile = profiles[currentIndex];
-    
-    if (!currentProfile?.user_id) {
-      console.error('Invalid profile data:', currentProfile);
-      toast({
-        title: "Error",
-        description: "Invalid profile data. Moving to next profile.",
-        variant: "destructive",
-      });
-      setCurrentIndex(currentIndex + 1);
-      return;
-    }
-
-    // Store for undo functionality
-    setLastSwipedProfile(currentProfile);
-    setLastSwipeAction(action);
-    setHasSwipedOnce(true);
-
-    try {
-      // Track user activity
-      await trackUserActivity(
-        action === 'like' ? 'swipe_right' : action === 'dislike' ? 'swipe_left' : 'super_like',
-        currentProfile.user_id,
-        { profile_name: currentProfile.name }
-      );
-
-      // Add gamification points
-      const points = action === 'super_like' ? 10 : action === 'like' ? 5 : 2;
-      await addEngagementPoints(points, action);
-
-      // Check if swipe already exists
-      const { data: existingSwipe, error: existingSwipeError } = await supabase
-        .from('swipes')
-        .select('id')
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', currentProfile.user_id)
-        .maybeSingle();
-
-      if (existingSwipeError) {
-        console.error('Error checking existing swipe:', existingSwipeError);
-        toast({
-          title: "Error",
-          description: "Unable to verify swipe status. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      if (existingSwipe) {
-        setCurrentIndex(currentIndex + 1);
-        return;
-      }
-
-      // Create the swipe
-      const { error: swipeError } = await supabase
-        .from('swipes')
+      // Record the swipe
+      await supabase
+        .from('user_swipes')
         .insert({
           swiper_id: user.id,
-          swiped_id: currentProfile.user_id,
-          action,
+          swiped_id: userId,
+          action: direction === 'right' ? 'like' : 'pass',
+          created_at: new Date().toISOString()
         });
 
-      if (swipeError) {
-        console.error('Error creating swipe:', swipeError);
-        toast({
-          title: "Error",
-          description: "Unable to record your action. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Send notifications based on action
-      if (action === 'like') {
-        await notifyOnLike(currentProfile.user_id, user.user_metadata?.name || 'Someone');
-      } else if (action === 'super_like') {
-        await notifyOnSuperLike(currentProfile.user_id, user.user_metadata?.name || 'Someone');
-      }
-
-      // Check for matches only if it's a like or super_like
-      if (action === 'like' || action === 'super_like') {
-        const { data: matchData } = await supabase
-          .from('swipes')
+      if (direction === 'right') {
+        // Check for mutual like (match)
+        const { data: mutualLike } = await supabase
+          .from('user_swipes')
           .select('*')
-          .eq('swiper_id', currentProfile.user_id)
+          .eq('swiper_id', userId)
           .eq('swiped_id', user.id)
           .eq('action', 'like')
-          .maybeSingle();
+          .single();
 
-        if (matchData) {
-          // Create match record
+        if (mutualLike) {
+          // Create match
           await supabase
             .from('matches')
             .insert({
               user1_id: user.id,
-              user2_id: currentProfile.user_id
+              user2_id: userId,
+              created_at: new Date().toISOString()
             });
 
-          // Send match notification
-          await notifyOnMatch(currentProfile.user_id, user.user_metadata?.name || 'Someone');
-
-          // Extra points for matches
-          await addEngagementPoints(50, 'match');
-
-          // Show animated match modal
-          setMatchedUser(currentProfile);
-          setShowMatchModal(true);
-        } else {
-          const actionText = action === 'super_like' ? 'Super liked' : 'Liked';
           toast({
-            title: `${actionText}! 💕`,
-            description: `You ${actionText.toLowerCase()} ${currentProfile.name}'s profile.`,
+            title: "It's a Match! 🎉",
+            description: "You both liked each other!",
           });
         }
       }
-
-      // Move to next profile
-      setCurrentIndex(currentIndex + 1);
-
-      // Load more profiles if running low
-      if (currentIndex >= profiles.length - 2) {
-        setTimeout(() => {
-          loadProfiles();
-        }, 100);
-      }
-
     } catch (error) {
-      console.error('Unexpected error in handleAction:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleUndo = async () => {
-    if (!lastSwipedProfile || !lastSwipeAction || !user) {
-      toast({
-        title: "Nothing to undo",
-        description: "No recent swipe to undo.",
-        variant: "destructive",
-      });
-      return;
+      console.error('Error recording swipe:', error);
     }
 
-    try {
-      // Remove the last swipe from database
-      await supabase
-        .from('swipes')
-        .delete()
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', lastSwipedProfile.user_id);
-
-      // If it was a match, remove the match too
-      if (lastSwipeAction === 'like' || lastSwipeAction === 'super_like') {
-        await supabase
-          .from('matches')
-          .delete()
-          .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
-          .or(`user1_id.eq.${lastSwipedProfile.user_id},user2_id.eq.${lastSwipedProfile.user_id}`);
-      }
-
-      // Move back to previous profile
-      setCurrentIndex(Math.max(0, currentIndex - 1));
-      setRewindCount(prev => prev + 1);
-      
-      toast({
-        title: "Swipe undone! ↶",
-        description: `Undoing your ${lastSwipeAction} on ${lastSwipedProfile.name}`,
-      });
-
-      // Clear undo state
-      setLastSwipedProfile(null);
-      setLastSwipeAction(null);
-
-    } catch (error) {
-      console.error('Error undoing swipe:', error);
-      toast({
-        title: "Error",
-        description: "Unable to undo swipe. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleSuperLike = () => {
-    if (currentIndex >= profiles.length) return;
-    setShowSuperLikeModal(true);
-  };
-
-  const handleConfirmSuperLike = () => {
-    setShowSuperLikeModal(false);
-    handleAction('super_like');
-  };
-
-  const handleRefresh = () => {
-    setCurrentIndex(0);
-    loadProfiles();
-  };
-
-  const handleProfileView = async () => {
-    if (!user || currentIndex >= profiles.length) return;
-    
-    const currentProfile = profiles[currentIndex];
-    
-    // Track profile view activity
-    await trackUserActivity('profile_view', currentProfile.user_id, {
-      profile_name: currentProfile.name
-    });
-    
-    // Send notification to viewed user
-    await notifyOnProfileView(currentProfile.user_id, user.user_metadata?.name || 'Someone');
-    
-    // Add engagement points
-    await addEngagementPoints(3, 'profile_view');
-    
-    setShowProfileModal(true);
-  };
-
-  const convertToUserType = (profile: Profile) => ({
-    id: profile.user_id,
-    name: profile.name,
-    age: profile.age,
-    bio: profile.bio,
-    photos: profile.photos,
-    interests: profile.interests,
-    location: profile.location,
-    job: profile.job,
-    education: profile.education,
-    verified: profile.verified,
-    lastActive: new Date(),
-    height: '',
-    zodiacSign: '',
-    relationshipType: 'serious' as const,
-    children: 'unsure' as const,
-    smoking: 'no' as const,
-    drinking: 'sometimes' as const,
-    exercise: 'sometimes' as const,
-  });
-
-  const handleChatNow = () => {
-    setShowMatchModal(false);
-    toast({
-      title: "Opening chat...",
-      description: `Starting conversation with ${matchedUser?.name}`,
-    });
-  };
-
-  const handleContinueBrowsing = () => {
-    setShowMatchModal(false);
-    setMatchedUser(null);
+    setCurrentIndex(prev => prev + 1);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500 mx-auto mb-6"></div>
-          <p className="text-lg text-gray-600">Finding amazing people for you...</p>
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
+
+  const currentUser = users[currentIndex];
+  const hasMoreUsers = currentIndex < users.length;
+
+  if (!hasMoreUsers) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 px-8 text-center">
+        <div className="w-20 h-20 bg-gradient-to-br from-pink-100 to-purple-100 rounded-full flex items-center justify-center mb-6">
+          <Clock className="w-10 h-10 text-pink-500" />
+        </div>
+        
+        <h3 className="text-xl font-bold text-gray-900 mb-2">
+          You've seen everyone for now!
+        </h3>
+        
+        <p className="text-gray-600 mb-4 max-w-sm">
+          New profiles will be available in <strong>{timeUntilReset}</strong>. 
+          We refresh the stack every hour with new people to discover!
+        </p>
+        
+        <Badge variant="outline" className="mb-6 text-sm px-3 py-1">
+          <RotateCcw className="w-3 h-3 mr-1" />
+          Auto-refresh in {timeUntilReset}
+        </Badge>
+        
+        <div className="flex space-x-3">
+          <Button 
+            onClick={resetUsers}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Refresh Now
+          </Button>
+          
+          <Button 
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Back to Browse
+          </Button>
         </div>
       </div>
     );
   }
-
-  if (currentIndex >= profiles.length) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50 p-6">
-        <Heart className="h-24 w-24 text-gray-300 mx-auto mb-8" />
-        <h3 className="text-2xl font-bold text-gray-700 mb-4 text-center">That's everyone for now!</h3>
-        <p className="text-gray-500 text-center mb-8">Check back later for new people to connect with.</p>
-        <Button 
-          onClick={handleRefresh} 
-          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-        >
-          <RefreshCw className="h-5 w-5 mr-2" />
-          Refresh
-        </Button>
-      </div>
-    );
-  }
-
-  const currentProfile = profiles[currentIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 pt-safe pb-safe">
-      <div className="container mx-auto px-4 py-8">
-        {/* Card Design */}
-        <div className="relative w-full max-w-sm mx-auto">
-          <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden">
-            {/* Photo Section */}
-            <div className="relative h-96 md:h-[500px] overflow-hidden">
-              <img
-                src={currentProfile.photos[0]}
-                alt={currentProfile.name}
-                className="w-full h-full object-cover"
-                draggable={false}
-              />
-              
-              {/* Verification Badge */}
-              {currentProfile.verified && (
-                <div className="absolute top-4 right-4 bg-blue-500 text-white p-2 rounded-full">
-                  <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                    <path d="M10 0L12.09 6.26L20 6.93L15.18 12.99L17.64 20L10 16.18L2.36 20L4.82 12.99L0 6.93L7.91 6.26L10 0Z"/>
-                  </svg>
-                </div>
-              )}
-
-              {/* Info Button - Updated to handle profile views */}
-              <button
-                onClick={handleProfileView}
-                className="absolute bottom-4 right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors"
-              >
-                <svg className="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </button>
-
-              {/* Gradient Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-            </div>
-
-            {/* Profile Info */}
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-              <div className="flex items-center space-x-2 mb-3">
-                <h2 className="text-2xl md:text-3xl font-bold">{currentProfile.name}</h2>
-                <span className="text-xl md:text-2xl">{currentProfile.age}</span>
-              </div>
-              
-              {currentProfile.location && (
-                <div className="flex items-center space-x-2 text-sm opacity-90 mb-2">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                  </svg>
-                  <span>{currentProfile.location}</span>
-                </div>
-              )}
-              
-              {currentProfile.job && (
-                <div className="flex items-center space-x-2 text-sm opacity-90 mb-2">
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0H8m8 0v2a2 2 0 01-2 2H10a2 2 0 01-2-2V6" />
-                  </svg>
-                  <span>{currentProfile.job}</span>
-                </div>
-              )}
-
-              {currentProfile.bio && (
-                <p className="text-sm opacity-90 mb-4 line-clamp-2">{currentProfile.bio}</p>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                {currentProfile.interests.slice(0, 3).map((interest, index) => (
-                  <span
-                    key={index}
-                    className="px-3 py-1 bg-white/20 text-white text-xs backdrop-blur-sm rounded-full border-0"
-                  >
-                    {interest}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons with integrated Rewind */}
-          <ActionButtons
-            onDislike={() => handleAction('dislike')}
-            onSuperLike={handleSuperLike}
-            onLike={() => handleAction('like')}
-            onRewind={handleUndo}
-            rewindCount={rewindCount}
-            maxRewinds={3}
-            isPremium={false}
-            disabled={!hasSwipedOnce || !lastSwipedProfile}
-          />
+    <div className="max-w-sm mx-auto">
+      <div className="relative mb-6">
+        {/* Progress indicator */}
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+          <div 
+            className="bg-gradient-to-r from-pink-500 to-purple-600 h-2 rounded-full transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / users.length) * 100}%` }}
+          ></div>
         </div>
+        
+        <div className="text-center text-sm text-gray-600">
+          {currentIndex + 1} of {users.length}
+        </div>
+      </div>
 
-        {/* Modals */}
-        {showProfileModal && (
-          <ModernProfileModal
-            user={convertToUserType(currentProfile)}
-            onClose={() => setShowProfileModal(false)}
-            onLike={() => {
-              setShowProfileModal(false);
-              handleAction('like');
-            }}
-            onPass={() => {
-              setShowProfileModal(false);
-              handleAction('dislike');
-            }}
-            onSuperLike={() => {
-              setShowProfileModal(false);
-              handleAction('super_like');
-            }}
-          />
-        )}
-
-        {showMatchModal && matchedUser && (
-          <MatchCelebrationModal
-            isOpen={showMatchModal}
-            matchedUser={convertToUserType(matchedUser)}
-            currentUserPhoto={currentUserPhoto}
-            onChatNow={handleChatNow}
-            onContinueBrowsing={handleContinueBrowsing}
-            onClose={() => setShowMatchModal(false)}
-          />
-        )}
-
-        <SuperLikeModal
-          isOpen={showSuperLikeModal}
-          onClose={() => setShowSuperLikeModal(false)}
-          onConfirm={handleConfirmSuperLike}
-          userName={currentProfile?.name || ''}
+      {currentUser && (
+        <SwipeCard
+          user={currentUser}
+          onSwipe={handleSwipe}
         />
+      )}
+
+      {/* Action buttons */}
+      <div className="flex justify-center items-center space-x-4 mt-6">
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-16 h-16 rounded-full border-red-200 hover:bg-red-50 hover:border-red-300"
+          onClick={() => handleSwipe('left', currentUser?.id)}
+        >
+          <X className="h-6 w-6 text-red-500" />
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-20 h-20 rounded-full border-yellow-200 hover:bg-yellow-50 hover:border-yellow-300"
+          onClick={() => {/* Super like functionality */}}
+        >
+          <Star className="h-7 w-7 text-yellow-500" />
+        </Button>
+        
+        <Button
+          variant="outline"
+          size="lg"
+          className="w-16 h-16 rounded-full border-green-200 hover:bg-green-50 hover:border-green-300"
+          onClick={() => handleSwipe('right', currentUser?.id)}
+        >
+          <Heart className="h-6 w-6 text-green-500" />
+        </Button>
       </div>
     </div>
   );

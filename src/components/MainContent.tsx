@@ -5,7 +5,7 @@ import SwipeStack from './SwipeStack';
 import DiscoveryGrid from './DiscoveryGrid';
 import LikesYouPage from './LikesYouPage';
 import MatchesList from './MatchesList';
-import SettingsPage from './SettingsPage';
+import ModernSettingsPage from './ModernSettingsPage';
 import ChatInterface from './ChatInterface';
 import { Match, User as UserType } from '@/types/User';
 
@@ -77,10 +77,10 @@ const MainContent = ({
           </div>
         )}
 
-        {/* Settings Tab */}
+        {/* Settings Tab - Using Modern Settings Page */}
         {activeTab === 'settings' && (
           <div className="px-2 sm:px-4">
-            <SettingsPage 
+            <ModernSettingsPage 
               currentUserProfile={currentUserProfile}
               onEditProfile={onEditProfile}
               onShowPremium={onShowPremium}
