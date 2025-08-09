@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { User } from '@/types/User';
@@ -57,35 +56,54 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
   const loadUsers = async () => {
     try {
-      const { data } = await supabase
+      const { data: profilesData } = await supabase
         .from('profiles')
         .select('*')
         .neq('user_id', currentUserId)
         .limit(20);
       
-      if (data && data.length > 0) {
-        const formattedUsers = data.map(profile => ({
-          id: profile.user_id,
-          name: profile.name || 'Unknown',
-          age: profile.age || 25,
-          location: profile.location || 'Unknown',
-          photos: profile.photos || ['/placeholder.svg'],
-          bio: profile.bio || '',
-          interests: profile.interests || [],
-          verified: profile.verified || false,
-          lastActive: profile.last_active || new Date().toISOString(),
-          relationshipGoal: profile.relationship_goal || 'serious',
-          education: profile.education || '',
-          height: profile.height || 170,
-          zodiacSign: profile.zodiac_sign || '',
-          smoking: profile.smoking || 'no',
-          drinking: profile.drinking || 'sometimes',
-          exercise: profile.exercise || 'sometimes',
-          children: profile.children || 'unsure',
-          latitude: profile.latitude,
-          longitude: profile.longitude
-        }));
-        setUsers(formattedUsers);
+      if (profilesData && profilesData.length > 0) {
+        // Load photos and interests for each profile
+        const usersWithDetails = await Promise.all(
+          profilesData.map(async (profile) => {
+            const [photosResult, interestsResult] = await Promise.all([
+              supabase
+                .from('photos')
+                .select('url')
+                .eq('user_id', profile.user_id)
+                .order('position'),
+              supabase
+                .from('interests')
+                .select('interest')
+                .eq('user_id', profile.user_id)
+            ]);
+
+            return {
+              id: profile.user_id,
+              name: profile.name || 'Unknown',
+              age: profile.age || 25,
+              location: profile.location || 'Unknown',
+              photos: photosResult.data?.map(p => p.url) || ['/placeholder.svg'],
+              bio: profile.bio || '',
+              interests: interestsResult.data?.map(i => i.interest) || [],
+              verified: profile.verified || false,
+              lastActive: new Date(profile.last_active || profile.created_at),
+              relationshipType: (profile.relationship_type === 'friendship' ? 'friends' : profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
+              education: profile.education || '',
+              height: profile.height || (profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}'${Math.round(((profile.height_cm / 30.48) % 1) * 12)}"` : ''),
+              zodiacSign: profile.zodiac_sign || '',
+              smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'sometimes',
+              drinking: (profile.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
+              exercise: (profile.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
+              children: (profile.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
+              latitude: profile.latitude,
+              longitude: profile.longitude,
+              job: profile.job_title || profile.job || '',
+              isOnline: false
+            };
+          })
+        );
+        setUsers(usersWithDetails);
       } else {
         setUsers(mockUsers.filter(user => user.id !== currentUserId));
       }
@@ -99,7 +117,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     let filtered = users.filter(user => {
       // Simple filters
       const ageMatch = user.age >= ageRange.min && user.age <= ageRange.max;
-      const relationshipMatch = relationshipGoal === 'all' || user.relationshipGoal === relationshipGoal;
+      const relationshipMatch = relationshipGoal === 'all' || user.relationshipType === relationshipGoal;
       
       // Distance filter (if location available)
       let distanceMatch = true;
@@ -121,10 +139,12 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           advancedMatch = advancedMatch && user.verified;
         }
         if (advancedFilters.relationshipType && advancedFilters.relationshipType.length > 0) {
-          advancedMatch = advancedMatch && advancedFilters.relationshipType.includes(user.relationshipGoal);
+          advancedMatch = advancedMatch && advancedFilters.relationshipType.includes(user.relationshipType || 'serious');
         }
-        if (advancedFilters.height) {
-          advancedMatch = advancedMatch && user.height >= advancedFilters.height[0] && user.height <= advancedFilters.height[1];
+        if (advancedFilters.height && user.height) {
+          // Parse height string to number for comparison (simplified)
+          const userHeightNum = parseInt(user.height) || 170;
+          advancedMatch = advancedMatch && userHeightNum >= advancedFilters.height[0] && userHeightNum <= advancedFilters.height[1];
         }
       }
 
