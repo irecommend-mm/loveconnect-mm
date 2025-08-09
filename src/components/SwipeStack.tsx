@@ -90,7 +90,7 @@ const SwipeStack = () => {
 
       const transformedUsers: User[] = (profiles || []).map(profile => ({
         id: profile.user_id,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Anonymous',
+        name: profile.name || 'Anonymous',
         age: profile.age || 18,
         location: profile.location || 'Unknown',
         photos: Array.isArray(profile.user_photos) 
@@ -102,10 +102,10 @@ const SwipeStack = () => {
           ? profile.user_interests.map(ui => ui.interests?.name).filter(Boolean)
           : [],
         bio: profile.bio || '',
-        verified: profile.verification_status === 'verified',
+        verified: profile.verified || false,
         lastActive: new Date(profile.last_active || profile.created_at),
-        relationshipType: profile.relationship_goal || 'casual',
-        job: profile.occupation || '',
+        relationshipType: profile.relationship_type || 'casual',
+        job: profile.job_title || '',
         education: profile.education || '',
         height: profile.height || '',
         distance: 5,
@@ -173,8 +173,17 @@ const SwipeStack = () => {
     );
   }
 
-  // Show auto-reset message when no more users
+  // Auto-reset when no more users and 1 hour has passed
   if (currentIndex >= users.length) {
+    if (shouldResetStack()) {
+      resetSwipeStack();
+      return (
+        <div className="flex items-center justify-center h-[70vh]">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-pink-500"></div>
+        </div>
+      );
+    }
+
     const timeUntilReset = lastResetTime 
       ? Math.max(0, 60 - Math.floor((Date.now() - lastResetTime.getTime()) / 60000))
       : 60;
