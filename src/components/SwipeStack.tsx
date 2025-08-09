@@ -98,7 +98,7 @@ const SwipeStack = () => {
             relationshipType: (profile.relationship_type || 'casual') as 'casual' | 'serious' | 'friends' | 'unsure',
             education: profile.education || '',
             height: profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}'${Math.round((profile.height_cm % 30.48) / 2.54)}"` : '',
-            occupation: profile.job_title || '',
+            job: profile.job_title || '',
             distance: Math.floor(Math.random() * 20) + 1,
             isOnline: Math.random() > 0.5,
             latitude: profile.latitude || 0,
@@ -183,6 +183,14 @@ const SwipeStack = () => {
     setCurrentIndex(prev => prev + 1);
   };
 
+  const handleShowProfile = (user: User) => {
+    // For now, just show a toast - this can be expanded later
+    toast({
+      title: "Profile Details",
+      description: `Viewing ${user.name}'s full profile`,
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -255,6 +263,7 @@ const SwipeStack = () => {
         <SwipeCard
           user={currentUser}
           onSwipe={handleSwipe}
+          onShowProfile={handleShowProfile}
         />
       )}
 
