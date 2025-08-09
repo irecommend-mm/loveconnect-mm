@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User } from '@/types/User';
 import SwipeCard from './SwipeCard';
@@ -104,7 +103,7 @@ const SwipeStack = () => {
         bio: profile.bio || '',
         verified: profile.verified || false,
         lastActive: new Date(profile.last_active || profile.created_at),
-        relationshipType: profile.relationship_type || 'casual',
+        relationshipType: (profile.relationship_type === 'friendship' ? 'friends' : profile.relationship_type || 'casual') as 'casual' | 'serious' | 'friends' | 'unsure',
         job: profile.job_title || '',
         education: profile.education || '',
         height: profile.height || '',
