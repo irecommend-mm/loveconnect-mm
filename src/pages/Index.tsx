@@ -230,7 +230,8 @@ const Index = () => {
           <VideoCallModal
             isOpen={showVideoCall}
             onClose={() => setShowVideoCall(false)}
-            user={selectedOtherUser}
+            otherUserName={selectedOtherUser?.name || 'Unknown User'}
+            otherUserPhoto={selectedOtherUser?.photos?.[0] || '/placeholder.svg'}
           />
 
           {/* Virtual ChatRoom Modal */}
