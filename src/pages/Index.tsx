@@ -1,32 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
-import MobileHeader from '@/components/MobileHeader';
-import MobileNavigation from '@/components/MobileNavigation';
-import MainContent from '@/components/MainContent';
-import LocationBanner from '@/components/LocationBanner';
-import ProfileSetup from '@/components/ProfileSetup';
-import PremiumFeatures from '@/components/PremiumFeatures';
-import NotificationCenter from '@/components/NotificationCenter';
-import GroupEvents from '@/components/GroupEvents';
-import VideoCallModal from '@/components/VideoCallModal';
-import AdvancedFilters from '@/components/filters/AdvancedFilters';
-import { GamificationStatus } from '@/components/GamificationStatus';
-import { useGeolocation } from '@/hooks/useGeolocation';
+import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from '@/hooks/useLocation';
 import { useAppState } from '@/hooks/useAppState';
-import { useUserProfile } from '@/hooks/useUserProfile';
-import { useMatches } from '@/hooks/useMatches';
-import { User as UserType } from '@/types/User';
-import { X } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import Navbar from '@/components/Navbar';
+import MobileNavigation from '@/components/MobileNavigation';
+import MobileHeader from '@/components/MobileHeader';
+import MainContent from '@/components/MainContent';
+import ProfileModal from '@/components/ProfileModal';
+import NotificationModal from '@/components/NotificationModal';
+import EventsModal from '@/components/EventsModal';
+import FiltersModal from '@/components/FiltersModal';
+import VideoCallModal from '@/components/VideoCallModal';
+import VirtualChatRoom from '@/components/VirtualChatRoom';
 
 const Index = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const { location, error: locationError, loading: locationLoading } = useGeolocation();
-  
-  // Custom hooks for state management
+  const { user, loading: authLoading } = useAuth();
+  const { location, loading: locationLoading } = useLocation();
   const {
     activeTab,
     selectedMatchId,
@@ -37,6 +28,7 @@ const Index = () => {
     showEvents,
     showFilters,
     showVideoCall,
+    setActiveTab,
     setSelectedMatchId,
     setSelectedOtherUser,
     setShowProfile,
@@ -47,218 +39,208 @@ const Index = () => {
     setShowVideoCall,
     handleTabChange,
   } = useAppState();
-
-  const {
-    hasProfile,
-    loading,
-    currentProfile,
-    currentUserProfile,
-    setHasProfile,
-    checkUserProfile,
-    loadCurrentUserProfile,
-  } = useUserProfile(user);
-
-  const { matches, users, loadMatches } = useMatches(user);
+  const [matches, setMatches] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [currentUserProfile, setCurrentUserProfile] = useState(null);
+  const [showChatRoom, setShowChatRoom] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        navigate('/auth');
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        navigate('/auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  // Load matches when switching to matches tab
-  useEffect(() => {
-    if (activeTab === 'matches' && user) {
-      loadMatches(user.id);
-    }
-  }, [activeTab, user]);
-
-  const handleProfileComplete = () => {
-    setHasProfile(true);
-    setShowProfile(false);
     if (user) {
-      checkUserProfile(user.id);
-      loadCurrentUserProfile(user.id);
+      fetchMatches();
+      fetchUsers();
+      fetchCurrentUserProfile();
+    }
+  }, [user]);
+
+  const fetchMatches = async () => {
+    const { data, error } = await supabase
+      .from('matches')
+      .select('*')
+      .or(`user1_id.eq.${user?.id},user2_id.eq.${user?.id}`);
+
+    if (error) {
+      console.error('Error fetching matches:', error);
+    } else {
+      setMatches(data || []);
     }
   };
 
-  const handleChatSelect = (matchedUser: UserType) => {
-    const match = matches.find(m => 
-      m.users.includes(matchedUser.id)
-    );
-    
-    if (match) {
-      setSelectedMatchId(match.id);
-      setSelectedOtherUser(matchedUser);
-      handleTabChange('chat');
+  const fetchUsers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .neq('user_id', user?.id);
+
+    if (error) {
+      console.error('Error fetching users:', error);
+    } else {
+      setUsers(data || []);
     }
   };
 
-  const handleVideoCall = (matchedUser: UserType) => {
-    setSelectedOtherUser(matchedUser);
+  const fetchCurrentUserProfile = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user?.id)
+      .single();
+
+    if (error) {
+      console.error('Error fetching current user profile:', error);
+    } else {
+      setCurrentUserProfile(data || null);
+    }
+  };
+
+  const handleChatSelect = (user: any) => {
+    setSelectedMatchId(user.id);
+    setSelectedOtherUser(user);
+    setActiveTab('chat');
+  };
+
+  const handleVideoCall = (user: any) => {
+    setSelectedOtherUser(user);
     setShowVideoCall(true);
   };
 
-  const handleLocationEnable = async () => {
-    if (location && user) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({
-            latitude: location.lat,
-            longitude: location.lng,
-            last_active: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-        
-        window.location.reload();
-      } catch (error) {
-        console.error('Error updating location:', error);
-      }
+  const handleEditProfile = () => {
+    setShowProfile(true);
+  };
+
+  const AuthCheck = ({ children }: { children: React.ReactNode }) => {
+    if (authLoading || locationLoading) {
+      return (
+        <div className="flex items-center justify-center h-screen">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div>
+        </div>
+      );
     }
+
+    if (!user) {
+      window.location.href = '/auth';
+      return null;
+    }
+
+    return <>{children}</>;
   };
-
-  const handleUpgrade = (plan: string) => {
-    console.log('Upgrading to plan:', plan);
-    setShowPremium(false);
-  };
-
-  const handleApplyFilters = (filters: any) => {
-    console.log('Applied filters:', filters);
-    setShowFilters(false);
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
-  if (!hasProfile && !showProfile) {
-    return <ProfileSetup onComplete={handleProfileComplete} />;
-  }
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
-      {/* Mobile Header */}
-      <MobileHeader 
-        title="VibeConnect"
-        onNotificationsClick={() => setShowNotifications(true)}
-        onEventsClick={() => setShowEvents(true)}
-        onFilterClick={() => setShowFilters(true)}
-        showLocation={activeTab === 'discover' || activeTab === 'browse'}
-        location={currentProfile?.location}
-      />
-      
-      {/* Location Permission Banner */}
-      <LocationBanner
-        location={location}
-        locationLoading={locationLoading}
-        activeTab={activeTab}
-        onLocationEnable={handleLocationEnable}
-      />
-
-      {/* Gamification Status - Show in Settings tab */}
-      {activeTab === 'settings' && <GamificationStatus />}
-
-      {/* Main Content */}
-      <MainContent
-        activeTab={activeTab}
-        user={user}
-        matches={matches}
-        users={users}
-        selectedMatchId={selectedMatchId}
-        selectedOtherUser={selectedOtherUser}
-        currentUserProfile={currentUserProfile}
-        location={location}
-        onChatSelect={handleChatSelect}
-        onVideoCall={handleVideoCall}
-        onEditProfile={() => setShowProfile(true)}
-        onShowPremium={() => setShowPremium(true)}
-        onTabChange={handleTabChange}
-      />
-
-      {/* Mobile Navigation */}
-      <MobileNavigation 
-        activeTab={activeTab}
-        onTabChange={handleTabChange}
-      />
-
-      {/* Profile Setup Modal */}
-      {showProfile && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-            <button
-              onClick={() => setShowProfile(false)}
-              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-            >
-              <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
-            </button>
-            <ProfileSetup 
-              onComplete={handleProfileComplete}
-              existingProfile={currentProfile}
+    <div className="min-h-screen bg-gray-50">
+      <AuthCheck>
+        <>
+          {/* Mobile Header */}
+          <div className="md:hidden">
+            <MobileHeader
+              title={
+                activeTab === 'discover' ? 'Discover' :
+                activeTab === 'browse' ? 'Browse' :
+                activeTab === 'likes' ? 'Likes' :
+                activeTab === 'matches' ? 'Matches' :
+                activeTab === 'settings' ? 'Settings' : 'LoveConnect'
+              }
+              onNotificationsClick={() => setShowNotifications(true)}
+              onEventsClick={() => setShowEvents(true)}
+              onFilterClick={activeTab === 'browse' ? () => setShowFilters(true) : undefined}
+              onChatRoomClick={() => setShowChatRoom(true)}
+              showLocation={activeTab === 'discover' || activeTab === 'browse'}
+              location={location?.city}
             />
           </div>
-        </div>
-      )}
 
-      {/* Premium Modal */}
-      {showPremium && (
-        <PremiumFeatures 
-          onClose={() => setShowPremium(false)}
-          onUpgrade={handleUpgrade}
-        />
-      )}
+          {/* Desktop Navbar */}
+          <div className="hidden md:block">
+            <Navbar
+              onProfileClick={() => setActiveTab('profile')}
+              matches={matches}
+              onChatClick={handleChatSelect}
+              onSettingsClick={() => setActiveTab('settings')}
+              onMatchesClick={() => setActiveTab('matches')}
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              onFiltersClick={() => setShowFilters(true)}
+              onNotificationsClick={() => setShowNotifications(true)}
+              onEventsClick={() => setShowEvents(true)}
+              onChatRoomClick={() => setShowChatRoom(true)}
+            />
+          </div>
 
-      {/* Notifications Modal */}
-      {showNotifications && (
-        <NotificationCenter onClose={() => setShowNotifications(false)} />
-      )}
+          {/* Main Content */}
+          <MainContent
+            activeTab={activeTab}
+            user={user}
+            matches={matches}
+            users={users}
+            selectedMatchId={selectedMatchId}
+            selectedOtherUser={selectedOtherUser}
+            currentUserProfile={currentUserProfile}
+            location={location}
+            onChatSelect={handleChatSelect}
+            onVideoCall={handleVideoCall}
+            onEditProfile={handleEditProfile}
+            onShowPremium={() => setShowPremium(true)}
+            onTabChange={handleTabChange}
+          />
 
-      {/* Group Events Modal */}
-      {showEvents && (
-        <GroupEvents onClose={() => setShowEvents(false)} />
-      )}
+          {/* Mobile Navigation */}
+          <div className="md:hidden">
+            <MobileNavigation
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+            />
+          </div>
 
-      {/* Advanced Filters Modal - Now accessible to all users */}
-      {showFilters && (
-        <AdvancedFilters 
-          isOpen={showFilters}
-          onClose={() => setShowFilters(false)}
-          onApplyFilters={handleApplyFilters}
-        />
-      )}
+          {/* Profile Modal */}
+          {showProfile && currentUserProfile && (
+            <ProfileModal
+              user={currentUserProfile}
+              onClose={() => setShowProfile(false)}
+              onEdit={handleEditProfile}
+              isCurrentUser={true}
+            />
+          )}
 
-      {/* Video Call Modal */}
-      {showVideoCall && selectedOtherUser && (
-        <VideoCallModal
-          isOpen={showVideoCall}
-          onClose={() => setShowVideoCall(false)}
-          otherUserName={selectedOtherUser.name}
-          otherUserPhoto={selectedOtherUser.photos[0] || ''}
-          isIncoming={false}
-        />
-      )}
+          {/* Premium Modal */}
+          {showPremium && (
+            <ProfileModal
+              user={currentUserProfile}
+              onClose={() => setShowPremium(false)}
+              isCurrentUser={true}
+            />
+          )}
+
+          {/* Notifications Modal */}
+          <NotificationModal
+            open={showNotifications}
+            onClose={() => setShowNotifications(false)}
+          />
+
+          {/* Events Modal */}
+          <EventsModal
+            open={showEvents}
+            onClose={() => setShowEvents(false)}
+          />
+
+          {/* Filters Modal */}
+          <FiltersModal
+            open={showFilters}
+            onClose={() => setShowFilters(false)}
+          />
+
+          {/* Video Call Modal */}
+          <VideoCallModal
+            isOpen={showVideoCall}
+            onClose={() => setShowVideoCall(false)}
+            otherUserName={selectedOtherUser?.name || 'Unknown User'}
+            otherUserPhoto={selectedOtherUser?.photos?.[0] || '/placeholder.svg'}
+          />
+
+          {/* Virtual ChatRoom Modal */}
+          <VirtualChatRoom
+            isOpen={showChatRoom}
+            onClose={() => setShowChatRoom(false)}
+          />
+        </>
+      </AuthCheck>
     </div>
   );
 };

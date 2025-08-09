@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { Bell, MapPin, Heart, Calendar, Filter } from 'lucide-react';
+import { Bell, MapPin, Heart, Calendar, Filter, Users } from 'lucide-react';
 
 interface MobileHeaderProps {
   title: string;
   onNotificationsClick?: () => void;
   onEventsClick?: () => void;
   onFilterClick?: () => void;
+  onChatRoomClick?: () => void;
   showLocation?: boolean;
   location?: string;
 }
@@ -16,6 +17,7 @@ const MobileHeader = ({
   onNotificationsClick, 
   onEventsClick,
   onFilterClick,
+  onChatRoomClick,
   showLocation = false, 
   location 
 }: MobileHeaderProps) => {
@@ -48,7 +50,17 @@ const MobileHeader = ({
             </button>
           )}
 
-          {/* Group Events Button */}
+          {/* Virtual ChatRoom Button */}
+          {onChatRoomClick && (
+            <button
+              onClick={onChatRoomClick}
+              className="p-2 rounded-full hover:bg-gray-100 transition-colors"
+            >
+              <Users className="h-5 w-5 text-gray-600" />
+            </button>
+          )}
+
+          {/* Local Events Button */}
           {onEventsClick && (
             <button
               onClick={onEventsClick}
