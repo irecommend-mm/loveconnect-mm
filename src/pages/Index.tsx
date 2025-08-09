@@ -10,7 +10,7 @@ import LocationBanner from '@/components/LocationBanner';
 import ProfileSetup from '@/components/ProfileSetup';
 import PremiumFeatures from '@/components/PremiumFeatures';
 import NotificationCenter from '@/components/NotificationCenter';
-import GroupEvents from '@/components/GroupEvents';
+import LocalEvents from '@/components/LocalEvents';
 import VideoCallModal from '@/components/VideoCallModal';
 import AdvancedFilters from '@/components/filters/AdvancedFilters';
 import { GamificationStatus } from '@/components/GamificationStatus';
@@ -240,9 +240,9 @@ const Index = () => {
         <NotificationCenter onClose={() => setShowNotifications(false)} />
       )}
 
-      {/* Group Events Modal */}
+      {/* Local Events Modal */}
       {showEvents && (
-        <GroupEvents onClose={() => setShowEvents(false)} />
+        <LocalEvents onClose={() => setShowEvents(false)} />
       )}
 
       {/* Virtual Chat Room Modal */}

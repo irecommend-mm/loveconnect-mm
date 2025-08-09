@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserType } from '@/types/User';
 import { useAuth } from '@/hooks/useAuth';
+import { useGamification } from '@/hooks/useGamification';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ModernSettingsPageProps {
@@ -22,6 +23,11 @@ const ModernSettingsPage = ({
   onShowPremium 
 }: ModernSettingsPageProps) => {
   const { signOut } = useAuth();
+  const { gamificationData, getActivityLevelDisplay } = useGamification();
+  const [showViewProfile, setShowViewProfile] = useState(false);
+  const [showLocationSettings, setShowLocationSettings] = useState(false);
+  const [showDiscoverySettings, setShowDiscoverySettings] = useState(false);
+  
   const [notifications, setNotifications] = useState({
     matches: true,
     messages: true,
@@ -32,6 +38,18 @@ const ModernSettingsPage = ({
     showAge: true,
     showDistance: true,
     incognito: false
+  });
+
+  const [locationPrefs, setLocationPrefs] = useState({
+    maxDistance: 50,
+    showDistance: true,
+    locationAccuracy: 'city'
+  });
+
+  const [discoveryPrefs, setDiscoveryPrefs] = useState({
+    ageRange: [22, 35],
+    showMeGender: 'all',
+    lookingFor: 'serious'
   });
 
   const userStats = {
@@ -55,6 +73,23 @@ const ModernSettingsPage = ({
       console.error('Error logging out:', error);
     }
   };
+
+  const handleBoostProfile = () => {
+    console.log('Boost profile clicked');
+    // TODO: Implement boost profile functionality
+  };
+
+  const handleLocationUpdate = () => {
+    console.log('Location settings updated:', locationPrefs);
+    setShowLocationSettings(false);
+  };
+
+  const handleDiscoveryUpdate = () => {
+    console.log('Discovery settings updated:', discoveryPrefs);
+    setShowDiscoverySettings(false);
+  };
+
+  const activityDisplay = gamificationData ? getActivityLevelDisplay(gamificationData.activityLevel) : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 pb-20">
@@ -119,6 +154,44 @@ const ModernSettingsPage = ({
       </div>
 
       <div className="px-4 max-w-md mx-auto -mt-4 space-y-4">
+        {/* Your Activity Card - Now properly displayed */}
+        {gamificationData && activityDisplay && (
+          <Card className="shadow-lg bg-gradient-to-r from-pink-50 to-purple-50">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center text-lg">
+                <Award className="h-5 w-5 mr-2 text-purple-600" />
+                Your Activity
+                <div className="ml-auto flex items-center space-x-1 text-sm">
+                  <span>{activityDisplay.emoji}</span>
+                  <span className={`font-medium ${activityDisplay.color}`}>
+                    {activityDisplay.label}
+                  </span>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-800">{gamificationData.totalScore}</div>
+                  <div className="text-xs text-gray-600">Total Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-800">{gamificationData.dailyStreak}</div>
+                  <div className="text-xs text-gray-600">Day Streak</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-800">{gamificationData.profileCompletenessScore}%</div>
+                  <div className="text-xs text-gray-600">Profile Complete</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-gray-800">{gamificationData.engagementScore}</div>
+                  <div className="text-xs text-gray-600">Engagement</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quick Actions */}
         <Card className="shadow-lg">
           <CardHeader className="pb-3">
@@ -156,6 +229,7 @@ const ModernSettingsPage = ({
           </CardHeader>
           <CardContent className="space-y-3">
             <Button 
+              onClick={() => setShowViewProfile(true)}
               variant="outline"
               className="w-full justify-start"
             >
@@ -163,6 +237,7 @@ const ModernSettingsPage = ({
               View Profile
             </Button>
             <Button 
+              onClick={handleBoostProfile}
               variant="outline"
               className="w-full justify-start"
             >
@@ -182,6 +257,7 @@ const ModernSettingsPage = ({
           </CardHeader>
           <CardContent className="space-y-3">
             <Button 
+              onClick={() => setShowLocationSettings(true)}
               variant="outline"
               className="w-full justify-start"
             >
@@ -189,6 +265,7 @@ const ModernSettingsPage = ({
               Location Settings
             </Button>
             <Button 
+              onClick={() => setShowDiscoverySettings(true)}
               variant="outline"
               className="w-full justify-start"
             >
@@ -363,6 +440,137 @@ const ModernSettingsPage = ({
           </CardContent>
         </Card>
       </div>
+
+      {/* View Profile Modal */}
+      {showViewProfile && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="bg-white rounded-xl max-w-md w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Profile Preview
+                <Button variant="outline" size="sm" onClick={() => setShowViewProfile(false)}>
+                  Close
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center space-y-4">
+                <Avatar className="h-20 w-20 mx-auto">
+                  <AvatarImage src={currentUserProfile?.photos?.[0]} />
+                  <AvatarFallback>
+                    {currentUserProfile?.name?.charAt(0)?.toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-bold">{currentUserProfile?.name}</h3>
+                  <p className="text-gray-600">{currentUserProfile?.age} years old</p>
+                  <p className="text-sm text-gray-500 mt-2">{currentUserProfile?.bio}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Location Settings Modal */}
+      {showLocationSettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="bg-white rounded-xl max-w-md w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Location Settings
+                <Button variant="outline" size="sm" onClick={() => setShowLocationSettings(false)}>
+                  Close
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Maximum Distance: {locationPrefs.maxDistance}km</label>
+                <input
+                  type="range"
+                  min="1"
+                  max="100"
+                  value={locationPrefs.maxDistance}
+                  onChange={(e) => setLocationPrefs({...locationPrefs, maxDistance: parseInt(e.target.value)})}
+                  className="w-full"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Show Distance to Users</span>
+                <Switch
+                  checked={locationPrefs.showDistance}
+                  onCheckedChange={(checked) => setLocationPrefs({...locationPrefs, showDistance: checked})}
+                />
+              </div>
+              <Button onClick={handleLocationUpdate} className="w-full">
+                Save Changes
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Discovery Settings Modal */}
+      {showDiscoverySettings && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="bg-white rounded-xl max-w-md w-full">
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                Discovery Settings
+                <Button variant="outline" size="sm" onClick={() => setShowDiscoverySettings(false)}>
+                  Close
+                </Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Age Range: {discoveryPrefs.ageRange[0]}-{discoveryPrefs.ageRange[1]}</label>
+                <div className="flex space-x-2 mt-2">
+                  <input
+                    type="range"
+                    min="18"
+                    max="50"
+                    value={discoveryPrefs.ageRange[0]}
+                    onChange={(e) => setDiscoveryPrefs({
+                      ...discoveryPrefs, 
+                      ageRange: [parseInt(e.target.value), discoveryPrefs.ageRange[1]]
+                    })}
+                    className="flex-1"
+                  />
+                  <input
+                    type="range"
+                    min="18"
+                    max="50"
+                    value={discoveryPrefs.ageRange[1]}
+                    onChange={(e) => setDiscoveryPrefs({
+                      ...discoveryPrefs, 
+                      ageRange: [discoveryPrefs.ageRange[0], parseInt(e.target.value)]
+                    })}
+                    className="flex-1"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium block mb-2">Show Me</label>
+                <select
+                  value={discoveryPrefs.showMeGender}
+                  onChange={(e) => setDiscoveryPrefs({...discoveryPrefs, showMeGender: e.target.value})}
+                  className="w-full p-2 border rounded"
+                >
+                  <option value="all">Everyone</option>
+                  <option value="men">Men</option>
+                  <option value="women">Women</option>
+                  <option value="non-binary">Non-binary</option>
+                </select>
+              </div>
+              <Button onClick={handleDiscoveryUpdate} className="w-full">
+                Save Changes
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
