@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, X, Star, RotateCcw, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -56,45 +55,64 @@ const SwipeStack = () => {
 
     setLoading(true);
     try {
-      // Get users that haven't been swiped on in the last hour
-      const oneHourAgo = new Date();
-      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
+      // Get users that haven't been swiped on recently
       const { data: profiles, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          user_photos (photo_url),
-          user_interests (interest)
-        `)
+        .select('*')
         .neq('user_id', user.id)
         .limit(20);
 
       if (error) throw error;
 
-      const formattedUsers: User[] = profiles?.map(profile => ({
-        id: profile.user_id,
-        name: profile.first_name + (profile.last_name ? ` ${profile.last_name}` : ''),
-        age: profile.age || 25,
-        location: profile.location || 'Unknown',
-        photos: profile.user_photos?.map((p: any) => p.photo_url) || ['/placeholder.svg'],
-        bio: profile.bio || '',
-        interests: profile.user_interests?.map((i: any) => i.interest) || [],
-        verified: !!profile.verification_status,
-        lastActive: new Date().toISOString(),
-        relationshipGoal: profile.relationship_goal || 'casual',
-        education: profile.education || '',
-        height: profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}' ${Math.round((profile.height_cm % 30.48) / 2.54)}"` : '',
-        occupation: profile.job_title || '',
-        distance: Math.floor(Math.random() * 20) + 1,
-        isOnline: Math.random() > 0.5,
-        hasStory: Math.random() > 0.7,
-        isPremium: Math.random() > 0.8,
-        latitude: profile.latitude || 0,
-        longitude: profile.longitude || 0,
-      })) || [];
+      if (!profiles || profiles.length === 0) {
+        setUsers([]);
+        setLoading(false);
+        return;
+      }
 
-      setUsers(formattedUsers);
+      // Load photos and interests for each profile
+      const usersWithData = await Promise.all(
+        profiles.map(async (profile) => {
+          const [photosResult, interestsResult] = await Promise.all([
+            supabase
+              .from('photos')
+              .select('url')
+              .eq('user_id', profile.user_id)
+              .order('position'),
+            supabase
+              .from('interests')
+              .select('interest')
+              .eq('user_id', profile.user_id)
+          ]);
+
+          const formattedUser: User = {
+            id: profile.user_id,
+            name: profile.name || 'Unknown',
+            age: profile.age || 25,
+            location: profile.location || 'Unknown',
+            photos: photosResult.data?.map((p: any) => p.url) || ['/placeholder.svg'],
+            bio: profile.bio || '',
+            interests: interestsResult.data?.map((i: any) => i.interest) || [],
+            verified: !!profile.verified,
+            lastActive: new Date(profile.last_active || profile.created_at),
+            relationshipType: (profile.relationship_type || 'casual') as 'casual' | 'serious' | 'friends' | 'unsure',
+            education: profile.education || '',
+            height: profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}'${Math.round((profile.height_cm % 30.48) / 2.54)}"` : '',
+            occupation: profile.job_title || '',
+            distance: Math.floor(Math.random() * 20) + 1,
+            isOnline: Math.random() > 0.5,
+            latitude: profile.latitude || 0,
+            longitude: profile.longitude || 0,
+          };
+
+          return formattedUser;
+        })
+      );
+
+      // Filter out users without photos
+      const validUsers = usersWithData.filter(user => user.photos.length > 0);
+      
+      setUsers(validUsers);
       setCurrentIndex(0);
     } catch (error) {
       console.error('Error loading users:', error);
@@ -118,29 +136,29 @@ const SwipeStack = () => {
     });
   };
 
-  const handleSwipe = async (direction: 'left' | 'right', userId: string) => {
+  const handleSwipe = async (direction: 'left' | 'right' | 'super', currentUser: User) => {
     if (!user) return;
 
     try {
-      // Record the swipe
+      // Record the swipe using the existing 'swipes' table
       await supabase
-        .from('user_swipes')
+        .from('swipes')
         .insert({
           swiper_id: user.id,
-          swiped_id: userId,
-          action: direction === 'right' ? 'like' : 'pass',
+          swiped_id: currentUser.id,
+          action: direction === 'right' ? 'like' : direction === 'super' ? 'super_like' : 'pass',
           created_at: new Date().toISOString()
         });
 
-      if (direction === 'right') {
-        // Check for mutual like (match)
+      if (direction === 'right' || direction === 'super') {
+        // Check for mutual like (match) using the existing 'swipes' table
         const { data: mutualLike } = await supabase
-          .from('user_swipes')
+          .from('swipes')
           .select('*')
-          .eq('swiper_id', userId)
+          .eq('swiper_id', currentUser.id)
           .eq('swiped_id', user.id)
           .eq('action', 'like')
-          .single();
+          .maybeSingle();
 
         if (mutualLike) {
           // Create match
@@ -148,7 +166,7 @@ const SwipeStack = () => {
             .from('matches')
             .insert({
               user1_id: user.id,
-              user2_id: userId,
+              user2_id: currentUser.id,
               created_at: new Date().toISOString()
             });
 
@@ -246,7 +264,7 @@ const SwipeStack = () => {
           variant="outline"
           size="lg"
           className="w-16 h-16 rounded-full border-red-200 hover:bg-red-50 hover:border-red-300"
-          onClick={() => handleSwipe('left', currentUser?.id)}
+          onClick={() => handleSwipe('left', currentUser)}
         >
           <X className="h-6 w-6 text-red-500" />
         </Button>
@@ -255,7 +273,7 @@ const SwipeStack = () => {
           variant="outline"
           size="lg"
           className="w-20 h-20 rounded-full border-yellow-200 hover:bg-yellow-50 hover:border-yellow-300"
-          onClick={() => {/* Super like functionality */}}
+          onClick={() => handleSwipe('super', currentUser)}
         >
           <Star className="h-7 w-7 text-yellow-500" />
         </Button>
@@ -264,7 +282,7 @@ const SwipeStack = () => {
           variant="outline"
           size="lg"
           className="w-16 h-16 rounded-full border-green-200 hover:bg-green-50 hover:border-green-300"
-          onClick={() => handleSwipe('right', currentUser?.id)}
+          onClick={() => handleSwipe('right', currentUser)}
         >
           <Heart className="h-6 w-6 text-green-500" />
         </Button>

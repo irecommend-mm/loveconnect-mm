@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocation } from '@/hooks/useLocation';
@@ -227,7 +228,7 @@ const Index = () => {
 
           {/* Video Call Modal */}
           <VideoCallModal
-            open={showVideoCall}
+            isOpen={showVideoCall}
             onClose={() => setShowVideoCall(false)}
             otherUser={selectedOtherUser}
           />
