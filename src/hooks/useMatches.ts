@@ -7,9 +7,11 @@ import { Match, User as UserType } from '@/types/User';
 export const useMatches = (user: User | null) => {
   const [matches, setMatches] = useState<Match[]>([]);
   const [users, setUsers] = useState<UserType[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const loadMatches = async (userId: string) => {
     try {
+      setLoading(true);
       console.log('Loading matches for user:', userId);
       
       const { data: matchesData, error: matchesError } = await supabase
@@ -98,12 +100,21 @@ export const useMatches = (user: User | null) => {
       setUsers(usersWithPhotos);
     } catch (error) {
       console.error('Error in loadMatches:', error);
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (user) {
+      loadMatches(user.id);
+    }
+  }, [user]);
 
   return {
     matches,
     users,
+    loading,
     loadMatches,
   };
 };

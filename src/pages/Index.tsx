@@ -59,7 +59,7 @@ const Index = () => {
 
   // Profile setup required
   if (!hasProfile) {
-    return <ProfileSetup onProfileComplete={() => checkUserProfile(user.id)} />;
+    return <ProfileSetup onProfileComplete={async () => await checkUserProfile(user.id)} />;
   }
 
   const handleChatSelect = (selectedUser: UserType) => {
@@ -128,7 +128,13 @@ const Index = () => {
       )}
 
       {showPremium && (
-        <PremiumFeatures onClose={() => setShowPremium(false)} />
+        <PremiumFeatures 
+          onClose={() => setShowPremium(false)} 
+          onUpgrade={() => {
+            console.log('Premium upgrade clicked');
+            setShowPremium(false);
+          }}
+        />
       )}
 
       {showNotifications && (

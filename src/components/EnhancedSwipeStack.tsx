@@ -1,380 +1,337 @@
 
 import React, { useState, useEffect } from 'react';
+import { Heart, X, Star, Users, MessageCircle, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { RefreshCw, Calendar, Users } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
-import { AppMode } from '@/types/FriendDateTypes';
 import { User as UserType } from '@/types/User';
-import EnhancedSwipeCard from './EnhancedSwipeCard';
-import ModernProfileModal from './ModernProfileModal';
-import MatchCelebrationModal from './MatchCelebrationModal';
-import LocalEvents from './LocalEvents';
+import { AppMode } from '@/types/FriendDateTypes';
+import CompatibilityScore from './CompatibilityScore';
+import PhotoGallery from './PhotoGallery';
 
 interface EnhancedSwipeStackProps {
   mode: AppMode;
+  filters?: any;
 }
 
-const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
-  const { user } = useAuth();
-  const [profiles, setProfiles] = useState<UserType[]>([]);
+const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
+  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const [users, setUsers] = useState<UserType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showMatchModal, setShowMatchModal] = useState(false);
-  const [showEventsModal, setShowEventsModal] = useState(false);
-  const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
-  const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
-  const [swipedUserIds, setSwipedUserIds] = useState<string[]>([]);
+  const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadProfiles();
-      loadCurrentUserPhoto();
-    }
-  }, [user, mode]);
-
-  const loadCurrentUserPhoto = async () => {
-    if (!user) return;
-    
-    try {
-      const { data } = await supabase
-        .from('photos')
-        .select('url')
-        .eq('user_id', user.id)
-        .eq('is_primary', true)
-        .single();
-      
-      if (data) {
-        setCurrentUserPhoto(data.url);
-      }
-    } catch (error) {
-      console.log('No primary photo found for current user');
+  // Mock compatibility data
+  const mockCompatibility = {
+    friendshipScore: Math.floor(Math.random() * 40) + 60,
+    romanceScore: Math.floor(Math.random() * 40) + 60,
+    overallCompatibility: Math.floor(Math.random() * 40) + 60,
+    factors: {
+      commonInterests: Math.floor(Math.random() * 100),
+      lifestyleAlignment: Math.floor(Math.random() * 100),
+      communicationStyle: Math.floor(Math.random() * 100),
+      values: Math.floor(Math.random() * 100),
+      zodiacCompatibility: Math.floor(Math.random() * 100),
     }
   };
 
-  const loadProfiles = async () => {
-    if (!user) return;
-
-    setLoading(true);
+  const loadUsers = async () => {
     try {
-      // Get users that haven't been swiped on in this session
-      const { data: swipedUsers } = await supabase
-        .from('swipes')
-        .select('swiped_id')
-        .eq('swiper_id', user.id);
-
-      const dbSwipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+      setLoading(true);
       
-      // Combine database swiped users with session swiped users, but exclude matched users
-      const { data: matchedUsers } = await supabase
-        .from('matches')
-        .select('user1_id, user2_id')
-        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+      // Get current user ID
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
-      const matchedUserIds = matchedUsers?.flatMap(match => 
-        match.user1_id === user.id ? [match.user2_id] : [match.user1_id]
-      ) || [];
-
-      let profilesQuery = supabase
+      // Build query with filters
+      let query = supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          photos:photos(url),
+          interests:interests(interest)
+        `)
         .neq('user_id', user.id)
-        .eq('incognito', false);
+        .limit(20);
 
-      // Only exclude matched users, not session swiped users (for testing)
-      if (matchedUserIds.length > 0) {
-        profilesQuery = profilesQuery.not('user_id', 'in', `(${matchedUserIds.join(',')})`);
+      // Apply age filter
+      if (filters?.ageRange) {
+        query = query.gte('age', filters.ageRange[0]).lte('age', filters.ageRange[1]);
       }
 
-      const { data: profilesData, error } = await profilesQuery.limit(20);
+      // Apply other filters
+      if (filters?.relationshipType) {
+        query = query.eq('relationship_type', filters.relationshipType);
+      }
 
+      if (filters?.verified) {
+        query = query.eq('verified', true);
+      }
+
+      const { data: profilesData, error } = await query;
+      
       if (error) {
-        console.error('Error loading profiles:', error);
-        setLoading(false);
+        console.error('Error loading users:', error);
         return;
       }
 
       if (!profilesData || profilesData.length === 0) {
-        setProfiles([]);
-        setLoading(false);
+        console.log('No profiles found');
+        setUsers([]);
         return;
       }
 
-      // Load additional data for each profile
-      const profilesWithData = await Promise.all(
-        profilesData.map(async (profile) => {
-          const [photosResult, interestsResult] = await Promise.all([
-            supabase
-              .from('photos')
-              .select('url')
-              .eq('user_id', profile.user_id)
-              .order('position'),
-            supabase
-              .from('interests')
-              .select('interest')
-              .eq('user_id', profile.user_id)
-          ]);
+      // Transform the data
+      const transformedUsers = profilesData.map(profile => ({
+        id: profile.user_id,
+        name: profile.name,
+        age: profile.age,
+        bio: profile.bio || '',
+        photos: profile.photos?.map((p: any) => p.url) || [],
+        interests: profile.interests?.map((i: any) => i.interest) || [],
+        location: profile.location || '',
+        job: profile.job_title || '',
+        education: profile.education || '',
+        verified: profile.verified || false,
+        lastActive: new Date(profile.last_active || profile.created_at),
+        height: profile.height || '',
+        zodiacSign: profile.zodiac_sign || '',
+        relationshipType: profile.relationship_type as 'casual' | 'serious' | 'friends' | 'unsure',
+        children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure',
+        smoking: profile.smoking as 'yes' | 'no' | 'sometimes',
+        drinking: profile.drinking as 'yes' | 'no' | 'sometimes',
+        exercise: profile.exercise as 'often' | 'sometimes' | 'never',
+        isOnline: Math.random() > 0.5,
+        distance: Math.floor(Math.random() * 50) + 1,
+      }));
 
-          return {
-            id: profile.user_id,
-            name: profile.name,
-            age: profile.age,
-            bio: profile.bio || '',
-            photos: photosResult.data?.map(p => p.url) || [],
-            interests: interestsResult.data?.map(i => i.interest) || [],
-            location: profile.location || '',
-            job: profile.job_title || '',
-            education: profile.education || '',
-            height: profile.height || '',
-            zodiacSign: profile.zodiac_sign || '',
-            relationshipType: profile.relationship_type || 'serious',
-            children: profile.children || 'unsure',
-            smoking: profile.smoking || 'no',
-            drinking: profile.drinking || 'sometimes',
-            exercise: profile.exercise || 'sometimes',
-            verified: profile.verified || false,
-            lastActive: new Date(profile.last_active || profile.created_at),
-          } as UserType;
-        })
-      );
-
-      const profilesWithPhotos = profilesWithData.filter(p => p.photos.length > 0);
-      setProfiles(profilesWithPhotos);
-      setLoading(false);
+      setUsers(transformedUsers);
+      setCurrentIndex(0);
       
     } catch (error) {
-      console.error('Error loading profiles:', error);
-      setProfiles([]);
+      console.error('Error in loadUsers:', error);
+    } finally {
       setLoading(false);
     }
   };
 
-  const handleSwipe = async (direction: 'left' | 'right' | 'super', targetUser: UserType) => {
-    if (!user) return;
+  useEffect(() => {
+    loadUsers();
+  }, [filters]);
 
-    // Map swipe directions to actions
-    const action = direction === 'left' ? 'dislike' : direction === 'right' ? 'like' : 'super';
+  const handleSwipe = async (direction: 'like' | 'dislike' | 'super_like') => {
+    if (!currentUser || currentIndex >= users.length) return;
+
+    setSwipeDirection(direction);
 
     try {
-      // Add to session swiped users
-      setSwipedUserIds(prev => [...prev, targetUser.id]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
 
       // Record the swipe
-      const { error: swipeError } = await supabase
-        .from('swipes')
-        .insert({
-          swiper_id: user.id,
-          swiped_id: targetUser.id,
-          action,
-        });
+      await supabase.from('swipes').insert({
+        swiper_id: user.id,
+        swiped_id: users[currentIndex].id,
+        action: direction
+      });
 
-      if (swipeError) {
-        console.error('Error creating swipe:', swipeError);
-        toast({
-          title: "Error",
-          description: "Unable to record your action. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Check for match if this was a like or super like
-      if (action === 'like' || action === 'super') {
-        const { data: matchData } = await supabase
-          .from('swipes')
-          .select('*')
-          .eq('swiper_id', targetUser.id)
-          .eq('swiped_id', user.id)
-          .in('action', ['like', 'super'])
-          .maybeSingle();
-
-        if (matchData) {
-          // Create match
-          await supabase
-            .from('matches')
-            .insert({
-              user1_id: user.id,
-              user2_id: targetUser.id
-            });
-
-          setMatchedUser(targetUser);
-          setShowMatchModal(true);
-        } else {
-          const actionText = action === 'super' ? 'Super liked' : 'Liked';
-          const modeText = mode === 'friend' ? 'friend request' : 'like';
-          toast({
-            title: `${actionText}! 💫`,
-            description: `You sent a ${modeText} to ${targetUser.name}!`,
-          });
-        }
-      }
-
-      setCurrentIndex(currentIndex + 1);
-
-      // If we've reached the end, reset to beginning (for testing)
-      if (currentIndex >= profiles.length - 1) {
-        setTimeout(() => {
-          setCurrentIndex(0);
-          setSwipedUserIds([]); // Reset session swiped users
-        }, 1000);
-      }
+      // Move to next user after animation
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setSwipeDirection(null);
+      }, 300);
 
     } catch (error) {
-      console.error('Unexpected error in handleSwipe:', error);
-      toast({
-        title: "Error",
-        description: "An unexpected error occurred. Please try again.",
-        variant: "destructive",
-      });
+      console.error('Error recording swipe:', error);
+      // Still move to next user even if recording fails
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setSwipeDirection(null);
+      }, 300);
     }
   };
 
-  const convertToUserType = (profile: UserType): UserType => profile;
+  // Reset to beginning when all users are viewed (for testing)
+  const resetStack = () => {
+    setCurrentIndex(0);
+  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500 mx-auto mb-6"></div>
-          <p className="text-lg text-gray-600">
-            Finding amazing {mode === 'friend' ? 'friends' : 'dates'} for you...
-          </p>
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
       </div>
     );
   }
 
-  if (profiles.length === 0) {
+  if (users.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50 p-6">
-        <div className="text-center mb-8">
-          <Users className="h-24 w-24 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-gray-700 mb-2">
-            No profiles available
-          </h3>
-          <p className="text-gray-500 mb-6">
-            No profiles to show at the moment
-          </p>
+      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          mode === 'friend' ? 'bg-blue-100' : 'bg-pink-100'
+        }`}>
+          {mode === 'friend' ? (
+            <Users className={`h-8 w-8 ${mode === 'friend' ? 'text-blue-500' : 'text-pink-500'}`} />
+          ) : (
+            <Heart className={`h-8 w-8 ${mode === 'friend' ? 'text-blue-500' : 'text-pink-500'}`} />
+          )}
         </div>
-
-        <div className="flex space-x-3">
-          <Button 
-            onClick={loadProfiles} 
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-          >
-            <RefreshCw className="h-5 w-5 mr-2" />
-            Refresh
-          </Button>
-          
-          <Button 
-            onClick={() => setShowEventsModal(true)}
-            variant="outline"
-            className="px-6 py-3 text-lg rounded-full border-2 hover:scale-105 transition-all duration-200"
-          >
-            <Calendar className="h-5 w-5 mr-2" />
-            Find Events
-          </Button>
-        </div>
+        <h3 className="text-xl font-semibold mb-2">No profiles found</h3>
+        <p className="text-gray-600 mb-4">
+          Try adjusting your filters or check back later for new profiles
+        </p>
+        <Button 
+          onClick={loadUsers}
+          className={mode === 'friend' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-pink-500 hover:bg-pink-600'}
+        >
+          Refresh
+        </Button>
       </div>
     );
   }
 
-  // If we've reached the end, show restart message
-  if (currentIndex >= profiles.length) {
+  if (currentIndex >= users.length) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50 p-6">
-        <div className="text-center mb-8">
-          <Users className="h-24 w-24 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-gray-700 mb-2">
-            You've seen everyone!
-          </h3>
-          <p className="text-gray-500 mb-6">
-            Restarting from the beginning for testing
-          </p>
+      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          mode === 'friend' ? 'bg-blue-100' : 'bg-pink-100'
+        }`}>
+          <Star className={`h-8 w-8 ${mode === 'friend' ? 'text-blue-500' : 'text-pink-500'}`} />
         </div>
-
-        <div className="flex space-x-3">
-          <Button 
-            onClick={() => {
-              setCurrentIndex(0);
-              setSwipedUserIds([]);
-            }} 
-            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
-          >
-            <RefreshCw className="h-5 w-5 mr-2" />
-            Start Over
-          </Button>
-          
-          <Button 
-            onClick={() => setShowEventsModal(true)}
-            variant="outline"
-            className="px-6 py-3 text-lg rounded-full border-2 hover:scale-105 transition-all duration-200"
-          >
-            <Calendar className="h-5 w-5 mr-2" />
-            Find Events
-          </Button>
-        </div>
+        <h3 className="text-xl font-semibold mb-2">You've seen everyone nearby!</h3>
+        <p className="text-gray-600 mb-4">
+          Check back later for new matches or explore events
+        </p>
+        <Button 
+          onClick={resetStack}
+          className={mode === 'friend' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-pink-500 hover:bg-pink-600'}
+        >
+          Start Over
+        </Button>
       </div>
     );
   }
 
-  const currentProfile = profiles[currentIndex];
+  const user = users[currentIndex];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 pt-safe pb-safe">
-      <div className="container mx-auto px-4 py-8">
-        <EnhancedSwipeCard
-          user={currentProfile}
+    <div className="max-w-sm mx-auto pt-4">
+      {/* Compatibility Score */}
+      <div className="mb-4">
+        <CompatibilityScore 
+          score={mockCompatibility} 
           mode={mode}
-          onSwipe={handleSwipe}
-          onShowProfile={() => setShowProfileModal(true)}
+          userName={user.name}
         />
+      </div>
 
-        {/* Modals */}
-        {showProfileModal && (
-          <ModernProfileModal
-            user={convertToUserType(currentProfile)}
-            onClose={() => setShowProfileModal(false)}
-            onLike={() => {
-              setShowProfileModal(false);
-              handleSwipe('right', currentProfile);
-            }}
-            onPass={() => {
-              setShowProfileModal(false);
-              handleSwipe('left', currentProfile);
-            }}
-            onSuperLike={() => {
-              setShowProfileModal(false);
-              handleSwipe('super', currentProfile);
-            }}
-          />
-        )}
+      {/* Main Card */}
+      <Card className={`relative overflow-hidden transition-all duration-300 ${
+        swipeDirection === 'like' ? 'transform rotate-12 translate-x-full opacity-50' :
+        swipeDirection === 'dislike' ? 'transform -rotate-12 -translate-x-full opacity-50' :
+        swipeDirection === 'super_like' ? 'transform -translate-y-full opacity-50' : ''
+      }`}>
+        <CardContent className="p-0">
+          <div className="relative">
+            <PhotoGallery photos={user.photos} userName={user.name} />
+            
+            {/* Overlay Info */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 text-white">
+              <div className="flex items-center space-x-2 mb-2">
+                <h2 className="text-2xl font-bold">{user.name}</h2>
+                <span className="text-lg">{user.age}</span>
+                {user.verified && (
+                  <Badge className="bg-blue-500">
+                    ✓
+                  </Badge>
+                )}
+              </div>
+              
+              <div className="flex items-center space-x-4 text-sm mb-2">
+                <div className="flex items-center space-x-1">
+                  <MapPin className="h-4 w-4" />
+                  <span>{user.distance}km away</span>
+                </div>
+                {user.isOnline && (
+                  <Badge className="bg-green-500 text-xs">
+                    Online
+                  </Badge>
+                )}
+              </div>
 
-        {showMatchModal && matchedUser && (
-          <MatchCelebrationModal
-            isOpen={showMatchModal}
-            matchedUser={convertToUserType(matchedUser)}
-            currentUserPhoto={currentUserPhoto}
-            onChatNow={() => {
-              setShowMatchModal(false);
-              toast({
-                title: "Opening chat...",
-                description: `Starting conversation with ${matchedUser.name}`,
-              });
-            }}
-            onContinueBrowsing={() => {
-              setShowMatchModal(false);
-              setMatchedUser(null);
-            }}
-            onClose={() => setShowMatchModal(false)}
-          />
-        )}
+              {user.job && (
+                <p className="text-sm text-gray-200 mb-2">{user.job}</p>
+              )}
 
-        {showEventsModal && (
-          <LocalEvents onClose={() => setShowEventsModal(false)} />
-        )}
+              {user.bio && (
+                <p className="text-sm text-gray-200 mb-3 line-clamp-2">{user.bio}</p>
+              )}
+
+              {user.interests && user.interests.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {user.interests.slice(0, 3).map((interest, index) => (
+                    <Badge key={index} variant="secondary" className="text-xs bg-white/20 text-white">
+                      {interest}
+                    </Badge>
+                  ))}
+                  {user.interests.length > 3 && (
+                    <Badge variant="secondary" className="text-xs bg-white/20 text-white">
+                      +{user.interests.length - 3}
+                    </Badge>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Action Buttons */}
+      <div className="flex justify-center space-x-4 mt-6">
+        <Button
+          onClick={() => handleSwipe('dislike')}
+          size="lg"
+          variant="outline"
+          className="rounded-full w-14 h-14 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50"
+        >
+          <X className="h-6 w-6 text-gray-600 hover:text-red-500" />
+        </Button>
+
+        <Button
+          onClick={() => handleSwipe('super_like')}
+          size="lg"
+          className="rounded-full w-14 h-14 bg-blue-500 hover:bg-blue-600"
+        >
+          <Star className="h-6 w-6 text-white" />
+        </Button>
+
+        <Button
+          onClick={() => handleSwipe('like')}
+          size="lg"
+          className={`rounded-full w-14 h-14 ${
+            mode === 'friend' 
+              ? 'bg-blue-500 hover:bg-blue-600' 
+              : 'bg-pink-500 hover:bg-pink-600'
+          }`}
+        >
+          {mode === 'friend' ? (
+            <Users className="h-6 w-6 text-white" />
+          ) : (
+            <Heart className="h-6 w-6 text-white" />
+          )}
+        </Button>
+      </div>
+
+      {/* Mode Indicator */}
+      <div className="flex justify-center mt-4">
+        <Badge className={`${
+          mode === 'friend' 
+            ? 'bg-blue-100 text-blue-800' 
+            : 'bg-pink-100 text-pink-800'
+        }`}>
+          {mode === 'friend' ? '👥 Friend Mode' : '💕 Date Mode'}
+        </Badge>
       </div>
     </div>
   );

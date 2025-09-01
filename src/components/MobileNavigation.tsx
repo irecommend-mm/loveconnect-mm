@@ -1,17 +1,19 @@
 
 import React from 'react';
-import { Heart, Search, Users, MessageCircle, Settings } from 'lucide-react';
+import { Heart, Search, Users, MessageCircle, Settings, Calendar } from 'lucide-react';
+import { AppMode } from '@/types/FriendDateTypes';
 
 interface MobileNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  currentMode: AppMode;
 }
 
-const MobileNavigation = ({ activeTab, onTabChange }: MobileNavigationProps) => {
+const MobileNavigation = ({ activeTab, onTabChange, currentMode }: MobileNavigationProps) => {
   const navItems = [
     { id: 'discover', icon: Heart, label: 'Discover' },
     { id: 'browse', icon: Search, label: 'Browse' },
-    { id: 'likes', icon: Users, label: 'Likes' },
+    { id: 'events', icon: Calendar, label: 'Events' },
     { id: 'matches', icon: MessageCircle, label: 'Matches' },
     { id: 'settings', icon: Settings, label: 'Settings' },
   ];
@@ -25,7 +27,7 @@ const MobileNavigation = ({ activeTab, onTabChange }: MobileNavigationProps) => 
             onClick={() => onTabChange(item.id)}
             className={`flex flex-col items-center justify-center p-1 sm:p-2 transition-colors min-w-0 flex-1 ${
               activeTab === item.id
-                ? 'text-pink-500'
+                ? currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
