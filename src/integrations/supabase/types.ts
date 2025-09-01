@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.12 (cd3cf9e)"
@@ -159,6 +159,7 @@ export type Database = {
           event_date: string
           event_type: string
           id: string
+          is_public: boolean | null
           location: string
           max_attendees: number
           title: string
@@ -170,6 +171,7 @@ export type Database = {
           event_date: string
           event_type: string
           id?: string
+          is_public?: boolean | null
           location: string
           max_attendees?: number
           title: string
@@ -181,6 +183,7 @@ export type Database = {
           event_date?: string
           event_type?: string
           id?: string
+          is_public?: boolean | null
           location?: string
           max_attendees?: number
           title?: string
@@ -675,7 +678,7 @@ export type Database = {
     }
     Functions: {
       calculate_distance: {
-        Args: { lat1: number; lon1: number; lat2: number; lon2: number }
+        Args: { lat1: number; lat2: number; lon1: number; lon2: number }
         Returns: number
       }
       calculate_zodiac_compatibility: {
@@ -683,7 +686,7 @@ export type Database = {
         Returns: number
       }
       is_user_blocked: {
-        Args: { blocker_id: string; blocked_id: string }
+        Args: { blocked_id: string; blocker_id: string }
         Returns: boolean
       }
     }

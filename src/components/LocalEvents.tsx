@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Calendar, MapPin, Users, Plus, Clock, X, Heart, Share2, Globe, Lock, UserCheck, UserX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
