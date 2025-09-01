@@ -1,16 +1,19 @@
 
 import React from 'react';
 import { User } from '@supabase/supabase-js';
-import SwipeStack from './SwipeStack';
+import EnhancedSwipeStack from './EnhancedSwipeStack';
 import DiscoveryGrid from './DiscoveryGrid';
 import LikesYouPage from './LikesYouPage';
 import MatchesList from './MatchesList';
 import ModernSettingsPage from './ModernSettingsPage';
 import ChatInterface from './ChatInterface';
+import LocalEvents from './LocalEvents';
 import { Match, User as UserType } from '@/types/User';
+import { AppMode } from '@/types/FriendDateTypes';
 
 interface MainContentProps {
   activeTab: string;
+  currentMode: AppMode;
   user: User;
   matches: Match[];
   users: UserType[];
@@ -27,6 +30,7 @@ interface MainContentProps {
 
 const MainContent = ({
   activeTab,
+  currentMode,
   user,
   matches,
   users,
@@ -43,10 +47,10 @@ const MainContent = ({
   return (
     <main className="pt-16 pb-20 min-h-screen bg-gray-50">
       <div className="h-full">
-        {/* Discover Tab - Swipe Mode */}
+        {/* Discover Tab - Enhanced Swipe Mode with F&D */}
         {activeTab === 'discover' && (
           <div className="px-2 sm:px-4">
-            <SwipeStack />
+            <EnhancedSwipeStack mode={currentMode} />
           </div>
         )}
         
@@ -54,6 +58,13 @@ const MainContent = ({
         {activeTab === 'browse' && (
           <div className="px-2 sm:px-4">
             <DiscoveryGrid currentUserId={user.id} userLocation={location} />
+          </div>
+        )}
+        
+        {/* Events Tab - Local Events & Meetups */}
+        {activeTab === 'events' && (
+          <div className="px-2 sm:px-4 py-4">
+            <LocalEvents onClose={() => {}} />
           </div>
         )}
         
