@@ -26,6 +26,7 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
   const [showEventsModal, setShowEventsModal] = useState(false);
   const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
+  const [swipedUserIds, setSwipedUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (user) {
@@ -58,13 +59,23 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
 
     setLoading(true);
     try {
-      // Get users that haven't been swiped on
+      // Get users that haven't been swiped on in this session
       const { data: swipedUsers } = await supabase
         .from('swipes')
         .select('swiped_id')
         .eq('swiper_id', user.id);
 
-      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+      const dbSwipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+      
+      // Combine database swiped users with session swiped users, but exclude matched users
+      const { data: matchedUsers } = await supabase
+        .from('matches')
+        .select('user1_id, user2_id')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+      const matchedUserIds = matchedUsers?.flatMap(match => 
+        match.user1_id === user.id ? [match.user2_id] : [match.user1_id]
+      ) || [];
 
       let profilesQuery = supabase
         .from('profiles')
@@ -72,8 +83,9 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
         .neq('user_id', user.id)
         .eq('incognito', false);
 
-      if (swipedUserIds.length > 0) {
-        profilesQuery = profilesQuery.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
+      // Only exclude matched users, not session swiped users (for testing)
+      if (matchedUserIds.length > 0) {
+        profilesQuery = profilesQuery.not('user_id', 'in', `(${matchedUserIds.join(',')})`);
       }
 
       const { data: profilesData, error } = await profilesQuery.limit(20);
@@ -139,10 +151,16 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
     }
   };
 
-  const handleAction = async (action: 'like' | 'dislike' | 'super', targetUser: UserType) => {
+  const handleSwipe = async (direction: 'left' | 'right' | 'super', targetUser: UserType) => {
     if (!user) return;
 
+    // Map swipe directions to actions
+    const action = direction === 'left' ? 'dislike' : direction === 'right' ? 'like' : 'super';
+
     try {
+      // Add to session swiped users
+      setSwipedUserIds(prev => [...prev, targetUser.id]);
+
       // Record the swipe
       const { error: swipeError } = await supabase
         .from('swipes')
@@ -195,15 +213,16 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
 
       setCurrentIndex(currentIndex + 1);
 
-      // Load more profiles if running low
-      if (currentIndex >= profiles.length - 2) {
+      // If we've reached the end, reset to beginning (for testing)
+      if (currentIndex >= profiles.length - 1) {
         setTimeout(() => {
-          loadProfiles();
-        }, 100);
+          setCurrentIndex(0);
+          setSwipedUserIds([]); // Reset session swiped users
+        }, 1000);
       }
 
     } catch (error) {
-      console.error('Unexpected error in handleAction:', error);
+      console.error('Unexpected error in handleSwipe:', error);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
@@ -227,16 +246,16 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
     );
   }
 
-  if (currentIndex >= profiles.length) {
+  if (profiles.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50 p-6">
         <div className="text-center mb-8">
           <Users className="h-24 w-24 text-gray-300 mx-auto mb-4" />
           <h3 className="text-2xl font-bold text-gray-700 mb-2">
-            You've seen everyone nearby!
+            No profiles available
           </h3>
           <p className="text-gray-500 mb-6">
-            Check back later for new {mode === 'friend' ? 'friends' : 'matches'} or explore events
+            No profiles to show at the moment
           </p>
         </div>
 
@@ -262,6 +281,45 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
     );
   }
 
+  // If we've reached the end, show restart message
+  if (currentIndex >= profiles.length) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[600px] bg-gradient-to-br from-pink-50 to-purple-50 p-6">
+        <div className="text-center mb-8">
+          <Users className="h-24 w-24 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-2xl font-bold text-gray-700 mb-2">
+            You've seen everyone!
+          </h3>
+          <p className="text-gray-500 mb-6">
+            Restarting from the beginning for testing
+          </p>
+        </div>
+
+        <div className="flex space-x-3">
+          <Button 
+            onClick={() => {
+              setCurrentIndex(0);
+              setSwipedUserIds([]);
+            }} 
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white px-6 py-3 text-lg rounded-full shadow-xl hover:scale-105 transition-all duration-200"
+          >
+            <RefreshCw className="h-5 w-5 mr-2" />
+            Start Over
+          </Button>
+          
+          <Button 
+            onClick={() => setShowEventsModal(true)}
+            variant="outline"
+            className="px-6 py-3 text-lg rounded-full border-2 hover:scale-105 transition-all duration-200"
+          >
+            <Calendar className="h-5 w-5 mr-2" />
+            Find Events
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const currentProfile = profiles[currentIndex];
 
   return (
@@ -270,7 +328,7 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
         <EnhancedSwipeCard
           user={currentProfile}
           mode={mode}
-          onSwipe={handleAction}
+          onSwipe={handleSwipe}
           onShowProfile={() => setShowProfileModal(true)}
         />
 
@@ -281,15 +339,15 @@ const EnhancedSwipeStack = ({ mode }: EnhancedSwipeStackProps) => {
             onClose={() => setShowProfileModal(false)}
             onLike={() => {
               setShowProfileModal(false);
-              handleAction('like', currentProfile);
+              handleSwipe('right', currentProfile);
             }}
             onPass={() => {
               setShowProfileModal(false);
-              handleAction('dislike', currentProfile);
+              handleSwipe('left', currentProfile);
             }}
             onSuperLike={() => {
               setShowProfileModal(false);
-              handleAction('super', currentProfile);
+              handleSwipe('super', currentProfile);
             }}
           />
         )}

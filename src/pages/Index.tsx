@@ -1,36 +1,28 @@
 
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
-import MobileHeader from '@/components/MobileHeader';
-import MobileNavigation from '@/components/MobileNavigation';
-import MainContent from '@/components/MainContent';
-import LocationBanner from '@/components/LocationBanner';
-import ProfileSetup from '@/components/ProfileSetup';
-import PremiumFeatures from '@/components/PremiumFeatures';
-import NotificationCenter from '@/components/NotificationCenter';
-import LocalEvents from '@/components/LocalEvents';
-import VideoCallModal from '@/components/VideoCallModal';
-import AdvancedFilters from '@/components/filters/AdvancedFilters';
-import { GamificationStatus } from '@/components/GamificationStatus';
-import { VirtualChatRoom } from '@/components/chat/VirtualChatRoom';
-import { useGeolocation } from '@/hooks/useGeolocation';
-import { useAppState } from '@/hooks/useAppState';
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMatches } from '@/hooks/useMatches';
+import { useAppState } from '@/hooks/useAppState';
+import { useAppMode } from '@/hooks/useAppMode';
+import { useGeolocation } from '@/hooks/useGeolocation';
+import Auth from './Auth';
+import ProfileSetup from '@/components/ProfileSetup';
+import MainContent from '@/components/MainContent';
+import FDHeader from '@/components/FDHeader';
+import MobileNavigation from '@/components/MobileNavigation';
+import PremiumFeatures from '@/components/PremiumFeatures';
+import ProfileModal from '@/components/ProfileModal';
+import NotificationCenter from '@/components/NotificationCenter';
+import VideoCallModal from '@/components/VideoCallModal';
 import { User as UserType } from '@/types/User';
-import { X } from 'lucide-react';
 
 const Index = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState<User | null>(null);
-  const { location, error: locationError, loading: locationLoading } = useGeolocation();
-  
-  // Add showChatRoom state
-  const [showChatRoom, setShowChatRoom] = useState(false);
-  
-  // Custom hooks for state management
+  const { user, loading: authLoading } = useAuth();
+  const { currentMode, switchMode } = useAppMode();
+  const { hasProfile, loading: profileLoading, currentUserProfile, checkUserProfile } = useUserProfile(user);
+  const { matches, users, loading: matchesLoading } = useMatches(user);
+  const { location, loading: locationLoading } = useGeolocation();
   const {
     activeTab,
     selectedMatchId,
@@ -38,157 +30,70 @@ const Index = () => {
     showProfile,
     showPremium,
     showNotifications,
-    showEvents,
-    showFilters,
     showVideoCall,
-    setSelectedMatchId,
-    setSelectedOtherUser,
     setShowProfile,
     setShowPremium,
     setShowNotifications,
-    setShowEvents,
-    setShowFilters,
     setShowVideoCall,
     handleTabChange,
+    setSelectedMatchId,
+    setSelectedOtherUser,
   } = useAppState();
 
-  const {
-    hasProfile,
-    loading,
-    currentProfile,
-    currentUserProfile,
-    setHasProfile,
-    checkUserProfile,
-    loadCurrentUserProfile,
-  } = useUserProfile(user);
-
-  const { matches, users, loadMatches } = useMatches(user);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        navigate('/auth');
-      }
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        navigate('/auth');
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  // Load matches when switching to matches tab
-  useEffect(() => {
-    if (activeTab === 'matches' && user) {
-      loadMatches(user.id);
-    }
-  }, [activeTab, user]);
-
-  const handleProfileComplete = () => {
-    setHasProfile(true);
-    setShowProfile(false);
-    if (user) {
-      checkUserProfile(user.id);
-      loadCurrentUserProfile(user.id);
-    }
-  };
-
-  const handleChatSelect = (matchedUser: UserType) => {
-    const match = matches.find(m => 
-      m.users.includes(matchedUser.id)
-    );
-    
-    if (match) {
-      setSelectedMatchId(match.id);
-      setSelectedOtherUser(matchedUser);
-      handleTabChange('chat');
-    }
-  };
-
-  const handleVideoCall = (matchedUser: UserType) => {
-    setSelectedOtherUser(matchedUser);
-    setShowVideoCall(true);
-  };
-
-  const handleLocationEnable = async () => {
-    if (location && user) {
-      try {
-        await supabase
-          .from('profiles')
-          .update({
-            latitude: location.lat,
-            longitude: location.lng,
-            last_active: new Date().toISOString()
-          })
-          .eq('user_id', user.id);
-        
-        window.location.reload();
-      } catch (error) {
-        console.error('Error updating location:', error);
-      }
-    }
-  };
-
-  const handleUpgrade = (plan: string) => {
-    console.log('Upgrading to plan:', plan);
-    setShowPremium(false);
-  };
-
-  const handleApplyFilters = (filters: any) => {
-    console.log('Applied filters:', filters);
-    setShowFilters(false);
-  };
-
-  if (loading) {
+  // Loading state
+  if (authLoading || profileLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div>
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500 mx-auto mb-6"></div>
+          <p className="text-lg text-gray-600">Loading your experience...</p>
+        </div>
       </div>
     );
   }
 
+  // Authentication required
   if (!user) {
-    return null;
+    return <Auth />;
   }
 
-  if (!hasProfile && !showProfile) {
-    return <ProfileSetup onComplete={handleProfileComplete} />;
+  // Profile setup required
+  if (!hasProfile) {
+    return <ProfileSetup onProfileComplete={() => checkUserProfile(user.id)} />;
   }
+
+  const handleChatSelect = (selectedUser: UserType) => {
+    const match = matches.find(m => 
+      (m.users[0] === user.id && users.find(u => u.id === m.users[1])?.id === selectedUser.id) ||
+      (m.users[1] === user.id && users.find(u => u.id === m.users[0])?.id === selectedUser.id)
+    );
+    
+    if (match) {
+      setSelectedMatchId(match.id);
+      setSelectedOtherUser(selectedUser);
+      handleTabChange('chat');
+    }
+  };
+
+  const handleVideoCall = (selectedUser: UserType) => {
+    setSelectedOtherUser(selectedUser);
+    setShowVideoCall(true);
+  };
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
-      {/* Mobile Header */}
-      <MobileHeader 
-        title="VibeConnect"
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <FDHeader 
+        currentMode={currentMode}
+        onModeSwitch={switchMode}
         onNotificationsClick={() => setShowNotifications(true)}
-        onEventsClick={() => setShowEvents(true)}
-        onFilterClick={() => setShowFilters(true)}
-        onChatRoomClick={() => setShowChatRoom(true)}
-        showLocation={activeTab === 'discover' || activeTab === 'browse'}
-        location={currentProfile?.location}
+        userProfile={currentUserProfile}
       />
-      
-      {/* Location Permission Banner */}
-      <LocationBanner
-        location={location}
-        locationLoading={locationLoading}
-        activeTab={activeTab}
-        onLocationEnable={handleLocationEnable}
-      />
-
-      {/* Gamification Status - Show in Settings tab */}
-      {activeTab === 'settings' && <GamificationStatus />}
 
       {/* Main Content */}
       <MainContent
         activeTab={activeTab}
+        currentMode={currentMode}
         user={user}
         matches={matches}
         users={users}
@@ -207,66 +112,33 @@ const Index = () => {
       <MobileNavigation 
         activeTab={activeTab}
         onTabChange={handleTabChange}
+        currentMode={currentMode}
       />
 
-      {/* Profile Setup Modal */}
-      {showProfile && (
-        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 sm:p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
-            <button
-              onClick={() => setShowProfile(false)}
-              className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 p-2 bg-white rounded-full shadow-lg hover:bg-gray-50 transition-colors"
-            >
-              <X className="h-4 w-4 sm:h-5 sm:w-5 text-gray-600" />
-            </button>
-            <ProfileSetup 
-              onComplete={handleProfileComplete}
-              existingProfile={currentProfile}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Premium Modal */}
-      {showPremium && (
-        <PremiumFeatures 
-          onClose={() => setShowPremium(false)}
-          onUpgrade={handleUpgrade}
+      {/* Modals */}
+      {showProfile && currentUserProfile && (
+        <ProfileModal
+          user={currentUserProfile}
+          onClose={() => setShowProfile(false)}
+          onSave={() => {
+            setShowProfile(false);
+            if (user) checkUserProfile(user.id);
+          }}
         />
       )}
 
-      {/* Notifications Modal */}
+      {showPremium && (
+        <PremiumFeatures onClose={() => setShowPremium(false)} />
+      )}
+
       {showNotifications && (
         <NotificationCenter onClose={() => setShowNotifications(false)} />
       )}
 
-      {/* Local Events Modal */}
-      {showEvents && (
-        <LocalEvents onClose={() => setShowEvents(false)} />
-      )}
-
-      {/* Virtual Chat Room Modal */}
-      {showChatRoom && (
-        <VirtualChatRoom onClose={() => setShowChatRoom(false)} />
-      )}
-
-      {/* Advanced Filters Modal - Now accessible to all users */}
-      {showFilters && (
-        <AdvancedFilters 
-          isOpen={showFilters}
-          onClose={() => setShowFilters(false)}
-          onApplyFilters={handleApplyFilters}
-        />
-      )}
-
-      {/* Video Call Modal */}
       {showVideoCall && selectedOtherUser && (
         <VideoCallModal
-          isOpen={showVideoCall}
+          otherUser={selectedOtherUser}
           onClose={() => setShowVideoCall(false)}
-          otherUserName={selectedOtherUser.name}
-          otherUserPhoto={selectedOtherUser.photos[0] || ''}
-          isIncoming={false}
         />
       )}
     </div>
