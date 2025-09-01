@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Users, Plus, Clock, X, Heart, Share2, Check, UserCheck, Eye, EyeOff, Trash2 } from 'lucide-react';
+import { Calendar, MapPin, Users, Plus, Clock, X, Heart, Share2, Globe, Lock, UserCheck, UserX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,6 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'browse' | 'my-events' | 'joined'>('browse');
-  const [joinRequests, setJoinRequests] = useState<any[]>([]);
   
   const [newEvent, setNewEvent] = useState({
     title: '',
@@ -34,9 +33,6 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
 
   useEffect(() => {
     loadEvents();
-    if (activeTab === 'my-events') {
-      loadJoinRequests();
-    }
   }, [activeTab]);
 
   const loadEvents = async () => {
@@ -46,9 +42,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
     try {
       let baseQuery = supabase
         .from('group_events')
-        .select(`
-          *
-        `);
+        .select(`*`);
 
       if (activeTab === 'my-events') {
         baseQuery = baseQuery.eq('creator_id', user.id);
@@ -57,7 +51,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
           .from('event_attendees')
           .select('event_id')
           .eq('user_id', user.id)
-          .eq('status', 'joined');
+          .in('status', ['joined', 'accepted']);
         
         const eventIds = attendeeData?.map(a => a.event_id) || [];
         if (eventIds.length === 0) {
@@ -67,9 +61,6 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
         }
         
         baseQuery = baseQuery.in('id', eventIds);
-      } else {
-        // For browse tab, only show public events
-        baseQuery = baseQuery.eq('is_public', true);
       }
 
       const { data: eventsData, error } = await baseQuery
@@ -100,22 +91,24 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
               .select('*')
               .eq('event_id', event.id);
 
-            const joinedCount = attendeesData?.filter(a => a.status === 'joined').length || 0;
+            const joinedCount = attendeesData?.filter(a => a.status === 'joined' || a.status === 'accepted').length || 0;
 
             const typedAttendees: EventAttendee[] = (attendeesData || []).map(attendee => ({
               ...attendee,
-              status: attendee.status as 'joined' | 'interested' | 'declined' | 'pending' | 'accepted'
+              status: attendee.status as EventAttendee['status']
             }));
 
             return {
               ...event,
-              event_type: event.event_type as 'local' | 'virtual',
+              event_type: (event.event_type === 'local' || event.event_type === 'virtual') 
+                ? event.event_type as 'local' | 'virtual'
+                : 'group' as 'group',
               creator_name: profileData?.name || 'Unknown',
               creator_photo: photoData?.url || '',
               current_attendees: joinedCount,
               attendees: typedAttendees,
               is_public: event.is_public ?? true
-            };
+            } as GroupEvent;
           })
         );
         
@@ -126,34 +119,6 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
       setEvents([]);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadJoinRequests = async () => {
-    if (!user) return;
-
-    try {
-      const { data: myEvents } = await supabase
-        .from('group_events')
-        .select('id')
-        .eq('creator_id', user.id);
-
-      const eventIds = myEvents?.map(e => e.id) || [];
-      
-      if (eventIds.length > 0) {
-        const { data: requests } = await supabase
-          .from('event_attendees')
-          .select(`
-            *,
-            profiles:user_id (name)
-          `)
-          .in('event_id', eventIds)
-          .eq('status', 'pending');
-
-        setJoinRequests(requests || []);
-      }
-    } catch (error) {
-      console.error('Error loading join requests:', error);
     }
   };
 
@@ -197,20 +162,20 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
     }
   };
 
-  const requestToJoin = async (eventId: string) => {
+  const joinEvent = async (eventId: string) => {
     if (!user) return;
 
     try {
       const { error } = await supabase
         .from('event_attendees')
-        .insert({
+        .upsert({
           event_id: eventId,
           user_id: user.id,
           status: 'pending'
         });
 
       if (error) {
-        console.error('Error requesting to join event:', error);
+        console.error('Error joining event:', error);
       } else {
         const event = events.find(e => e.id === eventId);
         if (event && event.creator_id !== user.id) {
@@ -218,46 +183,87 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
             .from('notifications')
             .insert({
               user_id: event.creator_id,
-              type: 'event_join_request',
-              title: 'New Join Request',
-              message: `Someone wants to join your event "${event.title}"`,
-              data: { event_id: eventId, requester_id: user.id }
+              type: 'event_request',
+              title: 'New Event Request',
+              message: `Someone requested to join your event "${event.title}"`,
+              data: { event_id: eventId }
             });
         }
         
         loadEvents();
       }
     } catch (error) {
-      console.error('Error requesting to join event:', error);
+      console.error('Error joining event:', error);
     }
   };
 
-  const handleJoinRequest = async (attendeeId: string, action: 'accepted' | 'declined') => {
+  const handleJoinRequest = async (eventId: string, userId: string, action: 'accept' | 'deny') => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('event_attendees')
-        .update({ status: action })
-        .eq('id', attendeeId);
+      if (action === 'accept') {
+        const { error } = await supabase
+          .from('event_attendees')
+          .update({ status: 'accepted' })
+          .eq('event_id', eventId)
+          .eq('user_id', userId);
 
-      if (error) {
-        console.error('Error handling join request:', error);
+        if (error) throw error;
+
+        await supabase
+          .from('notifications')
+          .insert({
+            user_id: userId,
+            type: 'event_accepted',
+            title: 'Event Request Accepted',
+            message: 'Your event request has been accepted!',
+            data: { event_id: eventId }
+          });
       } else {
-        loadJoinRequests();
-        loadEvents();
+        const { error } = await supabase
+          .from('event_attendees')
+          .delete()
+          .eq('event_id', eventId)
+          .eq('user_id', userId);
+
+        if (error) throw error;
       }
+
+      loadEvents();
     } catch (error) {
       console.error('Error handling join request:', error);
     }
   };
 
+  const leaveEvent = async (eventId: string) => {
+    if (!user) return;
+
+    try {
+      const { error } = await supabase
+        .from('event_attendees')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error leaving event:', error);
+      } else {
+        loadEvents();
+      }
+    } catch (error) {
+      console.error('Error leaving event:', error);
+    }
+  };
+
   const toggleEventVisibility = async (eventId: string, isPublic: boolean) => {
+    if (!user) return;
+
     try {
       const { error } = await supabase
         .from('group_events')
         .update({ is_public: !isPublic })
-        .eq('id', eventId);
+        .eq('id', eventId)
+        .eq('creator_id', user.id);
 
       if (error) {
         console.error('Error updating event visibility:', error);
@@ -269,34 +275,14 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
     }
   };
 
-  const deleteEvent = async (eventId: string) => {
-    try {
-      const { error } = await supabase
-        .from('group_events')
-        .delete()
-        .eq('id', eventId);
-
-      if (error) {
-        console.error('Error deleting event:', error);
-      } else {
-        loadEvents();
-      }
-    } catch (error) {
-      console.error('Error deleting event:', error);
-    }
-  };
-
   const getUserStatus = (event: GroupEvent) => {
-    const userAttendance = event.attendees?.find(a => a.user_id === user?.id);
-    return userAttendance?.status || null;
+    if (!user) return null;
+    const attendee = event.attendees?.find(a => a.user_id === user.id);
+    return attendee?.status || null;
   };
 
-  const hasRequestedToJoin = (event: GroupEvent) => {
-    return getUserStatus(event) === 'pending';
-  };
-
-  const isUserJoined = (event: GroupEvent) => {
-    return getUserStatus(event) === 'accepted' || getUserStatus(event) === 'joined';
+  const getPendingRequests = (event: GroupEvent) => {
+    return event.attendees?.filter(a => a.status === 'pending') || [];
   };
 
   return (
@@ -314,7 +300,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
               size="sm"
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add New
+              Add New Event
             </Button>
             <button
               onClick={onClose}
@@ -342,11 +328,6 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
               }`}
             >
               {tab.label}
-              {tab.id === 'my-events' && joinRequests.length > 0 && (
-                <Badge className="ml-2 bg-red-500 text-white text-xs">
-                  {joinRequests.length}
-                </Badge>
-              )}
             </button>
           ))}
         </div>
@@ -394,7 +375,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
                         onChange={(e) => setNewEvent({...newEvent, event_type: e.target.value as 'local' | 'virtual'})}
                         className="w-full p-2 border border-gray-300 rounded-lg"
                       >
-                        <option value="local">Local Event</option>
+                        <option value="local">Local Meetup</option>
                         <option value="virtual">Virtual Event</option>
                       </select>
                     </div>
@@ -420,7 +401,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
                     <Input
                       value={newEvent.location}
                       onChange={(e) => setNewEvent({...newEvent, location: e.target.value})}
-                      placeholder={newEvent.event_type === 'local' ? 'Event location' : 'Virtual meeting link'}
+                      placeholder={newEvent.event_type === 'virtual' ? 'Video call link' : 'Event location'}
                       required
                     />
                   </div>
@@ -443,9 +424,10 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
                       id="isPublic"
                       checked={newEvent.is_public}
                       onChange={(e) => setNewEvent({...newEvent, is_public: e.target.checked})}
+                      className="rounded"
                     />
                     <label htmlFor="isPublic" className="text-sm text-gray-700">
-                      Make event public (others can see and join)
+                      Make this event public
                     </label>
                   </div>
 
@@ -465,56 +447,27 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-6">
-              {/* Join Requests Section for My Events */}
-              {activeTab === 'my-events' && joinRequests.length > 0 && (
-                <Card className="border-orange-200 bg-orange-50">
-                  <CardHeader>
-                    <CardTitle className="text-orange-800">Pending Join Requests</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {joinRequests.map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-3 bg-white rounded-lg">
-                        <div>
-                          <p className="font-medium">{request.profiles?.name || 'Unknown User'}</p>
-                          <p className="text-sm text-gray-600">wants to join your event</p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            size="sm"
-                            onClick={() => handleJoinRequest(request.id, 'accepted')}
-                            className="bg-green-500 hover:bg-green-600"
-                          >
-                            <Check className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleJoinRequest(request.id, 'declined')}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Events List */}
-              <div className="grid gap-6">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto"></div>
-                    <p className="mt-2 text-gray-600">Loading events...</p>
-                  </div>
-                ) : events.length === 0 ? (
-                  <div className="text-center py-8">
-                    <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500">No events found</p>
-                  </div>
-                ) : (
-                  events.map((event) => (
+            <div className="grid gap-6">
+              {loading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500 mx-auto"></div>
+                  <p className="mt-2 text-gray-600">Loading events...</p>
+                </div>
+              ) : events.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500">No events found</p>
+                </div>
+              ) : (
+                events.map((event) => {
+                  const userStatus = getUserStatus(event);
+                  const pendingRequests = getPendingRequests(event);
+                  const isEventType = (event.event_type === 'local' || event.event_type === 'virtual');
+                  const eventTypeLabel = isEventType ? event.event_type : 'group';
+                  const isEventFull = event.current_attendees >= event.max_attendees;
+                  const isPublic = event.is_public ?? true;
+                  
+                  return (
                     <Card key={event.id} className="hover:shadow-lg transition-shadow">
                       <CardContent className="p-6">
                         <div className="flex items-start justify-between mb-4">
@@ -523,11 +476,12 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
                               <h3 className="text-lg font-semibold text-gray-800">
                                 {event.title}
                               </h3>
-                              <Badge variant={event.event_type === 'local' ? 'default' : 'secondary'}>
-                                {event.event_type === 'local' ? 'Local' : 'Virtual'}
+                              <Badge variant={eventTypeLabel === 'local' ? 'default' : 'secondary'}>
+                                {eventTypeLabel === 'local' ? '📍 Local' : '💻 Virtual'}
                               </Badge>
-                              {!event.is_public && (
-                                <Badge variant="outline" className="text-gray-500">
+                              {!isPublic && (
+                                <Badge variant="outline">
+                                  <Lock className="h-3 w-3 mr-1" />
                                   Private
                                 </Badge>
                               )}
@@ -551,49 +505,74 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
                             </div>
                           </div>
                           
-                          <div className="text-right space-y-2">
+                          <div className="text-right">
                             {event.creator_id === user?.id ? (
-                              <div className="space-y-2">
+                              <div className="flex flex-col space-y-2">
                                 <Badge variant="outline">Your Event</Badge>
-                                <div className="flex space-x-1">
-                                  <Button
-                                    onClick={() => toggleEventVisibility(event.id, event.is_public)}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    {event.is_public ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                  </Button>
-                                  <Button
-                                    onClick={() => deleteEvent(event.id)}
-                                    variant="outline"
-                                    size="sm"
-                                    className="text-red-600 hover:text-red-800"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
+                                <Button
+                                  onClick={() => toggleEventVisibility(event.id, isPublic)}
+                                  variant="outline"
+                                  size="sm"
+                                >
+                                  {isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                                </Button>
+                                {pendingRequests.length > 0 && (
+                                  <Badge variant="secondary">{pendingRequests.length} pending</Badge>
+                                )}
                               </div>
-                            ) : hasRequestedToJoin(event) ? (
-                              <Badge variant="outline" className="text-yellow-600">
-                                Request Sent
-                              </Badge>
-                            ) : isUserJoined(event) ? (
-                              <Badge className="bg-green-500">
-                                <UserCheck className="h-3 w-3 mr-1" />
-                                Joined
-                              </Badge>
+                            ) : userStatus === 'pending' ? (
+                              <Badge variant="outline">Request Sent</Badge>
+                            ) : userStatus === 'accepted' || userStatus === 'joined' ? (
+                              <Button
+                                onClick={() => leaveEvent(event.id)}
+                                variant="outline"
+                                size="sm"
+                                className="text-red-600 hover:text-red-800"
+                              >
+                                Leave Event
+                              </Button>
                             ) : (
                               <Button
-                                onClick={() => requestToJoin(event.id)}
+                                onClick={() => joinEvent(event.id)}
                                 size="sm"
                                 className="bg-pink-500 hover:bg-pink-600"
-                                disabled={event.current_attendees >= event.max_attendees}
+                                disabled={isEventFull}
                               >
-                                {event.current_attendees >= event.max_attendees ? 'Full' : 'Request to Join'}
+                                {isEventFull ? 'Full' : 'Request to Join'}
                               </Button>
                             )}
                           </div>
                         </div>
+                        
+                        {event.creator_id === user?.id && pendingRequests.length > 0 && (
+                          <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                            <h4 className="font-medium text-gray-800 mb-2">Pending Requests</h4>
+                            <div className="space-y-2">
+                              {pendingRequests.map((attendee) => (
+                                <div key={attendee.id} className="flex items-center justify-between">
+                                  <span className="text-sm text-gray-600">User request</span>
+                                  <div className="space-x-2">
+                                    <Button
+                                      onClick={() => handleJoinRequest(event.id, attendee.user_id, 'accept')}
+                                      size="sm"
+                                      className="bg-green-500 hover:bg-green-600"
+                                    >
+                                      <UserCheck className="h-3 w-3" />
+                                    </Button>
+                                    <Button
+                                      onClick={() => handleJoinRequest(event.id, attendee.user_id, 'deny')}
+                                      variant="outline"
+                                      size="sm"
+                                      className="text-red-600"
+                                    >
+                                      <UserX className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         
                         <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                           <div className="flex items-center space-x-2">
@@ -618,9 +597,9 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
                         </div>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </div>
+                  );
+                })
+              )}
             </div>
           )}
         </div>
