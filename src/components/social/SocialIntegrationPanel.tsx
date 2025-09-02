@@ -8,7 +8,15 @@ import { Instagram, Music, Mic, Upload } from 'lucide-react';
 import { useSocialIntegration } from '@/hooks/useSocialIntegration';
 
 interface SocialIntegrationPanelProps {
-  currentProfile?: any;
+  currentProfile?: {
+    instagram_username?: string;
+    spotify_connected?: boolean;
+    spotify_data?: {
+      topArtists?: string[];
+      topTracks?: string[];
+    };
+    voice_intro_url?: string;
+  };
 }
 
 export const SocialIntegrationPanel = ({ currentProfile }: SocialIntegrationPanelProps) => {

@@ -2,9 +2,10 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { MapPin } from 'lucide-react';
+import { LocationData } from '@/types/FriendDateTypes';
 
 interface LocationBannerProps {
-  location: any;
+  location: LocationData | null;
   locationLoading: boolean;
   activeTab: string;
   onLocationEnable: () => void;

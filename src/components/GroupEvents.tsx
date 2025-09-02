@@ -11,6 +11,8 @@ import { GroupEvent, EventAttendee } from '@/types/GroupEvent';
 
 interface GroupEventsProps {
   onClose: () => void;
+  currentMode?: 'friend' | 'date';
+  currentUserId?: string;
 }
 
 const GroupEvents = ({ onClose }: GroupEventsProps) => {
@@ -224,8 +226,27 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
     return event.attendees?.some(a => a.user_id === user?.id && a.status === 'joined') || false;
   };
 
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
@@ -259,7 +280,7 @@ const GroupEvents = ({ onClose }: GroupEventsProps) => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as string)}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'

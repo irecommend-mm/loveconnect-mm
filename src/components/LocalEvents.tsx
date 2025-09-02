@@ -11,6 +11,8 @@ import { GroupEvent, EventAttendee } from '@/types/GroupEvent';
 
 interface LocalEventsProps {
   onClose: () => void;
+  currentMode?: 'friend' | 'date';
+  currentUserId?: string;
 }
 
 const LocalEvents = ({ onClose }: LocalEventsProps) => {
@@ -101,7 +103,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
               ...event,
               event_type: (event.event_type === 'local' || event.event_type === 'virtual') 
                 ? event.event_type as 'local' | 'virtual'
-                : 'group' as 'group',
+                : 'group',
               creator_name: profileData?.name || 'Unknown',
               creator_photo: photoData?.url || '',
               current_attendees: joinedCount,
@@ -126,36 +128,61 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
     if (!user) return;
 
     try {
-      const { data, error } = await supabase
+      // Validate required fields
+      if (!newEvent.title || !newEvent.location || !newEvent.event_date) {
+        console.error('Required fields missing');
+        return;
+      }
+
+      // Format date properly
+      const formattedDate = new Date(newEvent.event_date).toISOString();
+
+      // Create event
+      const { data: eventData, error: eventError } = await supabase
         .from('group_events')
         .insert({
           creator_id: user.id,
-          title: newEvent.title,
-          description: newEvent.description,
+          title: newEvent.title.trim(),
+          description: newEvent.description.trim(),
           event_type: newEvent.event_type,
-          location: newEvent.location,
-          event_date: newEvent.event_date,
-          max_attendees: newEvent.max_attendees,
+          location: newEvent.location.trim(),
+          event_date: formattedDate,
+          max_attendees: Math.max(1, Math.min(50, newEvent.max_attendees)),
           is_public: newEvent.is_public
         })
         .select()
         .single();
 
-      if (error) {
-        console.error('Error creating event:', error);
-      } else {
-        setShowCreateForm(false);
-        setNewEvent({
-          title: '',
-          description: '',
-          event_type: 'local',
-          location: '',
-          event_date: '',
-          max_attendees: 10,
-          is_public: true
-        });
-        loadEvents();
+      if (eventError) {
+        console.error('Error creating event:', eventError);
+        return;
       }
+
+      // Add creator as first attendee
+      const { error: attendeeError } = await supabase
+        .from('event_attendees')
+        .insert({
+          event_id: eventData.id,
+          user_id: user.id,
+          status: 'joined'
+        });
+
+      if (attendeeError) {
+        console.error('Error adding creator as attendee:', attendeeError);
+      }
+
+      // Reset form and close
+      setNewEvent({
+        title: '',
+        description: '',
+        event_type: 'local',
+        location: '',
+        event_date: '',
+        max_attendees: 10,
+        is_public: true
+      });
+      setShowCreateForm(false);
+      await loadEvents(); // Reload events list
     } catch (error) {
       console.error('Error creating event:', error);
     }
@@ -284,8 +311,27 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
     return event.attendees?.filter(a => a.status === 'pending') || [];
   };
 
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
@@ -294,7 +340,18 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
           </h2>
           <div className="flex items-center space-x-2">
             <Button
-              onClick={() => setShowCreateForm(true)}
+              onClick={() => {
+                setShowCreateForm(true);
+                setNewEvent({
+                  title: '',
+                  description: '',
+                  event_type: 'local',
+                  location: '',
+                  event_date: '',
+                  max_attendees: 10,
+                  is_public: true
+                });
+              }}
               className="bg-pink-500 hover:bg-pink-600 text-white"
               size="sm"
             >
@@ -319,7 +376,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as string)}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'

@@ -12,7 +12,7 @@ interface Notification {
   message: string;
   read: boolean;
   created_at: string;
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 interface NotificationCenterProps {
@@ -40,7 +40,7 @@ const NotificationCenter = ({ onClose }: NotificationCenterProps) => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            const newNotification = payload.new as any;
+            const newNotification = payload.new as Record<string, unknown>;
             setNotifications(prev => [{
               ...newNotification,
               type: newNotification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like'

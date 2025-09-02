@@ -28,7 +28,7 @@ export const useSafetyFeatures = () => {
         title: "Report Submitted",
         description: "Thank you for helping keep our community safe.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Report error:', error);
       toast({
         title: "Error",
@@ -58,7 +58,7 @@ export const useSafetyFeatures = () => {
         title: "User Blocked",
         description: "You won't see this user anymore.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Block error:', error);
       toast({
         title: "Error",
@@ -87,7 +87,7 @@ export const useSafetyFeatures = () => {
         title: "User Unblocked",
         description: "You can now see this user again.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Unblock error:', error);
       toast({
         title: "Error",

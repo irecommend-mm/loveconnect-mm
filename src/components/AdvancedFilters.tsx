@@ -6,12 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppMode } from '@/types/FriendDateTypes';
+import { AppMode, UserFilters } from '@/types/FriendDateTypes';
 
 interface AdvancedFiltersProps {
   currentMode: AppMode;
   onClose: () => void;
-  onApplyFilters: (filters: any) => void;
+  onApplyFilters: (filters: UserFilters) => void;
 }
 
 const AdvancedFilters = ({ currentMode, onClose, onApplyFilters }: AdvancedFiltersProps) => {

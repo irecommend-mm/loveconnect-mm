@@ -89,7 +89,7 @@ export const useAdvancedMatching = () => {
     }
   };
 
-  const calculateCompatibilityScore = async (currentUser: any, targetUser: any) => {
+  const calculateCompatibilityScore = async (currentUser: Record<string, unknown>, targetUser: Record<string, unknown>) => {
     if (!currentUser || !targetUser) return null;
 
     const locationScore = currentUser.latitude && currentUser.longitude && 
@@ -296,7 +296,7 @@ export const useAdvancedMatching = () => {
     }
   };
 
-  const trackUserActivity = async (activityType: string, targetUserId?: string, metadata?: any) => {
+  const trackUserActivity = async (activityType: string, targetUserId?: string, metadata?: Record<string, unknown>) => {
     if (!user) return;
 
     try {

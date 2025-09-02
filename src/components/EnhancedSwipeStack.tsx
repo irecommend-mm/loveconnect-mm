@@ -1,18 +1,18 @@
 
 import React, { useState, useEffect } from 'react';
-import { Heart, X, Star, Users, MessageCircle, MapPin } from 'lucide-react';
+import { Heart, X, Star, Users, MessageCircle, MapPin, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '@/types/User';
-import { AppMode } from '@/types/FriendDateTypes';
+import { AppMode, UserFilters } from '@/types/FriendDateTypes';
 import CompatibilityScore from './CompatibilityScore';
 import PhotoGallery from './PhotoGallery';
 
 interface EnhancedSwipeStackProps {
   mode: AppMode;
-  filters?: any;
+  filters?: UserFilters;
 }
 
 const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
@@ -21,6 +21,8 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
+  const [rewindStack, setRewindStack] = useState<UserType[]>([]);
+  const [canRewind, setCanRewind] = useState(false);
 
   // Mock compatibility data
   const mockCompatibility = {
@@ -47,11 +49,7 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
       // Build query with filters
       let query = supabase
         .from('profiles')
-        .select(`
-          *,
-          photos:photos(url),
-          interests:interests(interest)
-        `)
+        .select('*')
         .neq('user_id', user.id)
         .limit(20);
 
@@ -88,20 +86,24 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
         name: profile.name,
         age: profile.age,
         bio: profile.bio || '',
-        photos: profile.photos?.map((p: any) => p.url) || [],
-        interests: profile.interests?.map((i: any) => i.interest) || [],
+        // Add sample photos for now - you can implement photo upload later
+        photos: [
+          'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=400&h=400&fit=crop&crop=face',
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
+        ],
+        interests: profile.lifestyle?.interests || [],
         location: profile.location || '',
-        job: profile.job_title || '',
+        job: profile.job_title || profile.job || '',
         education: profile.education || '',
         verified: profile.verified || false,
         lastActive: new Date(profile.last_active || profile.created_at),
         height: profile.height || '',
         zodiacSign: profile.zodiac_sign || '',
-        relationshipType: profile.relationship_type as 'casual' | 'serious' | 'friends' | 'unsure',
-        children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure',
-        smoking: profile.smoking as 'yes' | 'no' | 'sometimes',
-        drinking: profile.drinking as 'yes' | 'no' | 'sometimes',
-        exercise: profile.exercise as 'often' | 'sometimes' | 'never',
+        relationshipType: profile.relationship_type as 'casual' | 'serious' | 'friends' | 'unsure' | undefined,
+        children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure' | undefined,
+        smoking: profile.smoking as 'yes' | 'no' | 'sometimes' | undefined,
+        drinking: profile.drinking as 'yes' | 'no' | 'sometimes' | undefined,
+        exercise: profile.exercise as 'often' | 'sometimes' | 'never' | undefined,
         isOnline: Math.random() > 0.5,
         distance: Math.floor(Math.random() * 50) + 1,
       }));
@@ -121,23 +123,37 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
   }, [filters]);
 
   const handleSwipe = async (direction: 'like' | 'dislike' | 'super_like') => {
-    if (!currentUser || currentIndex >= users.length) return;
+    if (currentIndex >= users.length) return;
 
+    const currentUser = users[currentIndex];
     setSwipeDirection(direction);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Add to rewind stack before removing
+      setRewindStack(prev => [...prev, currentUser]);
+      setCanRewind(true);
+
       // Record the swipe
-      await supabase.from('swipes').insert({
+      const { error } = await supabase.from('swipes').insert({
         swiper_id: user.id,
-        swiped_id: users[currentIndex].id,
+        swiped_id: currentUser.id,
         action: direction
       });
 
+      if (error) {
+        console.error('Error recording swipe:', error);
+        // If error is duplicate, still proceed with UI update
+        if (error.code !== '23505') { // Not a unique constraint violation
+          return;
+        }
+      }
+
       // Move to next user after animation
       setTimeout(() => {
+        setUsers(prev => prev.filter(u => u.id !== currentUser.id));
         setCurrentIndex(prev => prev + 1);
         setSwipeDirection(null);
       }, 300);
@@ -146,9 +162,47 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
       console.error('Error recording swipe:', error);
       // Still move to next user even if recording fails
       setTimeout(() => {
+        setUsers(prev => prev.filter(u => u.id !== currentUser.id));
         setCurrentIndex(prev => prev + 1);
         setSwipeDirection(null);
       }, 300);
+    }
+  };
+
+  const handleRewind = async () => {
+    if (rewindStack.length === 0) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Get the last user from rewind stack
+      const lastUser = rewindStack[rewindStack.length - 1];
+
+      // Remove the swipe record
+      const { error } = await supabase
+        .from('swipes')
+        .delete()
+        .eq('swiper_id', user.id)
+        .eq('swiped_id', lastUser.id);
+
+      if (error) {
+        console.error('Error deleting swipe:', error);
+        // If error is not found, still proceed with UI update
+        if (error.code !== 'PGRST116') { // Not a "no rows deleted" error
+          return;
+        }
+      }
+
+      // Update states
+      setUsers(prev => [lastUser, ...prev]);
+      setRewindStack(prev => prev.slice(0, -1));
+      setCurrentIndex(prev => Math.max(0, prev - 1));
+      setCanRewind(rewindStack.length > 1);
+      setSwipeDirection(null);
+
+    } catch (error) {
+      console.error('Error rewinding:', error);
     }
   };
 
@@ -227,11 +281,68 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
       </div>
 
       {/* Main Card */}
-      <Card className={`relative overflow-hidden transition-all duration-300 ${
-        swipeDirection === 'like' ? 'transform rotate-12 translate-x-full opacity-50' :
-        swipeDirection === 'dislike' ? 'transform -rotate-12 -translate-x-full opacity-50' :
-        swipeDirection === 'super_like' ? 'transform -translate-y-full opacity-50' : ''
-      }`}>
+      <Card 
+        className={`relative overflow-hidden transition-all duration-300 ease-out cursor-grab active:cursor-grabbing ${
+          swipeDirection === 'like' ? 'transform rotate-12 translate-x-[150%] scale-90 opacity-0' :
+          swipeDirection === 'dislike' ? 'transform -rotate-12 -translate-x-[150%] scale-90 opacity-0' :
+          swipeDirection === 'super_like' ? 'transform -translate-y-[150%] scale-90 opacity-0' : ''
+        }`}
+        onTouchStart={(e) => {
+          const card = e.currentTarget as HTMLElement;
+          const touch = e.touches[0];
+          const startX = touch.clientX;
+          const startY = touch.clientY;
+          let currentX = startX;
+          let currentY = startY;
+          
+          const handleTouchMove = (e: TouchEvent) => {
+            e.preventDefault(); // Prevent scrolling while swiping
+            const touch = e.touches[0];
+            currentX = touch.clientX;
+            currentY = touch.clientY;
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            // Add visual feedback during swipe
+            if (Math.abs(deltaX) > 20 || Math.abs(deltaY) > 20) {
+              card.style.transform = `translateX(${deltaX * 0.8}px) translateY(${deltaY * 0.8}px) rotate(${deltaX * 0.1}deg)`;
+              card.style.transition = 'none';
+            }
+          };
+          
+          const handleTouchEnd = () => {
+            const deltaX = currentX - startX;
+            const deltaY = currentY - startY;
+            
+            // Reset transition for swipe animation
+            card.style.transition = 'transform 0.3s ease-out';
+            
+            // Determine swipe direction
+            if (Math.abs(deltaX) > 100 || Math.abs(deltaY) > 100) {
+              if (deltaY < -100 && Math.abs(deltaX) < 150) {
+                handleSwipe('super_like');
+              } else if (deltaX > 100) {
+                handleSwipe('like');
+              } else if (deltaX < -100) {
+                handleSwipe('dislike');
+              } else {
+                // Reset position if no action
+                card.style.transform = '';
+              }
+            } else {
+              // Reset position if swipe not far enough
+              card.style.transform = '';
+            }
+            
+            // Remove event listeners
+            document.removeEventListener('touchmove', handleTouchMove);
+            document.removeEventListener('touchend', handleTouchEnd);
+          };
+          
+          document.addEventListener('touchmove', handleTouchMove, { passive: false });
+          document.addEventListener('touchend', handleTouchEnd);
+        }}
+      >
         <CardContent className="p-0">
           <div className="relative">
             <PhotoGallery photos={user.photos} userName={user.name} />
@@ -288,39 +399,81 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex justify-center space-x-4 mt-6">
-        <Button
-          onClick={() => handleSwipe('dislike')}
-          size="lg"
-          variant="outline"
-          className="rounded-full w-14 h-14 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50"
-        >
-          <X className="h-6 w-6 text-gray-600 hover:text-red-500" />
-        </Button>
+      <div className="flex flex-col items-center space-y-4">
+        {/* Main Action Buttons */}
+        <div className="flex justify-center items-center space-x-4">
+          {/* Rewind Button */}
+          <Button
+            onClick={handleRewind}
+            disabled={!canRewind}
+            size="lg"
+            variant="outline"
+            className={`rounded-full w-14 h-14 ${
+              canRewind 
+                ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' 
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed border-gray-200'
+            } transition-all duration-200`}
+            title="Undo last action"
+          >
+            <RotateCcw className="h-6 w-6" />
+          </Button>
+          <Button
+            onClick={() => {
+              const btn = document.getElementById('dislike-btn');
+              if (btn) {
+                btn.classList.add('scale-110');
+                setTimeout(() => btn.classList.remove('scale-110'), 200);
+              }
+              handleSwipe('dislike');
+            }}
+            id="dislike-btn"
+            size="lg"
+            variant="outline"
+            className="rounded-full w-14 h-14 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 transition-transform duration-200"
+          >
+            <X className="h-6 w-6 text-gray-600 hover:text-red-500" />
+          </Button>
 
-        <Button
-          onClick={() => handleSwipe('super_like')}
-          size="lg"
-          className="rounded-full w-14 h-14 bg-blue-500 hover:bg-blue-600"
-        >
-          <Star className="h-6 w-6 text-white" />
-        </Button>
+          <Button
+            onClick={() => {
+              const btn = document.getElementById('super-like-btn');
+              if (btn) {
+                btn.classList.add('scale-110');
+                setTimeout(() => btn.classList.remove('scale-110'), 200);
+              }
+              handleSwipe('super_like');
+            }}
+            id="super-like-btn"
+            size="lg"
+            className="rounded-full w-14 h-14 bg-blue-500 hover:bg-blue-600 transition-transform duration-200"
+          >
+            <Star className="h-6 w-6 text-white" />
+          </Button>
 
-        <Button
-          onClick={() => handleSwipe('like')}
-          size="lg"
-          className={`rounded-full w-14 h-14 ${
-            mode === 'friend' 
-              ? 'bg-blue-500 hover:bg-blue-600' 
-              : 'bg-pink-500 hover:bg-pink-600'
-          }`}
-        >
-          {mode === 'friend' ? (
-            <Users className="h-6 w-6 text-white" />
-          ) : (
-            <Heart className="h-6 w-6 text-white" />
-          )}
-        </Button>
+          <Button
+            onClick={() => {
+              const btn = document.getElementById('like-btn');
+              if (btn) {
+                btn.classList.add('scale-110');
+                setTimeout(() => btn.classList.remove('scale-110'), 200);
+              }
+              handleSwipe('like');
+            }}
+            id="like-btn"
+            size="lg"
+            className={`rounded-full w-14 h-14 transition-transform duration-200 ${
+              mode === 'friend' 
+                ? 'bg-blue-500 hover:bg-blue-600' 
+                : 'bg-pink-500 hover:bg-pink-600'
+            }`}
+          >
+            {mode === 'friend' ? (
+              <Users className="h-6 w-6 text-white" />
+            ) : (
+              <Heart className="h-6 w-6 text-white" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Mode Indicator */}

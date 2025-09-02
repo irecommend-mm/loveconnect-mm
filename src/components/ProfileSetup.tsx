@@ -14,55 +14,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
 import { SocialIntegrationPanel } from './social/SocialIntegrationPanel';
+import { ProfileData, ExistingProfile } from '@/types/FriendDateTypes';
 
-interface ProfileData {
-  name: string;
-  age: number;
-  birthdate: string;
-  bio: string;
-  location: string;
-  job_title: string;
-  company_name: string;
-  education: string;
-  education_level: string;
-  height_cm: number;
-  zodiac_sign: string;
-  relationship_type: string;
-  children: string;
-  smoking: string;
-  drinking: string;
-  exercise: string;
-  religion: string;
-  gender: string;
-  orientation: string[];
-  show_me: string[];
-  love_languages: string[];
-  personality_type: string;
-  body_type: string;
-  languages_spoken: string[];
-  dealbreakers: string[];
-  lifestyle: {
-    interests: string[];
-    [key: string]: any;
-  };
-  preferences: {
-    age_range: [number, number];
-    max_distance: number;
-    [key: string]: any;
-  };
-  terms_agreement: boolean;
-  video_intro_url: string;
-  instagram_username: string;
-  spotify_connected: boolean;
-  spotify_data: any;
-  voice_intro_url: string;
-  facebook_id: string;
-  social_verified: boolean;
-}
+
 
 interface ProfileSetupProps {
   onComplete: () => void;
-  existingProfile?: any;
+  existingProfile?: ExistingProfile;
 }
 
 const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
@@ -124,7 +82,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
   useEffect(() => {
     if (existingProfile) {
       // Helper function to safely parse JSON data
-      const parseJsonField = (field: any, defaultValue: any) => {
+      const parseJsonField = (field: unknown, defaultValue: unknown) => {
         if (field && typeof field === 'object') {
           return field;
         }
@@ -171,12 +129,12 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         },
         terms_agreement: existingProfile.terms_agreement || false,
         video_intro_url: existingProfile.video_intro_url || '',
-        instagram_username: (existingProfile as any).instagram_username || '',
-        spotify_connected: (existingProfile as any).spotify_connected || false,
-        spotify_data: (existingProfile as any).spotify_data || {},
-        voice_intro_url: (existingProfile as any).voice_intro_url || '',
-        facebook_id: (existingProfile as any).facebook_id || '',
-        social_verified: (existingProfile as any).social_verified || false
+        instagram_username: existingProfile.instagram_username || '',
+        spotify_connected: existingProfile.spotify_connected || false,
+        spotify_data: existingProfile.spotify_data || {},
+        voice_intro_url: existingProfile.voice_intro_url || '',
+        facebook_id: existingProfile.facebook_id || '',
+        social_verified: existingProfile.social_verified || false
       });
     }
   }, [existingProfile]);
@@ -193,7 +151,7 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
 
       if (profileData) {
         // Helper function to safely parse JSON data
-        const parseJsonField = (field: any, defaultValue: any) => {
+        const parseJsonField = (field: unknown, defaultValue: unknown) => {
           if (field && typeof field === 'object') {
             return field;
           }
@@ -240,12 +198,12 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
           },
           terms_agreement: profileData.terms_agreement || false,
           video_intro_url: profileData.video_intro_url || '',
-          instagram_username: (profileData as any).instagram_username || '',
-          spotify_connected: (profileData as any).spotify_connected || false,
-          spotify_data: (profileData as any).spotify_data || {},
-          voice_intro_url: (profileData as any).voice_intro_url || '',
-          facebook_id: (profileData as any).facebook_id || '',
-          social_verified: (profileData as any).social_verified || false
+          instagram_username: profileData.instagram_username || '',
+          spotify_connected: profileData.spotify_connected || false,
+          spotify_data: profileData.spotify_data || {},
+          voice_intro_url: profileData.voice_intro_url || '',
+          facebook_id: profileData.facebook_id || '',
+          social_verified: profileData.social_verified || false
         });
       }
 
@@ -486,13 +444,13 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
       if (existingProfileData) {
         const { error } = await supabase
           .from('profiles')
-          .update(profileData as any)
+          .update(profileData)
           .eq('user_id', user.id);
         profileError = error;
       } else {
         const { error } = await supabase
           .from('profiles')
-          .insert(profileData as any);
+          .insert(profileData);
         profileError = error;
       }
 

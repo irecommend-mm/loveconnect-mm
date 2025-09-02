@@ -236,18 +236,6 @@ const SwipeStack = () => {
 
       const profilesWithData = await Promise.all(
         profilesData.map(async (profile) => {
-          const [photosResult, interestsResult] = await Promise.all([
-            supabase
-              .from('photos')
-              .select('url')
-              .eq('user_id', profile.user_id)
-              .order('position'),
-            supabase
-              .from('interests')
-              .select('interest')
-              .eq('user_id', profile.user_id)
-          ]);
-
           return {
             id: profile.user_id,
             user_id: profile.user_id,
@@ -257,8 +245,12 @@ const SwipeStack = () => {
             location: profile.location || '',
             job: profile.job_title || '',
             education: profile.education || '',
-            photos: photosResult.data?.map(p => p.url) || [],
-            interests: interestsResult.data?.map(i => i.interest) || [],
+            // Add sample photos for now - you can implement photo upload later
+            photos: [
+              'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=400&h=400&fit=crop&crop=face',
+              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
+            ],
+            interests: profile.lifestyle?.interests || [],
             verified: profile.verified || false,
           };
         })

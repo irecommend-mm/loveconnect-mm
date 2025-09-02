@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -43,9 +43,12 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
   useEffect(() => {
     if (matchId) {
       loadMessages();
-      subscribeToMessages();
+      const unsubscribe = subscribeToMessages();
+      return () => {
+        unsubscribe();
+      };
     }
-  }, [matchId]);
+  }, [matchId, loadMessages, subscribeToMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -55,7 +58,7 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadMessages = async () => {
+  const loadMessages = useCallback(async () => {
     const { data, error } = await supabase
       .from('messages')
       .select('*')
@@ -86,9 +89,9 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
           .in('id', unreadMessages.map(m => m.id));
       }
     }
-  };
+  }, [matchId, user]);
 
-  const subscribeToMessages = () => {
+  const subscribeToMessages = useCallback(() => {
     const channel = supabase
       .channel('messages')
       .on(
@@ -119,7 +122,7 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
     return () => {
       supabase.removeChannel(channel);
     };
-  };
+  }, [matchId, user]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();

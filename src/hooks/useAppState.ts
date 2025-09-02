@@ -1,10 +1,11 @@
 
 import { useState } from 'react';
+import { User } from '@/types/User';
 
 export const useAppState = () => {
   const [activeTab, setActiveTab] = useState('discover');
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null);
-  const [selectedOtherUser, setSelectedOtherUser] = useState<any>(null);
+  const [selectedOtherUser, setSelectedOtherUser] = useState<User | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showPremium, setShowPremium] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);

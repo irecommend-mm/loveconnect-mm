@@ -15,7 +15,7 @@ export const useSocialIntegration = () => {
     try {
       const { error } = await supabase
         .from('profiles')
-        .update({ instagram_username: username } as any)
+        .update({ instagram_username: username })
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -24,10 +24,10 @@ export const useSocialIntegration = () => {
         title: "Instagram Connected",
         description: "Your Instagram profile has been linked.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {
@@ -53,7 +53,7 @@ export const useSocialIntegration = () => {
         .update({ 
           spotify_connected: true,
           spotify_data: mockSpotifyData
-        } as any)
+        })
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -62,10 +62,10 @@ export const useSocialIntegration = () => {
         title: "Spotify Connected",
         description: "Your music taste has been added to your profile.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {
@@ -93,7 +93,7 @@ export const useSocialIntegration = () => {
 
       const { error } = await supabase
         .from('profiles')
-        .update({ voice_intro_url: publicUrl } as any)
+        .update({ voice_intro_url: publicUrl })
         .eq('user_id', user.id);
 
       if (error) throw error;
@@ -102,10 +102,10 @@ export const useSocialIntegration = () => {
         title: "Voice Intro Added",
         description: "Your voice introduction has been uploaded.",
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error instanceof Error ? error.message : "An error occurred",
         variant: "destructive",
       });
     } finally {

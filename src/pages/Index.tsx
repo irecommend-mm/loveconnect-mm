@@ -87,6 +87,14 @@ const Index = () => {
         currentMode={currentMode}
         onModeSwitch={switchMode}
         onNotificationsClick={() => setShowNotifications(true)}
+        onFiltersClick={() => {
+          // This will open filters for the current active tab
+          if (activeTab === 'discover' || activeTab === 'browse') {
+            // We need to trigger the filter modal in MainContent
+            // For now, we'll use a custom event to communicate
+            window.dispatchEvent(new CustomEvent('openFilters'));
+          }
+        }}
         userProfile={currentUserProfile}
       />
 

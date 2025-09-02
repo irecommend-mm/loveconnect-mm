@@ -7,8 +7,16 @@ import { User as UserType } from '@/types/User';
 export const useUserProfile = (user: User | null) => {
   const [hasProfile, setHasProfile] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [currentProfile, setCurrentProfile] = useState<any>(null);
+  const [currentProfile, setCurrentProfile] = useState<Record<string, unknown> | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserType | null>(null);
+
+  // If no user, set loading to false immediately
+  useEffect(() => {
+    if (!user) {
+      setLoading(false);
+      setHasProfile(false);
+    }
+  }, [user]);
 
   const checkUserProfile = async (userId: string) => {
     try {
@@ -48,7 +56,7 @@ export const useUserProfile = (user: User | null) => {
           .order('position');
 
         // Helper function to safely extract interests from lifestyle JSON
-        const getInterestsFromLifestyle = (lifestyle: any): string[] => {
+        const getInterestsFromLifestyle = (lifestyle: unknown): string[] => {
           if (lifestyle && typeof lifestyle === 'object' && lifestyle.interests) {
             return Array.isArray(lifestyle.interests) ? lifestyle.interests : [];
           }
@@ -95,7 +103,7 @@ export const useUserProfile = (user: User | null) => {
           education: profileData.education || '',
           verified: profileData.verified || false,
           lastActive: new Date(profileData.last_active || profileData.created_at),
-          height: `${Math.floor(profileData.height_cm / 30.48)}'${Math.round(((profileData.height_cm / 30.48) % 1) * 12)}"` || '',
+          height: profileData.height_cm ? `${Math.floor(profileData.height_cm / 30.48)}'${Math.round(((profileData.height_cm / 30.48) % 1) * 12)}"` : '',
           zodiacSign: profileData.zodiac_sign || '',
           relationshipType: (profileData.relationship_type === 'friendship' ? 'friends' : profileData.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
           children: (profileData.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',

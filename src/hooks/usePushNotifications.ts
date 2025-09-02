@@ -9,7 +9,7 @@ interface PushNotification {
   title: string;
   body: string;
   type: 'match' | 'like' | 'message' | 'safety' | 'profile_view' | 'crossed_paths' | 'super_like';
-  data: any;
+  data: Record<string, unknown>;
   read: boolean;
   sentAt?: Date;
   createdAt: Date;
@@ -102,7 +102,7 @@ export const usePushNotifications = () => {
     title: string,
     body: string,
     type: PushNotification['type'],
-    data: any = {}
+    data: Record<string, unknown> = {}
   ) => {
     try {
       await supabase

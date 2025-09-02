@@ -1,8 +1,8 @@
 
 import React from 'react';
-import { Bell, Settings, Crown } from 'lucide-react';
+import { Bell, Settings, Crown, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+
 import ModeToggle from './ModeToggle';
 import { AppMode } from '@/types/FriendDateTypes';
 import { User as UserType } from '@/types/User';
@@ -11,10 +11,11 @@ interface FDHeaderProps {
   currentMode: AppMode;
   onModeSwitch: (mode: AppMode) => void;
   onNotificationsClick: () => void;
+  onFiltersClick: () => void;
   userProfile: UserType | null;
 }
 
-const FDHeader = ({ currentMode, onModeSwitch, onNotificationsClick, userProfile }: FDHeaderProps) => {
+const FDHeader = ({ currentMode, onModeSwitch, onNotificationsClick, onFiltersClick, userProfile }: FDHeaderProps) => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-100 shadow-sm">
       <div className="flex items-center justify-between px-4 py-3 max-w-md mx-auto">
@@ -34,22 +35,22 @@ const FDHeader = ({ currentMode, onModeSwitch, onNotificationsClick, userProfile
           <Button
             variant="ghost"
             size="sm"
+            onClick={onFiltersClick}
+            className="p-2"
+            title="Filters"
+          >
+            <Filter className="h-5 w-5 text-gray-600" />
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onNotificationsClick}
             className="relative p-2"
           >
             <Bell className="h-5 w-5 text-gray-600" />
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
           </Button>
-
-          <Avatar className="h-8 w-8">
-            <AvatarImage 
-              src={userProfile?.photos?.[0]} 
-              alt={userProfile?.name || 'User'} 
-            />
-            <AvatarFallback className="bg-gray-200 text-gray-600 text-xs">
-              {userProfile?.name?.charAt(0)?.toUpperCase() || 'U'}
-            </AvatarFallback>
-          </Avatar>
         </div>
       </div>
     </header>

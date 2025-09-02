@@ -55,3 +55,107 @@ export interface Badge {
   unlockedAt: Date;
   category: 'meetup' | 'social' | 'safety' | 'compatibility';
 }
+
+export interface UserFilters {
+  ageRange: [number, number];
+  maxDistance: number;
+  relationshipType?: 'serious' | 'casual' | 'friends' | 'unsure';
+  showMe: 'men' | 'women' | 'everyone';
+  interests?: string[];
+  verifiedOnly?: boolean;
+  onlineOnly?: boolean;
+  hasPhotos?: boolean;
+  hasBio?: boolean;
+}
+
+export interface ProfileData {
+  name: string;
+  age: number;
+  birthdate: string;
+  bio: string;
+  location: string;
+  job_title: string;
+  company_name: string;
+  education: string;
+  education_level: string;
+  height_cm: number;
+  zodiac_sign: string;
+  relationship_type: string;
+  children: string;
+  smoking: string;
+  drinking: string;
+  exercise: string;
+  religion: string;
+  gender: string;
+  orientation: string[];
+  show_me: string[];
+  love_languages: string[];
+  personality_type: string;
+  body_type: string;
+  languages_spoken: string[];
+  dealbreakers: string[];
+  lifestyle: {
+    interests: string[];
+    [key: string]: string | string[] | number | boolean;
+  };
+  preferences: {
+    age_range: [number, number];
+    max_distance: number;
+    [key: string]: string | string[] | number | boolean | [number, number];
+  };
+  terms_agreement: boolean;
+  video_intro_url: string;
+  instagram_username: string;
+  spotify_connected: boolean;
+  spotify_data: {
+    topArtists?: string[];
+    topTracks?: string[];
+    connectedAt?: string;
+    [key: string]: string | string[] | undefined;
+  };
+  voice_intro_url: string;
+  facebook_id: string;
+  social_verified: boolean;
+}
+
+export interface ExistingProfile {
+  id?: string;
+  user_id?: string;
+  name?: string;
+  age?: number;
+  birthdate?: string;
+  bio?: string;
+  location?: string;
+  job_title?: string;
+  company_name?: string;
+  education?: string;
+  education_level?: string;
+  height_cm?: number;
+  zodiac_sign?: string;
+  relationship_type?: string;
+  children?: string;
+  smoking?: string;
+  drinking?: string;
+  exercise?: string;
+  religion?: string;
+  gender?: string;
+  orientation?: string[];
+  show_me?: string[];
+  love_languages?: string[];
+  personality_type?: string;
+  body_type?: string;
+  languages_spoken?: string[];
+  dealbreakers?: string[];
+  lifestyle?: string | object;
+  preferences?: string | object;
+  terms_agreement?: boolean;
+  video_intro_url?: string;
+  instagram_username?: string;
+  spotify_connected?: boolean;
+  spotify_data?: string | object;
+  voice_intro_url?: string;
+  facebook_id?: string;
+  social_verified?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}

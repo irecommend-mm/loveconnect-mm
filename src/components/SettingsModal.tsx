@@ -32,7 +32,7 @@ const SettingsModal = ({ settings, onUpdateSettings, onClose }: SettingsModalPro
     onClose();
   };
 
-  const updateSettings = (section: keyof UserSettings, key: string, value: any) => {
+  const updateSettings = (section: keyof UserSettings, key: string, value: string | boolean | number) => {
     setCurrentSettings(prev => ({
       ...prev,
       [section]: {
@@ -262,7 +262,7 @@ const SettingsModal = ({ settings, onUpdateSettings, onClose }: SettingsModalPro
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => setActiveTab(tab.id as string)}
               className={`flex-1 flex items-center justify-center space-x-2 py-4 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'

@@ -1,0 +1,233 @@
+# LoveConnect-MM Development Rules
+
+## 🎯 **Core Principles**
+- **Maintain Original Features**: Preserve all existing functionality while improving UX
+- **Modern Dating App Standards**: Follow Bumble/Tinder UI/UX patterns
+- **Performance First**: Optimize for smooth interactions and fast loading
+- **Mobile-First Design**: Ensure excellent mobile experience
+- **Accessibility**: Maintain WCAG compliance
+
+## 🚫 **Critical Issues to Fix**
+
+### 1. **Photo System Issues**
+- **Problem**: Users photos are missing and can't be seen properly
+- **Root Cause**: Database queries trying to join non-existent `photos` table
+- **Solution**: 
+  - Use `profile.lifestyle?.photos` or implement proper photo storage
+  - Add fallback placeholder images for missing photos
+  - Implement photo upload/management system
+  - Use Supabase Storage for profile images
+
+### 2. **Event Modal Close Issues**
+- **Problem**: Local Events & Meetups forms cannot be dismissed
+- **Root Cause**: Modal close handlers not properly connected
+- **Solution**:
+  - Ensure `onClose` prop is properly passed to all event modals
+  - Add escape key handling
+  - Add backdrop click to close
+  - Verify modal z-index and event propagation
+
+### 3. **Chat System Broken**
+- **Problem**: Matched users cannot chat and no chat detail page works
+- **Root Cause**: Chat routing and state management issues
+- **Solution**:
+  - Fix chat tab navigation
+  - Ensure proper match state management
+  - Implement working chat interface
+  - Add real-time messaging capabilities
+
+### 4. **Duplicate Filters**
+- **Problem**: Duplicated filter in Discover page top right
+- **Root Cause**: Multiple filter components rendering
+- **Solution**:
+  - Consolidate filter components
+  - Remove duplicate filter buttons
+  - Ensure single source of truth for filters
+
+### 5. **Swipe Actions Broken**
+- **Problem**: Like/dislike/favorite buttons not working, cannot swipe
+- **Root Cause**: Event handlers and state management issues
+- **Solution**:
+  - Fix swipe gesture handling
+  - Implement working action buttons
+  - Add proper swipe animations
+  - Ensure state updates correctly
+
+## 🎨 **UI/UX Improvements**
+
+### **Modern Dating App Standards**
+- **Card Design**: Implement Tinder-style swipe cards with smooth animations
+- **Action Buttons**: Large, accessible like/dislike/super-like buttons
+- **Navigation**: Bottom tab navigation similar to Bumble
+- **Profile Cards**: Full-screen profile viewing with photo galleries
+- **Smooth Transitions**: Add micro-interactions and loading states
+
+### **Visual Hierarchy**
+- **Primary Actions**: Large, prominent buttons for main actions
+- **Secondary Actions**: Smaller, subtle buttons for additional features
+- **Information Display**: Clear, readable text with proper contrast
+- **Spacing**: Consistent spacing using Tailwind's spacing scale
+
+### **Mobile Experience**
+- **Touch Targets**: Minimum 44px touch targets
+- **Gesture Support**: Swipe left/right, tap to like, long press for options
+- **Responsive Design**: Optimize for all screen sizes
+- **Performance**: Smooth 60fps animations
+
+## 🔧 **Technical Requirements**
+
+### **State Management**
+- **Centralized State**: Use React hooks for global state
+- **Real-time Updates**: Implement Supabase real-time subscriptions
+- **Optimistic Updates**: Update UI immediately, sync with backend
+- **Error Handling**: Graceful error handling with user feedback
+
+### **Data Flow**
+- **Single Source of Truth**: One place for each piece of data
+- **Efficient Queries**: Optimize Supabase queries
+- **Caching**: Implement smart caching for better performance
+- **Offline Support**: Handle network issues gracefully
+
+### **Performance**
+- **Lazy Loading**: Load components and data on demand
+- **Image Optimization**: Use proper image formats and sizes
+- **Bundle Size**: Keep bundle size minimal
+- **Loading States**: Show loading indicators for better UX
+
+## 📱 **Component Standards**
+
+### **Profile Cards**
+```tsx
+// Example structure for profile cards
+interface ProfileCardProps {
+  user: User;
+  onLike: () => void;
+  onDislike: () => void;
+  onSuperLike: () => void;
+  onProfileView: () => void;
+}
+```
+
+### **Modal Components**
+```tsx
+// All modals must have proper close handling
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+```
+
+### **Form Components**
+```tsx
+// Forms should have proper validation and submission
+interface FormProps {
+  onSubmit: (data: FormData) => void;
+  onCancel: () => void;
+  loading?: boolean;
+}
+```
+
+## 🧪 **Testing Requirements**
+
+### **User Flows**
+- **Complete Profile Setup**: End-to-end profile creation
+- **Matching Process**: Swipe, match, and chat flow
+- **Event Creation**: Create and join events
+- **Settings Management**: Update preferences and settings
+
+### **Edge Cases**
+- **Network Issues**: Handle offline/online states
+- **Data Validation**: Validate all user inputs
+- **Error Scenarios**: Test error handling paths
+- **Performance**: Test with large datasets
+
+## 📋 **Implementation Checklist**
+
+### **Phase 1: Critical Fixes**
+- [ ] Fix photo loading and display
+- [ ] Fix event modal close functionality
+- [ ] Fix chat system and routing
+- [ ] Remove duplicate filters
+- [ ] Fix swipe actions and buttons
+
+### **Phase 2: UI/UX Improvements**
+- [ ] Implement modern card design
+- [ ] Add smooth swipe animations
+- [ ] Improve navigation and layout
+- [ ] Add loading states and transitions
+- [ ] Optimize mobile experience
+
+### **Phase 3: Feature Enhancement**
+- [ ] Improve photo management
+- [ ] Enhance chat experience
+- [ ] Add advanced filtering
+- [ ] Implement better matching algorithm
+- [ ] Add premium features
+
+## 🚨 **Code Quality Standards**
+
+### **TypeScript**
+- **Strict Mode**: Enable strict TypeScript
+- **Type Safety**: No `any` types, proper interfaces
+- **Error Handling**: Proper error types and handling
+
+### **React Best Practices**
+- **Hooks**: Use custom hooks for reusable logic
+- **Performance**: Use React.memo, useMemo, useCallback
+- **State**: Minimize state, use proper state management
+- **Props**: Keep components focused and composable
+
+### **CSS/Styling**
+- **Tailwind**: Use Tailwind classes consistently
+- **Responsive**: Mobile-first responsive design
+- **Accessibility**: Proper contrast and focus states
+- **Performance**: Optimize CSS for performance
+
+## 🔍 **Debugging Guidelines**
+
+### **Common Issues**
+1. **State Management**: Check if state updates are triggering re-renders
+2. **Event Handlers**: Verify event handlers are properly connected
+3. **API Calls**: Check network requests and responses
+4. **Component Props**: Ensure props are passed correctly
+5. **CSS Conflicts**: Check for conflicting styles
+
+### **Debug Tools**
+- **React DevTools**: Use for component debugging
+- **Network Tab**: Monitor API calls
+- **Console Logs**: Add strategic logging
+- **Performance Profiler**: Monitor app performance
+
+## 📚 **Resources & References**
+
+### **Design Inspiration**
+- **Bumble**: Clean, modern interface
+- **Tinder**: Smooth swipe interactions
+- **Hinge**: Profile-focused design
+- **Coffee Meets Bagel**: Quality over quantity
+
+### **Technical References**
+- **Supabase Docs**: Database and auth
+- **React Docs**: Best practices
+- **Tailwind Docs**: Utility classes
+- **Accessibility**: WCAG guidelines
+
+## 🎯 **Success Metrics**
+
+### **User Experience**
+- **Loading Times**: < 2 seconds for main actions
+- **Smooth Animations**: 60fps swipe and transitions
+- **Error Rate**: < 1% for critical user flows
+- **User Engagement**: Increased time spent in app
+
+### **Technical Performance**
+- **Bundle Size**: < 500KB gzipped
+- **First Contentful Paint**: < 1.5 seconds
+- **Time to Interactive**: < 3 seconds
+- **Memory Usage**: Stable memory consumption
+
+---
+
+**Remember**: Always prioritize user experience and maintain the original vision of LoveConnect-MM while implementing modern dating app standards.
+

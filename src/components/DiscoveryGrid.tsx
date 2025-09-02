@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X, Filter, Sliders } from 'lucide-react';
+import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X, RotateCcw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '../types/User';
 import ModernProfileModal from './ModernProfileModal';
 import MatchCelebrationModal from './MatchCelebrationModal';
-import AdvancedFilters from './filters/AdvancedFilters';
+
 import { toast } from '@/hooks/use-toast';
 
 interface DiscoveryGridProps {
@@ -41,7 +41,6 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   const [matchedUser, setMatchedUser] = useState<UserType | null>(null);
   const [currentUserPhoto, setCurrentUserPhoto] = useState<string>('');
   const [swipedUsers, setSwipedUsers] = useState<Set<string>>(new Set());
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<Partial<FilterPreferences>>({});
 
   const categories = [
@@ -60,10 +59,17 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
   ];
 
   useEffect(() => {
+    console.log('DiscoveryGrid: Loading users for category:', selectedCategory);
     loadUsersForCategory(selectedCategory);
     loadCurrentUserPhoto();
     loadSwipedUsers();
   }, [selectedCategory, userLocation]);
+
+  // Also load users when component mounts
+  useEffect(() => {
+    console.log('DiscoveryGrid: Component mounted, loading initial users');
+    loadUsersForCategory(selectedCategory);
+  }, []);
 
   const loadCurrentUserPhoto = async () => {
     try {
@@ -189,6 +195,8 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
       const { data: profilesData, error } = await query.limit(50);
 
+      console.log('DiscoveryGrid: Raw profiles data:', profilesData?.length || 0);
+
       if (error) {
         console.error('Error loading users:', error);
         setLoading(false);
@@ -197,18 +205,6 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
 
       const usersWithData = await Promise.all(
         (profilesData || []).map(async (profile) => {
-          const [photosResult, interestsResult] = await Promise.all([
-            supabase
-              .from('photos')
-              .select('url')
-              .eq('user_id', profile.user_id)
-              .order('position'),
-            supabase
-              .from('interests')
-              .select('interest')
-              .eq('user_id', profile.user_id)
-          ]);
-
           const lastActiveDate = profile.last_active || profile.updated_at;
           const lastActive = new Date(lastActiveDate);
           const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000);
@@ -224,7 +220,8 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             );
           }
 
-          const userInterests = interestsResult.data?.map(i => i.interest) || [];
+          // Get interests from lifestyle JSON field
+          const userInterests = (profile.lifestyle as any)?.interests || [];
 
           // Apply interest filter
           if (filters?.interests && filters.interests.length > 0) {
@@ -244,18 +241,22 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
             name: profile.name,
             age: profile.age,
             bio: profile.bio || '',
-            photos: photosResult.data?.map(p => p.url) || [],
+            // Add sample photos for now - you can implement photo upload later
+            photos: [
+              'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=400&h=400&fit=crop&crop=face',
+              'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
+            ],
             interests: userInterests,
             location: profile.location || '',
             job: profile.job,
             education: profile.education,
             height: profile.height,
             zodiacSign: profile.zodiac_sign,
-            relationshipType: profile.relationship_type as any,
-            children: profile.children as any,
-            smoking: profile.smoking as any,
-            drinking: profile.drinking as any,
-            exercise: profile.exercise as any,
+            relationshipType: profile.relationship_type as 'serious' | 'casual' | 'friends' | 'unsure' | undefined,
+            children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure' | undefined,
+            smoking: profile.smoking as 'yes' | 'no' | 'sometimes' | undefined,
+            drinking: profile.drinking as 'yes' | 'no' | 'sometimes' | undefined,
+            exercise: profile.exercise as 'often' | 'sometimes' | 'never' | undefined,
             verified: profile.verified || false,
             lastActive: new Date(lastActiveDate),
             isOnline,
@@ -279,6 +280,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           .sort((a, b) => a.name.localeCompare(b.name));
       }
 
+      console.log('DiscoveryGrid: Final filtered users:', filteredUsers.length);
       setUsers(filteredUsers.slice(0, 20));
       setLoading(false);
     } catch (error) {
@@ -291,75 +293,118 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     setSelectedUser(user);
   };
 
-  const handleLike = async () => {
-    if (!selectedUser) return;
-    
+  const handleLike = async (userId: string) => {
+    console.log('handleLike called with userId:', userId);
     try {
       await supabase
         .from('swipes')
         .insert({
           swiper_id: currentUserId,
-          swiped_id: selectedUser.id,
+          swiped_id: userId,
           action: 'like'
         });
 
-      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      setSwipedUsers(prev => new Set([...prev, userId]));
+      // Remove the user from the current list
+      setUsers(prev => {
+        console.log('Removing user from list:', userId);
+        return prev.filter(user => user.id !== userId);
+      });
+      
       toast({
         title: "Liked!",
-        description: `You liked ${selectedUser.name}`,
+        description: "Profile moved to your likes!",
       });
-      setSelectedUser(null);
     } catch (error) {
       console.error('Error liking user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to like user. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handlePass = async () => {
-    if (!selectedUser) return;
-    
+  const handlePass = async (userId: string) => {
     try {
       await supabase
         .from('swipes')
         .insert({
           swiper_id: currentUserId,
-          swiped_id: selectedUser.id,
+          swiped_id: userId,
           action: 'dislike'
         });
 
-      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
-      setSelectedUser(null);
+      setSwipedUsers(prev => new Set([...prev, userId]));
+      // Remove the user from the current list
+      setUsers(prev => prev.filter(user => user.id !== userId));
+      
+      toast({
+        title: "Passed",
+        description: "Profile removed from view",
+      });
     } catch (error) {
       console.error('Error passing user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to pass user. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleSuperLike = async () => {
-    if (!selectedUser) return;
-    
+  const handleSuperLike = async (userId: string) => {
     try {
       await supabase
         .from('swipes')
         .insert({
           swiper_id: currentUserId,
-          swiped_id: selectedUser.id,
+          swiped_id: userId,
           action: 'super_like'
         });
 
-      setSwipedUsers(prev => new Set([...prev, selectedUser.id]));
+      setSwipedUsers(prev => new Set([...prev, userId]));
+      // Remove the user from the current list
+      setUsers(prev => prev.filter(user => user.id !== userId));
+      
       toast({
         title: "Super Liked!",
-        description: `You super liked ${selectedUser.name}`,
+        description: "Profile moved to your super likes!",
       });
-      setSelectedUser(null);
     } catch (error) {
       console.error('Error super liking user:', error);
+      toast({
+        title: "Error",
+        description: "Failed to super like user. Please try again.",
+        variant: "destructive",
+      });
     }
   };
+
+  // Undo/rewind functionality
+  const [rewindStack, setRewindStack] = useState<UserType[]>([]);
+  const [canRewind, setCanRewind] = useState(false);
+
+  const handleUndo = () => {
+    if (rewindStack.length > 0) {
+      const lastUser = rewindStack[rewindStack.length - 1];
+      setUsers(prev => [lastUser, ...prev]);
+      setRewindStack(prev => prev.slice(0, -1));
+      setCanRewind(rewindStack.length > 1);
+    }
+  };
+
+  // Update rewind stack when users are removed
+  useEffect(() => {
+    if (users.length > 0) {
+      setCanRewind(rewindStack.length > 0);
+    }
+  }, [users, rewindStack]);
 
   const renderUserCard = (user: UserType) => (
     <div
       key={user.id}
-      className="relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer transform hover:scale-[1.02]"
+      className="relative bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 transform hover:scale-[1.02] touch-none"
       onClick={() => handleUserClick(user)}
     >
       <div className="aspect-[3/4] relative">
@@ -367,27 +412,41 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           src={user.photos[0]}
           alt={user.name}
           className="w-full h-full object-cover"
+          loading="lazy"
         />
         
-        {/* Online Status */}
-        {user.isOnline && (
-          <div className="absolute top-3 right-3 flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-            <span>Online</span>
-          </div>
-        )}
-        
-        {/* Verification Badge */}
-        {user.verified && (
-          <div className="absolute top-3 left-3 bg-blue-500 text-white p-1.5 rounded-full">
-            <Shield className="h-3 w-3" />
-          </div>
-        )}
+        {/* Status Badges */}
+        <div className="absolute top-3 left-3 flex items-center space-x-2">
+          {user.verified && (
+            <div className="bg-blue-500 text-white p-1.5 rounded-full">
+              <Shield className="h-3 w-3" />
+            </div>
+          )}
+          {user.isOnline && (
+            <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+              <span className="hidden sm:inline">Online</span>
+            </div>
+          )}
+        </div>
 
         {/* Clean Bottom Overlay with minimal info */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4">
           <div className="text-white">
-            <h3 className="font-semibold text-lg leading-tight">{user.name}, {user.age}</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg leading-tight">{user.name}, {user.age}</h3>
+              <Button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleUserClick(user);
+                }}
+                size="sm"
+                variant="outline"
+                className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm border-gray-300 hover:bg-gray-100"
+              >
+                <Users className="h-4 w-4 text-gray-600" />
+              </Button>
+            </div>
             {user.distance && (
               <div className="flex items-center text-sm text-white/90 mt-1">
                 <Navigation className="h-3 w-3 mr-1" />
@@ -397,34 +456,79 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
           </div>
         </div>
       </div>
+
+      {/* Action Buttons - Always Visible on Mobile */}
+      <div className="flex items-center justify-center space-x-3 p-3 bg-white border-t border-gray-100">
+        {/* Dislike Button */}
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            setRewindStack(prev => [...prev, user]);
+            handlePass(user.id);
+          }}
+          size="sm"
+          variant="outline"
+          className="w-12 h-12 rounded-full border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 transition-all duration-200"
+        >
+          <X className="h-5 w-5 text-gray-600 hover:text-red-500" />
+        </Button>
+
+        {/* Super Like Button */}
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            setRewindStack(prev => [...prev, user]);
+            handleSuperLike(user.id);
+          }}
+          size="sm"
+          className="w-12 h-12 rounded-full bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+        >
+          <Star className="h-5 w-5 text-white" />
+        </Button>
+
+        {/* Like Button */}
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            setRewindStack(prev => [...prev, user]);
+            handleLike(user.id);
+          }}
+          size="sm"
+          className="w-12 h-12 rounded-full bg-pink-500 hover:bg-pink-600 transition-all duration-200"
+        >
+          <Heart className="h-5 w-5 text-white" />
+        </Button>
+      </div>
     </div>
   );
 
   return (
     <div className="space-y-4 px-2 sm:px-0">
-      {/* Header with Advanced Filters Button */}
-      <div className="flex items-center justify-between mb-4">
+      {/* Header */}
+      <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Discover</h1>
-        <Button 
-          onClick={() => setShowAdvancedFilters(true)}
-          variant="outline" 
+        
+        {/* Undo Button */}
+        <Button
+          onClick={handleUndo}
+          disabled={!canRewind}
           size="sm"
-          className="flex items-center space-x-2"
+          variant="outline"
+          className={`${
+            canRewind 
+              ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' 
+              : 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+          } transition-all duration-200`}
+          title="Undo last action"
         >
-          <Sliders className="h-4 w-4" />
-          <span>Filters</span>
-          {Object.keys(appliedFilters).length > 0 && (
-            <Badge variant="secondary" className="ml-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs">
-              {Object.keys(appliedFilters).length}
-            </Badge>
-          )}
+          <RotateCcw className="h-4 w-4" />
         </Button>
       </div>
 
       {/* Category Tabs - Mobile Optimized */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Type</h2>
-        <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+        <div className="flex overflow-x-auto pb-2 -mx-2 px-2 sm:grid sm:grid-cols-5 gap-2">
           {categories.map((category) => {
             const Icon = category.icon;
             return (
@@ -435,14 +539,14 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
                   loadUsersForCategory(category.id, appliedFilters);
                 }}
                 variant={selectedCategory === category.id ? "default" : "outline"}
-                className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
+                className={`flex-shrink-0 h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
                   selectedCategory === category.id
                     ? `${category.color} text-white hover:opacity-90`
                     : 'hover:bg-gray-50'
                 }`}
               >
                 <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="font-medium leading-tight text-center">{category.label}</span>
+                <span className="font-medium leading-tight text-center whitespace-nowrap">{category.label}</span>
               </Button>
             );
           })}
@@ -452,7 +556,7 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
       {/* Relationship Type Categories - Mobile Optimized */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Intent</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <div className="flex overflow-x-auto pb-2 -mx-2 px-2 sm:grid sm:grid-cols-4 gap-2">
           {relationshipCategories.map((category) => {
             const Icon = category.icon;
             return (
@@ -463,14 +567,14 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
                   loadUsersForCategory(category.id, appliedFilters);
                 }}
                 variant={selectedCategory === category.id ? "default" : "outline"}
-                className={`h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
+                className={`flex-shrink-0 h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
                   selectedCategory === category.id
                     ? `${category.color} text-white hover:opacity-90`
                     : 'hover:bg-gray-50'
                 }`}
               >
                 <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                <span className="font-medium leading-tight text-center">{category.label}</span>
+                <span className="font-medium leading-tight text-center whitespace-nowrap">{category.label}</span>
               </Button>
             );
           })}
@@ -491,13 +595,13 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {[...Array(8)].map((_, index) => (
               <div key={index} className="aspect-[3/4] bg-gray-200 rounded-2xl animate-pulse" />
             ))}
           </div>
         ) : users.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {users.map(renderUserCard)}
           </div>
         ) : (
@@ -515,22 +619,16 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         )}
       </div>
 
-      {/* Advanced Filters Modal */}
-      <AdvancedFilters
-        isOpen={showAdvancedFilters}
-        onClose={() => setShowAdvancedFilters(false)}
-        onApplyFilters={applyAdvancedFilters}
-        currentFilters={appliedFilters}
-      />
+
 
       {/* Profile Modal with Actions */}
       {selectedUser && (
         <ModernProfileModal
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
-          onLike={handleLike}
-          onPass={handlePass}
-          onSuperLike={handleSuperLike}
+          onLike={() => handleLike(selectedUser.id)}
+          onPass={() => handlePass(selectedUser.id)}
+          onSuperLike={() => handleSuperLike(selectedUser.id)}
         />
       )}
 

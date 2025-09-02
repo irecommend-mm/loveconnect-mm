@@ -42,7 +42,7 @@ export const BlockedUsersModal = ({ open, onClose }: BlockedUsersModalProps) => 
       
       const formattedData = data?.map(item => ({
         id: item.blocked_id,
-        name: (item.profiles as any)?.name || 'Unknown User',
+        name: (item.profiles as { name: string })?.name || 'Unknown User',
         blocked_id: item.blocked_id
       })) || [];
       

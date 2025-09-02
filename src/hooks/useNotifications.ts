@@ -10,7 +10,7 @@ interface Notification {
   message: string;
   type: string;
   read: boolean;
-  data: any;
+  data: Record<string, unknown>;
   created_at: Date;
 }
 

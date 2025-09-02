@@ -41,7 +41,7 @@ export const LocationSettings = ({ open, onClose }: LocationSettingsProps) => {
 
       if (profile) {
         setCurrentLocation(profile.location || '');
-        const prefs = profile.preferences as any;
+        const prefs = profile.preferences as { showDistance?: boolean; incognito?: boolean } | null;
         setShowDistance(prefs?.showDistance ?? true);
         setIncognito(prefs?.incognito ?? false);
       }
