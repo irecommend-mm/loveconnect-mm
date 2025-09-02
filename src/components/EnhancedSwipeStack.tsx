@@ -221,6 +221,11 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
     }
   };
 
+  const handleShowProfile = (user: UserType) => {
+    console.log('Show profile for:', user.name);
+    // TODO: Implement profile modal
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[600px]">
@@ -256,6 +261,7 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
           <EnhancedSwipeCard
             user={nextUser}
             onSwipe={() => {}}
+            onShowProfile={handleShowProfile}
             mode={mode}
           />
         </div>
@@ -266,6 +272,7 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
         <EnhancedSwipeCard
           user={currentUser}
           onSwipe={handleSwipe}
+          onShowProfile={handleShowProfile}
           mode={mode}
         />
       </div>

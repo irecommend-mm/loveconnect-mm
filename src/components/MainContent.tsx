@@ -54,21 +54,9 @@ const MainContent = ({
   const [showLocalEvents, setShowLocalEvents] = useState(false);
   const [activeFilters, setActiveFilters] = useState<UserFilters | null>(null);
 
-  const handleApplyFilters = (filters: any) => {
-    // Convert FilterPreferences to UserFilters format
-    const userFilters: UserFilters = {
-      ageRange: filters.ageRange,
-      maxDistance: filters.maxDistance,
-      showMe: 'everyone', // Default value
-      relationshipType: filters.relationshipType?.[0] as 'serious' | 'casual' | 'friends' | 'unsure',
-      interests: filters.interests,
-      verifiedOnly: filters.verified,
-      onlineOnly: filters.onlineOnly,
-      hasPhotos: true,
-      hasBio: false
-    };
-    setActiveFilters(userFilters);
-    console.log('Filters applied:', userFilters);
+  const handleApplyFilters = (filters: UserFilters) => {
+    setActiveFilters(filters);
+    console.log('Filters applied:', filters);
   };
 
   // Listen for filter open event from header
@@ -80,6 +68,15 @@ const MainContent = ({
     window.addEventListener('openFilters', handleOpenFilters);
     return () => window.removeEventListener('openFilters', handleOpenFilters);
   }, []);
+
+  // Convert LocationData to expected format for DiscoveryGrid
+  const convertLocationForGrid = (location: LocationData | null) => {
+    if (!location) return null;
+    return {
+      lat: location.latitude,
+      lng: location.longitude
+    };
+  };
 
   return (
     <main className="pt-16 pb-20 min-h-screen bg-gray-50">
@@ -96,7 +93,7 @@ const MainContent = ({
           <div className="px-2 sm:px-4 relative">
             <DiscoveryGrid 
               currentUserId={user.id} 
-              userLocation={location} 
+              userLocation={convertLocationForGrid(location)}
               currentMode={currentMode}
             />
           </div>
@@ -192,7 +189,7 @@ const MainContent = ({
       {/* Modals */}
       {showFilters && (
         <AdvancedFilters
-          isOpen={showFilters}
+          currentMode={currentMode}
           onClose={() => setShowFilters(false)}
           onApplyFilters={handleApplyFilters}
         />
