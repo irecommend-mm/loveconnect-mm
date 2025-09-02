@@ -24,6 +24,12 @@ const MobileNavigation = ({ activeTab, onTabChange, currentMode }: MobileNavigat
       color: currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
     },
     { 
+      id: 'stories', 
+      label: 'Stories', 
+      icon: Sparkles,
+      color: 'text-purple-500'
+    },
+    { 
       id: 'events', 
       label: 'Events', 
       icon: Calendar,

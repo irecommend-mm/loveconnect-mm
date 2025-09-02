@@ -11,6 +11,7 @@ import ChatInterface from './ChatInterface';
 import LocalEvents from './LocalEvents';
 import EventCreationModal from './EventCreationModal';
 import AdvancedFilters from './filters/AdvancedFilters';
+import StoriesPage from './stories/StoriesPage';
 import { Match, User as UserType } from '@/types/User';
 import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,11 @@ const MainContent = ({
               userLocation={convertLocationForGrid(location)}
             />
           </div>
+        )}
+        
+        {/* Stories Tab - User Stories */}
+        {activeTab === 'stories' && (
+          <StoriesPage />
         )}
         
         {/* Events Tab - Local Events & Meetups */}

@@ -166,3 +166,75 @@ export interface ExistingProfile {
   created_at?: string;
   updated_at?: string;
 }
+
+// Story Types
+export interface Story {
+  id: string;
+  user_id: string;
+  title: string;
+  description?: string;
+  expires_at: string;
+  is_active: boolean;
+  view_count: number;
+  like_count: number;
+  super_like_count: number;
+  friend_request_count: number;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  user?: {
+    name: string;
+    age: number;
+    photos: string[];
+    location?: string;
+  };
+  media?: StoryMedia[];
+  user_interaction?: StoryInteraction;
+}
+
+export interface StoryMedia {
+  id: string;
+  story_id: string;
+  media_url: string;
+  media_type: 'image' | 'video';
+  position: number;
+  created_at: string;
+}
+
+export interface StoryInteraction {
+  id: string;
+  story_id: string;
+  user_id: string;
+  interaction_type: 'like' | 'super_like' | 'friend_request';
+  status: 'pending' | 'accepted' | 'rejected' | 'ignored';
+  message?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  requester_id: string;
+  recipient_id: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'ignored';
+  message?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined fields
+  requester?: {
+    name: string;
+    age: number;
+    photos: string[];
+  };
+  recipient?: {
+    name: string;
+    age: number;
+    photos: string[];
+  };
+}
+
+export interface CreateStoryData {
+  title: string;
+  description?: string;
+  media: File[];
+}
