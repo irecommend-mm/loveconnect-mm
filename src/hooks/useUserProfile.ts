@@ -57,8 +57,11 @@ export const useUserProfile = (user: User | null) => {
 
         // Helper function to safely extract interests from lifestyle JSON
         const getInterestsFromLifestyle = (lifestyle: unknown): string[] => {
-          if (lifestyle && typeof lifestyle === 'object' && lifestyle.interests) {
-            return Array.isArray(lifestyle.interests) ? lifestyle.interests : [];
+          if (lifestyle && typeof lifestyle === 'object' && !Array.isArray(lifestyle)) {
+            const lifestyleObj = lifestyle as Record<string, unknown>;
+            if (lifestyleObj.interests && Array.isArray(lifestyleObj.interests)) {
+              return lifestyleObj.interests;
+            }
           }
           return [];
         };

@@ -16,6 +16,7 @@ import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import VideoCallModal from '@/components/VideoCallModal';
 import { User as UserType } from '@/types/User';
+import { LocationData } from '@/types/FriendDateTypes';
 
 const Index = () => {
   const { user, loading: authLoading } = useAuth();
@@ -89,6 +90,14 @@ const Index = () => {
     setShowVideoCall(true);
   };
 
+  // Map geolocation to LocationData format
+  const mappedLocation: LocationData | undefined = location ? {
+    latitude: location.lat,
+    longitude: location.lng,
+    city: location.city,
+    country: location.country,
+  } : undefined;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -117,7 +126,7 @@ const Index = () => {
         selectedMatchId={selectedMatchId}
         selectedOtherUser={selectedOtherUser}
         currentUserProfile={currentUserProfile}
-        location={location}
+        location={mappedLocation}
         onChatSelect={handleChatSelect}
         onVideoCall={handleVideoCall}
         onEditProfile={() => setShowProfile(true)}
@@ -137,10 +146,6 @@ const Index = () => {
         <ProfileModal
           user={currentUserProfile}
           onClose={() => setShowProfile(false)}
-          onSave={() => {
-            setShowProfile(false);
-            if (user) checkUserProfile(user.id);
-          }}
         />
       )}
 
