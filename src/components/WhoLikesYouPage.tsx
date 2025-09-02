@@ -62,6 +62,7 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
       if (profilesData) {
         const profilesWithPhotos = await Promise.all(
           profilesData.map(async (profile) => {
+            // Get photos from the photos table
             const { data: photosData } = await supabase
               .from('photos')
               .select('url')
@@ -82,6 +83,7 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
           })
         );
 
+        // Filter profiles that have at least one photo
         setLikes(profilesWithPhotos.filter(p => p.photos.length > 0));
       }
     } catch (error) {
@@ -100,190 +102,193 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
     if (!user) return;
 
     try {
-      // Create swipe back
-      const { error } = await supabase
+      // Create a mutual match by adding a swipe from current user
+      const { error: swipeError } = await supabase
         .from('swipes')
         .insert({
           swiper_id: user.id,
           swiped_id: likedProfile.user_id,
-          action: 'like',
+          action: 'like'
         });
 
-      if (error) throw error;
+      if (swipeError) throw swipeError;
 
-      // Create match
-      await supabase
-        .from('matches')
-        .insert({
-          user1_id: user.id,
-          user2_id: likedProfile.user_id
+      // Check if this creates a mutual match
+      const { data: mutualMatch } = await supabase
+        .from('swipes')
+        .select('*')
+        .or(`and(swiper_id.eq.${user.id},swiped_id.eq.${likedProfile.user_id}),and(swiper_id.eq.${likedProfile.user_id},swiped_id.eq.${user.id})`);
+
+      if (mutualMatch && mutualMatch.length === 2) {
+        // Create match record
+        await supabase
+          .from('matches')
+          .insert({
+            user1_id: user.id,
+            user2_id: likedProfile.user_id
+          });
+
+        toast({
+          title: "It's a Match! 🎉",
+          description: `You and ${likedProfile.name} liked each other!`,
         });
-
-      toast({
-        title: "It's a Match! 💕",
-        description: `You and ${likedProfile.name} liked each other!`,
-      });
+      } else {
+        toast({
+          title: "Like sent! 💕",
+          description: `${likedProfile.name} will be notified of your interest.`,
+        });
+      }
 
       // Remove from likes list
       setLikes(prev => prev.filter(p => p.id !== likedProfile.id));
+
     } catch (error) {
-      console.error('Error creating match:', error);
+      console.error('Error liking back:', error);
       toast({
         title: "Error",
-        description: "Unable to create match",
+        description: "Failed to send like. Please try again.",
         variant: "destructive",
       });
     }
   };
 
-  const handleUpgrade = (plan: string) => {
-    setShowPremiumModal(false);
-    onShowPremium();
+  const handlePass = async (likedProfile: Profile) => {
+    try {
+      // Remove from likes list
+      setLikes(prev => prev.filter(p => p.id !== likedProfile.id));
+
+      toast({
+        title: "Profile passed",
+        description: `${likedProfile.name} won't appear in your likes again.`,
+      });
+    } catch (error) {
+      console.error('Error passing profile:', error);
+    }
   };
 
   if (loading) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen">
-        <div className="flex items-center justify-center pt-20">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500"></div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
+
+  if (likes.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Heart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+        <h3 className="text-xl font-semibold mb-2">No likes yet</h3>
+        <p className="text-gray-600 mb-6">
+          When someone likes your profile, they'll appear here.
+        </p>
+        <Button
+          onClick={() => onShowPremium()}
+          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+        >
+          <Crown className="h-4 w-4 mr-2" />
+          Get Premium to see who likes you
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Who Likes You</h1>
-            <p className="text-gray-600">{likes.length} people liked you</p>
-          </div>
-          <Heart className="h-6 w-6 text-pink-500" />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Who Liked You
+          <span className="text-pink-500 ml-2">({likes.length})</span>
+        </h2>
+        {!isPremium && (
+          <Button
+            onClick={() => setShowPremiumModal(true)}
+            variant="outline"
+            className="border-yellow-400 text-yellow-600 hover:bg-yellow-50"
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Upgrade to Premium
+          </Button>
+        )}
       </div>
 
-      {/* Premium Upgrade Banner */}
-      {!isPremium && (
-        <div 
-          onClick={() => setShowPremiumModal(true)}
-          className="mx-4 mt-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl p-6 text-white cursor-pointer hover:from-pink-600 hover:to-purple-700 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <Sparkles className="h-5 w-5" />
-                <span className="font-semibold">Upgrade to Premium</span>
-              </div>
-              <p className="text-sm opacity-90">
-                See everyone who likes you and get unlimited swipes!
-              </p>
-            </div>
-            <Crown className="h-8 w-8" />
-          </div>
-        </div>
-      )}
-
-      {/* Likes Grid */}
-      <div className="p-4">
-        {likes.length === 0 ? (
-          <div className="text-center py-12">
-            <Heart className="h-24 w-24 text-gray-300 mx-auto mb-6" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No likes yet</h3>
-            <p className="text-gray-500">Keep swiping to find your matches!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {likes.map((profile) => (
-              <div 
-                key={profile.id} 
-                className="relative cursor-pointer"
-                onClick={() => !isPremium && setShowPremiumModal(true)}
-              >
-                <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
-                  {isPremium ? (
-                    <img
-                      src={profile.photos[0]}
-                      alt={profile.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={profile.photos[0]}
-                        alt={profile.name}
-                        className="w-full h-full object-cover blur-lg"
-                      />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <div className="bg-white/90 p-3 rounded-full">
-                          <Crown className="h-6 w-6 text-purple-600" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Action indicator */}
-                  <div className="absolute top-2 right-2">
-                    {profile.action === 'super_like' ? (
-                      <div className="bg-blue-500 p-2 rounded-full shadow-lg">
-                        <Sparkles className="h-4 w-4 text-white fill-current" />
-                      </div>
-                    ) : (
-                      <div className="bg-pink-500 p-2 rounded-full shadow-lg">
-                        <Heart className="h-4 w-4 text-white fill-current" />
-                      </div>
-                    )}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {likes.map((profile) => (
+          <div
+            key={profile.id}
+            className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow"
+          >
+            {/* Profile Photo */}
+            <div className="relative h-48 overflow-hidden">
+              {profile.photos.length > 0 ? (
+                <img
+                  src={profile.photos[0]}
+                  alt={profile.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
+                  <Heart className="h-16 w-16 text-gray-300" />
+                </div>
+              )}
+              
+              {/* Action Badge */}
+              <div className="absolute top-3 right-3">
+                {profile.action === 'super_like' ? (
+                  <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Super Like
                   </div>
-                </div>
-
-                {/* Profile info */}
-                <div className="mt-2">
-                  {isPremium ? (
-                    <>
-                      <h3 className="font-semibold text-gray-900">
-                        {profile.name}, {profile.age}
-                      </h3>
-                      {profile.location && (
-                        <p className="text-xs text-gray-600">{profile.location}</p>
-                      )}
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleLikeBack(profile);
-                        }}
-                        className="w-full mt-2 bg-gradient-to-r from-pink-500 to-red-500 hover:from-pink-600 hover:to-red-600 text-white rounded-full"
-                        size="sm"
-                      >
-                        <Heart className="h-4 w-4 mr-1" />
-                        Like Back
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <div className="h-4 bg-gray-200 rounded mb-1"></div>
-                      <div className="h-3 bg-gray-200 rounded w-2/3 mx-auto mb-2"></div>
-                      <Button
-                        className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full"
-                        size="sm"
-                      >
-                        <Crown className="h-4 w-4 mr-1" />
-                        Upgrade to See
-                      </Button>
-                    </div>
-                  )}
-                </div>
+                ) : (
+                  <div className="bg-pink-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                    <Heart className="h-3 w-3 mr-1" />
+                    Liked
+                  </div>
+                )}
               </div>
-            ))}
+            </div>
+
+            {/* Profile Info */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {profile.name}, {profile.age}
+                </h3>
+                {profile.location && (
+                  <span className="text-sm text-gray-500">
+                    📍 {profile.location}
+                  </span>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => handlePass(profile)}
+                  variant="outline"
+                  className="flex-1 border-gray-300 hover:border-red-400 hover:bg-red-50"
+                >
+                  Pass
+                </Button>
+                <Button
+                  onClick={() => handleLikeBack(profile)}
+                  className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Like Back
+                </Button>
+              </div>
+            </div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Premium Modal */}
       {showPremiumModal && (
         <PremiumFeatures
+          isOpen={showPremiumModal}
           onClose={() => setShowPremiumModal(false)}
-          onUpgrade={handleUpgrade}
+          onUpgrade={onShowPremium}
         />
       )}
     </div>

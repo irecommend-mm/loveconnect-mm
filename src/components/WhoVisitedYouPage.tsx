@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Eye, Crown, Sparkles } from 'lucide-react';
+import { Eye, Crown, Sparkles, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -63,6 +63,7 @@ const WhoVisitedYouPage = ({ onShowPremium }: WhoVisitedYouPageProps) => {
       if (profilesData) {
         const profilesWithPhotos = await Promise.all(
           profilesData.map(async (profile) => {
+            // Get photos from the photos table
             const { data: photosData } = await supabase
               .from('photos')
               .select('url')
@@ -83,6 +84,7 @@ const WhoVisitedYouPage = ({ onShowPremium }: WhoVisitedYouPageProps) => {
           })
         );
 
+        // Filter profiles that have at least one photo
         setVisitors(profilesWithPhotos.filter(p => p.photos.length > 0));
       }
     } catch (error) {
@@ -102,146 +104,174 @@ const WhoVisitedYouPage = ({ onShowPremium }: WhoVisitedYouPageProps) => {
     onShowPremium();
   };
 
-  const formatVisitTime = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
+  const handleLike = async (visitorProfile: Profile) => {
+    if (!user) return;
 
-    if (hours < 1) return 'Just now';
-    if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return 'Yesterday';
-    return `${days}d ago`;
+    try {
+      // Create a swipe from current user to visitor
+      const { error } = await supabase
+        .from('swipes')
+        .insert({
+          swiper_id: user.id,
+          swiped_id: visitorProfile.user_id,
+          action: 'like'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Like sent! 💕",
+        description: `${visitorProfile.name} will be notified of your interest.`,
+      });
+
+      // Remove from visitors list
+      setVisitors(prev => prev.filter(p => p.id !== visitorProfile.id));
+
+    } catch (error) {
+      console.error('Error sending like:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send like. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handlePass = async (visitorProfile: Profile) => {
+    try {
+      // Remove from visitors list
+      setVisitors(prev => prev.filter(p => p.id !== visitorProfile.id));
+
+      toast({
+        title: "Profile passed",
+        description: `${visitorProfile.name} won't appear in your visitors again.`,
+      });
+    } catch (error) {
+      console.error('Error passing profile:', error);
+    }
   };
 
   if (loading) {
     return (
-      <div className="max-w-md mx-auto bg-white min-h-screen">
-        <div className="flex items-center justify-center pt-20">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500"></div>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
+
+  if (visitors.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <Eye className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+        <h3 className="text-xl font-semibold mb-2">No visitors yet</h3>
+        <p className="text-gray-600 mb-6">
+          When someone views your profile, they'll appear here.
+        </p>
+        <Button
+          onClick={() => onShowPremium()}
+          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+        >
+          <Crown className="h-4 w-4 mr-2" />
+          Get Premium to see who visited you
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto bg-white min-h-screen">
-      {/* Header */}
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Who Visited You</h1>
-            <p className="text-gray-600">{visitors.length} profile visits</p>
-          </div>
-          <Eye className="h-6 w-6 text-purple-500" />
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Who Visited You
+          <span className="text-blue-500 ml-2">({visitors.length})</span>
+        </h2>
+        {!isPremium && (
+          <Button
+            onClick={() => setShowPremiumModal(true)}
+            variant="outline"
+            className="border-yellow-400 text-yellow-600 hover:bg-yellow-50"
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Upgrade to Premium
+          </Button>
+        )}
       </div>
 
-      {/* Premium Upgrade Banner */}
-      {!isPremium && (
-        <div 
-          onClick={() => setShowPremiumModal(true)}
-          className="mx-4 mt-4 bg-gradient-to-r from-purple-500 to-blue-600 rounded-2xl p-6 text-white cursor-pointer hover:from-purple-600 hover:to-blue-700 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center space-x-2 mb-2">
-                <Eye className="h-5 w-5" />
-                <span className="font-semibold">See Who Visited You</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {visitors.map((profile) => (
+          <div
+            key={profile.id}
+            className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow"
+          >
+            {/* Profile Photo */}
+            <div className="relative h-48 overflow-hidden">
+              {profile.photos.length > 0 ? (
+                <img
+                  src={profile.photos[0]}
+                  alt={profile.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
+                  <Eye className="h-16 w-16 text-gray-300" />
+                </div>
+              )}
+              
+              {/* Visit Badge */}
+              <div className="absolute top-3 right-3">
+                <div className="bg-blue-500 text-white px-2 py-1 rounded-full text-xs font-medium flex items-center">
+                  <Eye className="h-3 w-3 mr-1" />
+                  Visited
+                </div>
               </div>
-              <p className="text-sm opacity-90">
-                Upgrade to see everyone who checked out your profile!
-              </p>
             </div>
-            <Crown className="h-8 w-8" />
-          </div>
-        </div>
-      )}
 
-      {/* Visitors Grid */}
-      <div className="p-4">
-        {visitors.length === 0 ? (
-          <div className="text-center py-12">
-            <Eye className="h-24 w-24 text-gray-300 mx-auto mb-6" />
-            <h3 className="text-xl font-semibold text-gray-700 mb-2">No visits yet</h3>
-            <p className="text-gray-500">Your profile will attract visitors soon!</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-4">
-            {visitors.map((profile) => (
-              <div 
-                key={profile.id} 
-                className="relative cursor-pointer"
-                onClick={() => !isPremium && setShowPremiumModal(true)}
-              >
-                <div className="aspect-[3/4] rounded-2xl overflow-hidden bg-gray-100">
-                  {isPremium ? (
-                    <img
-                      src={profile.photos[0]}
-                      alt={profile.name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="relative w-full h-full">
-                      <img
-                        src={profile.photos[0]}
-                        alt={profile.name}
-                        className="w-full h-full object-cover blur-lg"
-                      />
-                      <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                        <div className="bg-white/90 p-3 rounded-full">
-                          <Eye className="h-6 w-6 text-purple-600" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Visit indicator */}
-                  <div className="absolute top-2 right-2">
-                    <div className="bg-purple-500 p-2 rounded-full shadow-lg">
-                      <Eye className="h-4 w-4 text-white" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Profile info */}
-                <div className="mt-2">
-                  {isPremium ? (
-                    <>
-                      <h3 className="font-semibold text-gray-900">
-                        {profile.name}, {profile.age}
-                      </h3>
-                      {profile.location && (
-                        <p className="text-xs text-gray-600">{profile.location}</p>
-                      )}
-                      <p className="text-xs text-purple-600 font-medium">
-                        Visited {formatVisitTime(profile.visited_at)}
-                      </p>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <div className="h-4 bg-gray-200 rounded mb-1"></div>
-                      <div className="h-3 bg-gray-200 rounded w-2/3 mx-auto mb-2"></div>
-                      <Button
-                        className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-full"
-                        size="sm"
-                      >
-                        <Crown className="h-4 w-4 mr-1" />
-                        Upgrade to See
-                      </Button>
-                    </div>
-                  )}
-                </div>
+            {/* Profile Info */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  {profile.name}, {profile.age}
+                </h3>
+                {profile.location && (
+                  <span className="text-sm text-gray-500">
+                    📍 {profile.location}
+                  </span>
+                )}
               </div>
-            ))}
+
+              {/* Visit Time */}
+              {profile.visited_at && (
+                <p className="text-sm text-gray-500 mb-3">
+                  Visited {new Date(profile.visited_at).toLocaleDateString()}
+                </p>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() => handlePass(profile)}
+                  variant="outline"
+                  className="flex-1 border-gray-300 hover:border-red-400 hover:bg-red-50"
+                >
+                  Pass
+                </Button>
+                <Button
+                  onClick={() => handleLike(profile)}
+                  className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                >
+                  <Heart className="h-4 w-4 mr-2" />
+                  Like
+                </Button>
+              </div>
+            </div>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Premium Modal */}
       {showPremiumModal && (
         <PremiumFeatures
+          isOpen={showPremiumModal}
           onClose={() => setShowPremiumModal(false)}
           onUpgrade={handleUpgrade}
         />
