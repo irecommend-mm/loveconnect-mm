@@ -94,7 +94,6 @@ const MainContent = ({
             <DiscoveryGrid 
               currentUserId={user.id} 
               userLocation={convertLocationForGrid(location)}
-              currentMode={currentMode}
             />
           </div>
         )}
