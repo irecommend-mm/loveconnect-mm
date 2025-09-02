@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -43,7 +42,7 @@ export const usePushNotifications = () => {
             title: payload.new.title,
             body: payload.new.body,
             type: payload.new.type as PushNotification['type'],
-            data: payload.new.data,
+            data: (payload.new.data && typeof payload.new.data === 'object') ? payload.new.data as Record<string, unknown> : {},
             read: payload.new.read,
             sentAt: payload.new.sent_at ? new Date(payload.new.sent_at) : undefined,
             createdAt: new Date(payload.new.created_at)
@@ -84,7 +83,7 @@ export const usePushNotifications = () => {
         title: notif.title,
         body: notif.body,
         type: notif.type as PushNotification['type'],
-        data: notif.data,
+        data: (notif.data && typeof notif.data === 'object') ? notif.data as Record<string, unknown> : {},
         read: notif.read,
         sentAt: notif.sent_at ? new Date(notif.sent_at) : undefined,
         createdAt: new Date(notif.created_at)
@@ -112,7 +111,7 @@ export const usePushNotifications = () => {
           title,
           body,
           type,
-          data,
+          data: data as any,
           sent_at: new Date().toISOString()
         });
     } catch (error) {

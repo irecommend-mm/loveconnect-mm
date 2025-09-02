@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X, Sliders, MapPin, Heart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
