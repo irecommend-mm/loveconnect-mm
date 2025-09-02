@@ -120,10 +120,6 @@ const Index = () => {
         <ProfileModal
           user={currentUserProfile}
           onClose={() => setShowProfile(false)}
-          onSave={() => {
-            setShowProfile(false);
-            if (user) checkUserProfile(user.id);
-          }}
         />
       )}
 
@@ -143,7 +139,7 @@ const Index = () => {
 
       {showVideoCall && selectedOtherUser && (
         <VideoCallModal
-          otherUser={selectedOtherUser}
+          user={selectedOtherUser}
           onClose={() => setShowVideoCall(false)}
         />
       )}

@@ -103,8 +103,6 @@ const MainContent = ({
             <DiscoveryGrid 
               currentUserId={user.id} 
               userLocation={location} 
-              filters={activeFilters}
-              currentMode={currentMode}
             />
           </div>
         )}
@@ -129,8 +127,6 @@ const MainContent = ({
             </div>
             <LocalEvents 
               onClose={() => {}} 
-              currentMode={currentMode}
-              currentUserId={user.id}
             />
           </div>
         )}
@@ -191,7 +187,6 @@ const MainContent = ({
             setShowEventCreation(false);
             // Optionally refresh events
           }}
-          currentMode={currentMode}
         />
       )}
     </main>

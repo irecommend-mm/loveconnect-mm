@@ -16,11 +16,11 @@ interface EnhancedSwipeStackProps {
 }
 
 const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
   const [users, setUsers] = useState<UserType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
+  const [matchedUserIds, setMatchedUserIds] = useState<Set<string>>(new Set());
 
   // Mock compatibility data
   const mockCompatibility = {
@@ -40,18 +40,28 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
     try {
       setLoading(true);
       
-      // Get current user ID
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      // Get matched user IDs to exclude them
+      const { data: matchesData } = await supabase
+        .from('matches')
+        .select('user1_id, user2_id')
+        .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`);
+
+      const matchedIds = new Set<string>();
+      if (matchesData) {
+        matchesData.forEach(match => {
+          const otherId = match.user1_id === user.id ? match.user2_id : match.user1_id;
+          matchedIds.add(otherId);
+        });
+      }
+      setMatchedUserIds(matchedIds);
 
       // Build query with filters
       let query = supabase
         .from('profiles')
-        .select(`
-          *,
-          photos:photos(url),
-          interests:interests(interest)
-        `)
+        .select('*')
         .neq('user_id', user.id)
         .limit(20);
 
@@ -82,31 +92,48 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
         return;
       }
 
-      // Transform the data
-      const transformedUsers = profilesData.map(profile => ({
-        id: profile.user_id,
-        name: profile.name,
-        age: profile.age,
-        bio: profile.bio || '',
-        photos: profile.photos?.map((p: any) => p.url) || [],
-        interests: profile.interests?.map((i: any) => i.interest) || [],
-        location: profile.location || '',
-        job: profile.job_title || '',
-        education: profile.education || '',
-        verified: profile.verified || false,
-        lastActive: new Date(profile.last_active || profile.created_at),
-        height: profile.height || '',
-        zodiacSign: profile.zodiac_sign || '',
-        relationshipType: profile.relationship_type as 'casual' | 'serious' | 'friends' | 'unsure',
-        children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure',
-        smoking: profile.smoking as 'yes' | 'no' | 'sometimes',
-        drinking: profile.drinking as 'yes' | 'no' | 'sometimes',
-        exercise: profile.exercise as 'often' | 'sometimes' | 'never',
-        isOnline: Math.random() > 0.5,
-        distance: Math.floor(Math.random() * 50) + 1,
-      }));
+      // Get photos and interests for each profile
+      const usersWithData = await Promise.all(
+        profilesData.map(async (profile) => {
+          const { data: photosData } = await supabase
+            .from('photos')
+            .select('url')
+            .eq('user_id', profile.user_id)
+            .order('position');
 
-      setUsers(transformedUsers);
+          const { data: interestsData } = await supabase
+            .from('interests')
+            .select('interest')
+            .eq('user_id', profile.user_id);
+
+          return {
+            id: profile.user_id,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio || '',
+            photos: photosData?.map((p: any) => p.url) || [],
+            interests: interestsData?.map((i: any) => i.interest) || [],
+            location: profile.location || '',
+            job: profile.job_title || '',
+            education: profile.education || '',
+            verified: profile.verified || false,
+            lastActive: new Date(profile.last_active || profile.created_at),
+            height: profile.height || '',
+            zodiacSign: profile.zodiac_sign || '',
+            relationshipType: (profile.relationship_type === 'friendship' ? 'friends' : profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
+            children: (profile.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
+            smoking: (profile.smoking || 'no') as 'yes' | 'no' | 'sometimes',
+            drinking: (profile.drinking || 'sometimes') as 'yes' | 'no' | 'sometimes',
+            exercise: (profile.exercise || 'sometimes') as 'often' | 'sometimes' | 'never',
+            isOnline: Math.random() > 0.5,
+            distance: Math.floor(Math.random() * 50) + 1,
+          };
+        })
+      );
+
+      // Filter out matched users
+      const filteredUsers = usersWithData.filter(u => !matchedIds.has(u.id));
+      setUsers(filteredUsers);
       setCurrentIndex(0);
       
     } catch (error) {
@@ -121,7 +148,7 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
   }, [filters]);
 
   const handleSwipe = async (direction: 'like' | 'dislike' | 'super_like') => {
-    if (!currentUser || currentIndex >= users.length) return;
+    if (currentIndex >= users.length) return;
 
     setSwipeDirection(direction);
 
@@ -152,9 +179,10 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
     }
   };
 
-  // Reset to beginning when all users are viewed (for testing)
+  // Reset to beginning when all users are viewed, excluding matched users
   const resetStack = () => {
     setCurrentIndex(0);
+    loadUsers(); // Reload to get fresh profiles
   };
 
   if (loading) {
@@ -234,7 +262,7 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
       }`}>
         <CardContent className="p-0">
           <div className="relative">
-            <PhotoGallery photos={user.photos} userName={user.name} />
+            <PhotoGallery photos={user.photos} />
             
             {/* Overlay Info */}
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 text-white">
