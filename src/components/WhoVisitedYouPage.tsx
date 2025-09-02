@@ -151,6 +151,12 @@ const WhoVisitedYouPage = ({ onShowPremium }: WhoVisitedYouPageProps) => {
     }
   };
 
+  const handleProfileClick = () => {
+    if (!isPremium) {
+      setShowPremiumModal(true);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -201,16 +207,30 @@ const WhoVisitedYouPage = ({ onShowPremium }: WhoVisitedYouPageProps) => {
         {visitors.map((profile) => (
           <div
             key={profile.id}
-            className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow"
+            className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow cursor-pointer"
+            onClick={handleProfileClick}
           >
             {/* Profile Photo */}
             <div className="relative h-48 overflow-hidden">
               {profile.photos.length > 0 ? (
-                <img
-                  src={profile.photos[0]}
-                  alt={profile.name}
-                  className="w-full h-full object-cover"
-                />
+                isPremium ? (
+                  <img
+                    src={profile.photos[0]}
+                    alt={profile.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="relative w-full h-full">
+                    <img
+                      src={profile.photos[0]}
+                      alt={profile.name}
+                      className="w-full h-full object-cover blur-sm"
+                    />
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                      <Crown className="h-8 w-8 text-white" />
+                    </div>
+                  </div>
+                )
               ) : (
                 <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center">
                   <Eye className="h-16 w-16 text-gray-300" />
@@ -246,23 +266,45 @@ const WhoVisitedYouPage = ({ onShowPremium }: WhoVisitedYouPageProps) => {
                 </p>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex space-x-2">
-                <Button
-                  onClick={() => handlePass(profile)}
-                  variant="outline"
-                  className="flex-1 border-gray-300 hover:border-red-400 hover:bg-red-50"
-                >
-                  Pass
-                </Button>
-                <Button
-                  onClick={() => handleLike(profile)}
-                  className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-                >
-                  <Heart className="h-4 w-4 mr-2" />
-                  Like
-                </Button>
-              </div>
+              {/* Action Buttons - Only show for premium users */}
+              {isPremium ? (
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePass(profile);
+                    }}
+                    variant="outline"
+                    className="flex-1 border-gray-300 hover:border-red-400 hover:bg-red-50"
+                  >
+                    Pass
+                  </Button>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLike(profile);
+                    }}
+                    className="flex-1 bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
+                  >
+                    <Heart className="h-4 w-4 mr-2" />
+                    Like
+                  </Button>
+                </div>
+              ) : (
+                <div className="text-center py-2">
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPremiumModal(true);
+                    }}
+                    className="w-full bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white"
+                    size="sm"
+                  >
+                    <Crown className="h-4 w-4 mr-2" />
+                    Upgrade to See
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         ))}
