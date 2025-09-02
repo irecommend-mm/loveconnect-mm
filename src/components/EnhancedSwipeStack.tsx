@@ -80,8 +80,11 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
 
           // Helper function to safely extract interests from lifestyle JSON
           const getInterestsFromLifestyle = (lifestyle: unknown): string[] => {
-            if (lifestyle && typeof lifestyle === 'object' && lifestyle.interests) {
-              return Array.isArray(lifestyle.interests) ? lifestyle.interests : [];
+            if (lifestyle && typeof lifestyle === 'object' && lifestyle !== null) {
+              const lifestyleObj = lifestyle as { interests?: string[] };
+              if (lifestyleObj.interests && Array.isArray(lifestyleObj.interests)) {
+                return lifestyleObj.interests;
+              }
             }
             return [];
           };
@@ -154,13 +157,13 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
     loadUsers();
   }, [loadUsers]);
 
-  const handleSwipe = async (action: 'like' | 'dislike' | 'super_like') => {
+  const handleSwipe = async (direction: 'left' | 'right' | 'super', currentUser: UserType) => {
     if (!user || isAnimating || currentIndex >= users.length) return;
 
-    const currentUser = users[currentIndex];
-    if (!currentUser) return;
-
     setIsAnimating(true);
+
+    // Map direction to action
+    const action = direction === 'left' ? 'dislike' : direction === 'right' ? 'like' : 'super_like';
 
     try {
       // Record the swipe
@@ -254,7 +257,6 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
             user={nextUser}
             onSwipe={() => {}}
             mode={mode}
-            isBackground={true}
           />
         </div>
       )}
@@ -265,7 +267,6 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
           user={currentUser}
           onSwipe={handleSwipe}
           mode={mode}
-          isBackground={false}
         />
       </div>
     </div>

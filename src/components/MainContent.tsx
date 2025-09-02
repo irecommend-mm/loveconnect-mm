@@ -10,7 +10,7 @@ import ModernSettingsPage from './ModernSettingsPage';
 import ChatInterface from './ChatInterface';
 import LocalEvents from './LocalEvents';
 import EventCreationModal from './EventCreationModal';
-import AdvancedFilters from './AdvancedFilters';
+import AdvancedFilters from './filters/AdvancedFilters';
 import { Match, User as UserType } from '@/types/User';
 import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
 import { Button } from '@/components/ui/button';
@@ -54,9 +54,21 @@ const MainContent = ({
   const [showLocalEvents, setShowLocalEvents] = useState(false);
   const [activeFilters, setActiveFilters] = useState<UserFilters | null>(null);
 
-  const handleApplyFilters = (filters: UserFilters) => {
-    setActiveFilters(filters);
-    console.log('Filters applied:', filters);
+  const handleApplyFilters = (filters: any) => {
+    // Convert FilterPreferences to UserFilters format
+    const userFilters: UserFilters = {
+      ageRange: filters.ageRange,
+      maxDistance: filters.maxDistance,
+      showMe: 'everyone', // Default value
+      relationshipType: filters.relationshipType?.[0] as 'serious' | 'casual' | 'friends' | 'unsure',
+      interests: filters.interests,
+      verifiedOnly: filters.verified,
+      onlineOnly: filters.onlineOnly,
+      hasPhotos: true,
+      hasBio: false
+    };
+    setActiveFilters(userFilters);
+    console.log('Filters applied:', userFilters);
   };
 
   // Listen for filter open event from header
@@ -85,7 +97,6 @@ const MainContent = ({
             <DiscoveryGrid 
               currentUserId={user.id} 
               userLocation={location} 
-              filters={activeFilters}
               currentMode={currentMode}
             />
           </div>
@@ -181,7 +192,7 @@ const MainContent = ({
       {/* Modals */}
       {showFilters && (
         <AdvancedFilters
-          currentMode={currentMode}
+          isOpen={showFilters}
           onClose={() => setShowFilters(false)}
           onApplyFilters={handleApplyFilters}
         />
@@ -189,12 +200,12 @@ const MainContent = ({
 
       {showEventCreation && (
         <EventCreationModal
+          isOpen={showEventCreation}
           onClose={() => setShowEventCreation(false)}
           onEventCreated={() => {
             setShowEventCreation(false);
             // Optionally refresh events
           }}
-          currentMode={currentMode}
         />
       )}
 
