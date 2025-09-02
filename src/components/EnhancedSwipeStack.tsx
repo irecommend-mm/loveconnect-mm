@@ -1,490 +1,272 @@
 
-import React, { useState, useEffect } from 'react';
-import { Heart, X, Star, Users, MessageCircle, MapPin, RotateCcw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User as UserType } from '@/types/User';
-import { AppMode, UserFilters } from '@/types/FriendDateTypes';
-import CompatibilityScore from './CompatibilityScore';
-import PhotoGallery from './PhotoGallery';
+import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import EnhancedSwipeCard from './EnhancedSwipeCard';
+import { toast } from '@/hooks/use-toast';
 
 interface EnhancedSwipeStackProps {
   mode: AppMode;
-  filters?: UserFilters;
+  filters?: UserFilters | null;
 }
 
 const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
-  const [currentUser, setCurrentUser] = useState<UserType | null>(null);
+  const { user } = useAuth();
   const [users, setUsers] = useState<UserType[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [swipeDirection, setSwipeDirection] = useState<string | null>(null);
-  const [rewindStack, setRewindStack] = useState<UserType[]>([]);
-  const [canRewind, setCanRewind] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
-  // Mock compatibility data
-  const mockCompatibility = {
-    friendshipScore: Math.floor(Math.random() * 40) + 60,
-    romanceScore: Math.floor(Math.random() * 40) + 60,
-    overallCompatibility: Math.floor(Math.random() * 40) + 60,
-    factors: {
-      commonInterests: Math.floor(Math.random() * 100),
-      lifestyleAlignment: Math.floor(Math.random() * 100),
-      communicationStyle: Math.floor(Math.random() * 100),
-      values: Math.floor(Math.random() * 100),
-      zodiacCompatibility: Math.floor(Math.random() * 100),
-    }
-  };
+  const loadUsers = useCallback(async () => {
+    if (!user) return;
 
-  const loadUsers = async () => {
     try {
       setLoading(true);
       
-      // Get current user ID
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      // Get users who haven't been swiped by current user
+      const { data: swipedUsers } = await supabase
+        .from('swipes')
+        .select('swiped_id')
+        .eq('swiper_id', user.id);
 
-      // Build query with filters
+      const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
+
+      // Build query for profiles
       let query = supabase
         .from('profiles')
         .select('*')
-        .neq('user_id', user.id)
-        .limit(20);
+        .neq('user_id', user.id);
 
-      // Apply age filter
-      if (filters?.ageRange) {
-        query = query.gte('age', filters.ageRange[0]).lte('age', filters.ageRange[1]);
+      // Exclude already swiped users
+      if (swipedUserIds.length > 0) {
+        query = query.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
       }
 
-      // Apply other filters
-      if (filters?.relationshipType) {
-        query = query.eq('relationship_type', filters.relationshipType);
+      // Apply mode filter
+      if (mode === 'friend') {
+        query = query.or('relationship_type.eq.friendship,relationship_type.eq.friends');
+      } else {
+        query = query.or('relationship_type.eq.dating,relationship_type.eq.serious,relationship_type.eq.casual,relationship_type.is.null');
       }
 
-      if (filters?.verified) {
-        query = query.eq('verified', true);
-      }
+      const { data: profilesData, error } = await query.limit(20);
 
-      const { data: profilesData, error } = await query;
-      
       if (error) {
-        console.error('Error loading users:', error);
+        console.error('Error loading profiles:', error);
         return;
       }
 
       if (!profilesData || profilesData.length === 0) {
-        console.log('No profiles found');
         setUsers([]);
         return;
       }
 
-      // Transform the data
-      const transformedUsers = profilesData.map(profile => ({
-        id: profile.user_id,
-        name: profile.name,
-        age: profile.age,
-        bio: profile.bio || '',
-        // Add sample photos for now - you can implement photo upload later
-        photos: [
-          'https://images.unsplash.com/photo-1494790108755-2616b612b47c?w=400&h=400&fit=crop&crop=face',
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face'
-        ],
-        interests: profile.lifestyle?.interests || [],
-        location: profile.location || '',
-        job: profile.job_title || profile.job || '',
-        education: profile.education || '',
-        verified: profile.verified || false,
-        lastActive: new Date(profile.last_active || profile.created_at),
-        height: profile.height || '',
-        zodiacSign: profile.zodiac_sign || '',
-        relationshipType: profile.relationship_type as 'casual' | 'serious' | 'friends' | 'unsure' | undefined,
-        children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure' | undefined,
-        smoking: profile.smoking as 'yes' | 'no' | 'sometimes' | undefined,
-        drinking: profile.drinking as 'yes' | 'no' | 'sometimes' | undefined,
-        exercise: profile.exercise as 'often' | 'sometimes' | 'never' | undefined,
-        isOnline: Math.random() > 0.5,
-        distance: Math.floor(Math.random() * 50) + 1,
-      }));
+      // Load photos and interests for each profile
+      const usersWithData = await Promise.all(
+        profilesData.map(async (profile) => {
+          const [photosResult, interestsResult] = await Promise.all([
+            supabase
+              .from('photos')
+              .select('url')
+              .eq('user_id', profile.user_id)
+              .order('position'),
+            supabase
+              .from('interests')
+              .select('interest')
+              .eq('user_id', profile.user_id)
+          ]);
 
-      setUsers(transformedUsers);
-      setCurrentIndex(0);
+          // Helper function to safely extract interests from lifestyle JSON
+          const getInterestsFromLifestyle = (lifestyle: unknown): string[] => {
+            if (lifestyle && typeof lifestyle === 'object' && lifestyle.interests) {
+              return Array.isArray(lifestyle.interests) ? lifestyle.interests : [];
+            }
+            return [];
+          };
+
+          // Map database values to frontend values
+          const mapDrinking = (value: string | null) => {
+            switch (value) {
+              case 'socially': return 'sometimes';
+              case 'regularly': return 'yes';
+              case 'never': return 'no';
+              default: return 'sometimes';
+            }
+          };
+
+          const mapSmoking = (value: string | null) => {
+            switch (value) {
+              case 'never': return 'no';
+              case 'sometimes': return 'sometimes';
+              case 'regularly': return 'yes';
+              default: return 'no';
+            }
+          };
+
+          const mapExercise = (value: string | null) => {
+            switch (value) {
+              case 'never': return 'never';
+              case 'sometimes': return 'sometimes';
+              case 'regularly': case 'often': case 'daily': return 'often';
+              default: return 'sometimes';
+            }
+          };
+
+          return {
+            id: profile.user_id,
+            name: profile.name,
+            age: profile.age,
+            bio: profile.bio || '',
+            photos: photosResult.data?.map(p => p.url) || [],
+            interests: interestsResult.data?.map(i => i.interest) || getInterestsFromLifestyle(profile.lifestyle),
+            location: profile.location || '',
+            job: profile.job_title || '',
+            education: profile.education || '',
+            verified: profile.verified || false,
+            lastActive: new Date(profile.last_active || profile.created_at),
+            height: profile.height_cm ? `${Math.floor(profile.height_cm / 30.48)}'${Math.round(((profile.height_cm / 30.48) % 1) * 12)}"` : '',
+            zodiacSign: profile.zodiac_sign || '',
+            relationshipType: (profile.relationship_type === 'friendship' ? 'friends' : profile.relationship_type || 'serious') as 'casual' | 'serious' | 'friends' | 'unsure',
+            children: (profile.children || 'unsure') as 'have' | 'want' | 'dont_want' | 'unsure',
+            smoking: mapSmoking(profile.smoking) as 'yes' | 'no' | 'sometimes',
+            drinking: mapDrinking(profile.drinking) as 'yes' | 'no' | 'sometimes',
+            exercise: mapExercise(profile.exercise) as 'often' | 'sometimes' | 'never',
+            isOnline: false,
+          } as UserType;
+        })
+      );
+
+      // Filter out users without photos
+      const validUsers = usersWithData.filter(user => user.photos.length > 0);
       
+      setUsers(validUsers);
+      setCurrentIndex(0);
     } catch (error) {
       console.error('Error in loadUsers:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, mode, filters]);
 
   useEffect(() => {
     loadUsers();
-  }, [filters]);
+  }, [loadUsers]);
 
-  const handleSwipe = async (direction: 'like' | 'dislike' | 'super_like') => {
-    if (currentIndex >= users.length) return;
+  const handleSwipe = async (action: 'like' | 'dislike' | 'super_like') => {
+    if (!user || isAnimating || currentIndex >= users.length) return;
 
     const currentUser = users[currentIndex];
-    setSwipeDirection(direction);
+    if (!currentUser) return;
+
+    setIsAnimating(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Add to rewind stack before removing
-      setRewindStack(prev => [...prev, currentUser]);
-      setCanRewind(true);
-
       // Record the swipe
-      const { error } = await supabase.from('swipes').insert({
-        swiper_id: user.id,
-        swiped_id: currentUser.id,
-        action: direction
-      });
-
-      if (error) {
-        console.error('Error recording swipe:', error);
-        // If error is duplicate, still proceed with UI update
-        if (error.code !== '23505') { // Not a unique constraint violation
-          return;
-        }
-      }
-
-      // Move to next user after animation
-      setTimeout(() => {
-        setUsers(prev => prev.filter(u => u.id !== currentUser.id));
-        setCurrentIndex(prev => prev + 1);
-        setSwipeDirection(null);
-      }, 300);
-
-    } catch (error) {
-      console.error('Error recording swipe:', error);
-      // Still move to next user even if recording fails
-      setTimeout(() => {
-        setUsers(prev => prev.filter(u => u.id !== currentUser.id));
-        setCurrentIndex(prev => prev + 1);
-        setSwipeDirection(null);
-      }, 300);
-    }
-  };
-
-  const handleRewind = async () => {
-    if (rewindStack.length === 0) return;
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      // Get the last user from rewind stack
-      const lastUser = rewindStack[rewindStack.length - 1];
-
-      // Remove the swipe record
-      const { error } = await supabase
+      const { error: swipeError } = await supabase
         .from('swipes')
-        .delete()
-        .eq('swiper_id', user.id)
-        .eq('swiped_id', lastUser.id);
+        .insert({
+          swiper_id: user.id,
+          swiped_id: currentUser.id,
+          action: action
+        });
 
-      if (error) {
-        console.error('Error deleting swipe:', error);
-        // If error is not found, still proceed with UI update
-        if (error.code !== 'PGRST116') { // Not a "no rows deleted" error
-          return;
+      if (swipeError) {
+        console.error('Error recording swipe:', swipeError);
+        return;
+      }
+
+      // Check if the other user already liked this user (for match creation)
+      if (action === 'like' || action === 'super_like') {
+        const { data: existingSwipe } = await supabase
+          .from('swipes')
+          .select('*')
+          .eq('swiper_id', currentUser.id)
+          .eq('swiped_id', user.id)
+          .in('action', ['like', 'super_like'])
+          .single();
+
+        // Create match if both users liked each other
+        if (existingSwipe) {
+          const { error: matchError } = await supabase
+            .from('matches')
+            .insert({
+              user1_id: user.id,
+              user2_id: currentUser.id,
+              is_active: true
+            });
+
+          if (!matchError) {
+            toast({
+              title: "It's a Match! 💕",
+              description: `You and ${currentUser.name} liked each other!`,
+            });
+          }
         }
       }
 
-      // Update states
-      setUsers(prev => [lastUser, ...prev]);
-      setRewindStack(prev => prev.slice(0, -1));
-      setCurrentIndex(prev => Math.max(0, prev - 1));
-      setCanRewind(rewindStack.length > 1);
-      setSwipeDirection(null);
+      // Move to next user
+      setTimeout(() => {
+        setCurrentIndex(prev => prev + 1);
+        setIsAnimating(false);
+      }, 300);
 
     } catch (error) {
-      console.error('Error rewinding:', error);
+      console.error('Error handling swipe:', error);
+      setIsAnimating(false);
     }
-  };
-
-  // Reset to beginning when all users are viewed (for testing)
-  const resetStack = () => {
-    setCurrentIndex(0);
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
+      <div className="flex items-center justify-center h-[600px]">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-pink-500"></div>
       </div>
     );
   }
 
-  if (users.length === 0) {
+  if (users.length === 0 || currentIndex >= users.length) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-          mode === 'friend' ? 'bg-blue-100' : 'bg-pink-100'
-        }`}>
-          {mode === 'friend' ? (
-            <Users className={`h-8 w-8 ${mode === 'friend' ? 'text-blue-500' : 'text-pink-500'}`} />
-          ) : (
-            <Heart className={`h-8 w-8 ${mode === 'friend' ? 'text-blue-500' : 'text-pink-500'}`} />
-          )}
+      <div className="flex flex-col items-center justify-center h-[600px] text-center">
+        <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
+          <span className="text-4xl">🎉</span>
         </div>
-        <h3 className="text-xl font-semibold mb-2">No profiles found</h3>
+        <h3 className="text-xl font-semibold text-gray-800 mb-2">
+          You've seen everyone!
+        </h3>
         <p className="text-gray-600 mb-4">
-          Try adjusting your filters or check back later for new profiles
+          Check back later for new profiles or expand your search filters.
         </p>
-        <Button 
-          onClick={loadUsers}
-          className={mode === 'friend' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-pink-500 hover:bg-pink-600'}
-        >
-          Refresh
-        </Button>
       </div>
     );
   }
 
-  if (currentIndex >= users.length) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-          mode === 'friend' ? 'bg-blue-100' : 'bg-pink-100'
-        }`}>
-          <Star className={`h-8 w-8 ${mode === 'friend' ? 'text-blue-500' : 'text-pink-500'}`} />
-        </div>
-        <h3 className="text-xl font-semibold mb-2">You've seen everyone nearby!</h3>
-        <p className="text-gray-600 mb-4">
-          Check back later for new matches or explore events
-        </p>
-        <Button 
-          onClick={resetStack}
-          className={mode === 'friend' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-pink-500 hover:bg-pink-600'}
-        >
-          Start Over
-        </Button>
-      </div>
-    );
-  }
-
-  const user = users[currentIndex];
+  const currentUser = users[currentIndex];
+  const nextUser = users[currentIndex + 1];
 
   return (
-    <div className="max-w-sm mx-auto pt-4">
-      {/* Compatibility Score */}
-      <div className="mb-4">
-        <CompatibilityScore 
-          score={mockCompatibility} 
-          mode={mode}
-          userName={user.name}
-        />
-      </div>
-
-      {/* Main Card */}
-      <Card 
-        className={`relative overflow-hidden transition-all duration-300 ease-out cursor-grab active:cursor-grabbing ${
-          swipeDirection === 'like' ? 'transform rotate-12 translate-x-[150%] scale-90 opacity-0' :
-          swipeDirection === 'dislike' ? 'transform -rotate-12 -translate-x-[150%] scale-90 opacity-0' :
-          swipeDirection === 'super_like' ? 'transform -translate-y-[150%] scale-90 opacity-0' : ''
-        }`}
-        onTouchStart={(e) => {
-          const card = e.currentTarget as HTMLElement;
-          const touch = e.touches[0];
-          const startX = touch.clientX;
-          const startY = touch.clientY;
-          let currentX = startX;
-          let currentY = startY;
-          
-          const handleTouchMove = (e: TouchEvent) => {
-            e.preventDefault(); // Prevent scrolling while swiping
-            const touch = e.touches[0];
-            currentX = touch.clientX;
-            currentY = touch.clientY;
-            const deltaX = currentX - startX;
-            const deltaY = currentY - startY;
-            
-            // Add visual feedback during swipe
-            if (Math.abs(deltaX) > 20 || Math.abs(deltaY) > 20) {
-              card.style.transform = `translateX(${deltaX * 0.8}px) translateY(${deltaY * 0.8}px) rotate(${deltaX * 0.1}deg)`;
-              card.style.transition = 'none';
-            }
-          };
-          
-          const handleTouchEnd = () => {
-            const deltaX = currentX - startX;
-            const deltaY = currentY - startY;
-            
-            // Reset transition for swipe animation
-            card.style.transition = 'transform 0.3s ease-out';
-            
-            // Determine swipe direction
-            if (Math.abs(deltaX) > 100 || Math.abs(deltaY) > 100) {
-              if (deltaY < -100 && Math.abs(deltaX) < 150) {
-                handleSwipe('super_like');
-              } else if (deltaX > 100) {
-                handleSwipe('like');
-              } else if (deltaX < -100) {
-                handleSwipe('dislike');
-              } else {
-                // Reset position if no action
-                card.style.transform = '';
-              }
-            } else {
-              // Reset position if swipe not far enough
-              card.style.transform = '';
-            }
-            
-            // Remove event listeners
-            document.removeEventListener('touchmove', handleTouchMove);
-            document.removeEventListener('touchend', handleTouchEnd);
-          };
-          
-          document.addEventListener('touchmove', handleTouchMove, { passive: false });
-          document.addEventListener('touchend', handleTouchEnd);
-        }}
-      >
-        <CardContent className="p-0">
-          <div className="relative">
-            <PhotoGallery photos={user.photos} userName={user.name} />
-            
-            {/* Overlay Info */}
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-4 text-white">
-              <div className="flex items-center space-x-2 mb-2">
-                <h2 className="text-2xl font-bold">{user.name}</h2>
-                <span className="text-lg">{user.age}</span>
-                {user.verified && (
-                  <Badge className="bg-blue-500">
-                    ✓
-                  </Badge>
-                )}
-              </div>
-              
-              <div className="flex items-center space-x-4 text-sm mb-2">
-                <div className="flex items-center space-x-1">
-                  <MapPin className="h-4 w-4" />
-                  <span>{user.distance}km away</span>
-                </div>
-                {user.isOnline && (
-                  <Badge className="bg-green-500 text-xs">
-                    Online
-                  </Badge>
-                )}
-              </div>
-
-              {user.job && (
-                <p className="text-sm text-gray-200 mb-2">{user.job}</p>
-              )}
-
-              {user.bio && (
-                <p className="text-sm text-gray-200 mb-3 line-clamp-2">{user.bio}</p>
-              )}
-
-              {user.interests && user.interests.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {user.interests.slice(0, 3).map((interest, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs bg-white/20 text-white">
-                      {interest}
-                    </Badge>
-                  ))}
-                  {user.interests.length > 3 && (
-                    <Badge variant="secondary" className="text-xs bg-white/20 text-white">
-                      +{user.interests.length - 3}
-                    </Badge>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Action Buttons */}
-      <div className="flex flex-col items-center space-y-4">
-        {/* Main Action Buttons */}
-        <div className="flex justify-center items-center space-x-4">
-          {/* Rewind Button */}
-          <Button
-            onClick={handleRewind}
-            disabled={!canRewind}
-            size="lg"
-            variant="outline"
-            className={`rounded-full w-14 h-14 ${
-              canRewind 
-                ? 'bg-yellow-500 hover:bg-yellow-600 text-white border-yellow-500' 
-                : 'bg-gray-200 text-gray-400 cursor-not-allowed border-gray-200'
-            } transition-all duration-200`}
-            title="Undo last action"
-          >
-            <RotateCcw className="h-6 w-6" />
-          </Button>
-          <Button
-            onClick={() => {
-              const btn = document.getElementById('dislike-btn');
-              if (btn) {
-                btn.classList.add('scale-110');
-                setTimeout(() => btn.classList.remove('scale-110'), 200);
-              }
-              handleSwipe('dislike');
-            }}
-            id="dislike-btn"
-            size="lg"
-            variant="outline"
-            className="rounded-full w-14 h-14 border-2 border-gray-300 hover:border-red-400 hover:bg-red-50 transition-transform duration-200"
-          >
-            <X className="h-6 w-6 text-gray-600 hover:text-red-500" />
-          </Button>
-
-          <Button
-            onClick={() => {
-              const btn = document.getElementById('super-like-btn');
-              if (btn) {
-                btn.classList.add('scale-110');
-                setTimeout(() => btn.classList.remove('scale-110'), 200);
-              }
-              handleSwipe('super_like');
-            }}
-            id="super-like-btn"
-            size="lg"
-            className="rounded-full w-14 h-14 bg-blue-500 hover:bg-blue-600 transition-transform duration-200"
-          >
-            <Star className="h-6 w-6 text-white" />
-          </Button>
-
-          <Button
-            onClick={() => {
-              const btn = document.getElementById('like-btn');
-              if (btn) {
-                btn.classList.add('scale-110');
-                setTimeout(() => btn.classList.remove('scale-110'), 200);
-              }
-              handleSwipe('like');
-            }}
-            id="like-btn"
-            size="lg"
-            className={`rounded-full w-14 h-14 transition-transform duration-200 ${
-              mode === 'friend' 
-                ? 'bg-blue-500 hover:bg-blue-600' 
-                : 'bg-pink-500 hover:bg-pink-600'
-            }`}
-          >
-            {mode === 'friend' ? (
-              <Users className="h-6 w-6 text-white" />
-            ) : (
-              <Heart className="h-6 w-6 text-white" />
-            )}
-          </Button>
+    <div className="relative w-full max-w-sm mx-auto h-[600px]">
+      {/* Next card (background) */}
+      {nextUser && (
+        <div className="absolute inset-0 transform scale-95">
+          <EnhancedSwipeCard
+            user={nextUser}
+            onSwipe={() => {}}
+            mode={mode}
+            isBackground={true}
+          />
         </div>
-      </div>
-
-      {/* Mode Indicator */}
-      <div className="flex justify-center mt-4">
-        <Badge className={`${
-          mode === 'friend' 
-            ? 'bg-blue-100 text-blue-800' 
-            : 'bg-pink-100 text-pink-800'
-        }`}>
-          {mode === 'friend' ? '👥 Friend Mode' : '💕 Date Mode'}
-        </Badge>
+      )}
+      
+      {/* Current card (foreground) */}
+      <div className="absolute inset-0 z-10">
+        <EnhancedSwipeCard
+          user={currentUser}
+          onSwipe={handleSwipe}
+          mode={mode}
+          isBackground={false}
+        />
       </div>
     </div>
   );

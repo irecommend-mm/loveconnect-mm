@@ -59,19 +59,28 @@ const Index = () => {
 
   // Profile setup required
   if (!hasProfile) {
-    return <ProfileSetup onProfileComplete={async () => await checkUserProfile(user.id)} />;
+    return (
+      <ProfileSetup 
+        onComplete={async () => {
+          await checkUserProfile(user.id);
+        }}
+      />
+    );
   }
 
   const handleChatSelect = (selectedUser: UserType) => {
+    // Find the match between current user and selected user
     const match = matches.find(m => 
-      (m.users[0] === user.id && users.find(u => u.id === m.users[1])?.id === selectedUser.id) ||
-      (m.users[1] === user.id && users.find(u => u.id === m.users[0])?.id === selectedUser.id)
+      (m.users.includes(user.id) && m.users.includes(selectedUser.id))
     );
     
     if (match) {
+      console.log('Found match:', match.id, 'for user:', selectedUser.name);
       setSelectedMatchId(match.id);
       setSelectedOtherUser(selectedUser);
       handleTabChange('chat');
+    } else {
+      console.error('No match found between users:', user.id, selectedUser.id);
     }
   };
 
@@ -151,7 +160,9 @@ const Index = () => {
 
       {showVideoCall && selectedOtherUser && (
         <VideoCallModal
-          otherUser={selectedOtherUser}
+          isOpen={showVideoCall}
+          otherUserName={selectedOtherUser.name}
+          otherUserPhoto={selectedOtherUser.photos?.[0] || ''}
           onClose={() => setShowVideoCall(false)}
         />
       )}

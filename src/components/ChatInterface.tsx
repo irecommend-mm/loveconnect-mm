@@ -1,22 +1,14 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, ArrowLeft, Video } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeMessages } from '@/hooks/useRealtimeMessages';
 import { useAuth } from '@/hooks/useAuth';
-import { toast } from '@/hooks/use-toast';
 import ReadReceipts from './ReadReceipts';
 import OnlineStatus from './OnlineStatus';
-
-interface Message {
-  id: string;
-  content: string;
-  sender_id: string;
-  created_at: string;
-  read_at?: string;
-}
 
 interface ChatUser {
   id: string;
@@ -33,22 +25,11 @@ interface ChatInterfaceProps {
 
 const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfaceProps) => {
   const { user } = useAuth();
-  const [messages, setMessages] = useState<Message[]>([]);
+  const { messages, loading, sendMessage } = useRealtimeMessages(matchId);
   const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [otherUserOnline, setOtherUserOnline] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (matchId) {
-      loadMessages();
-      const unsubscribe = subscribeToMessages();
-      return () => {
-        unsubscribe();
-      };
-    }
-  }, [matchId, loadMessages, subscribeToMessages]);
 
   useEffect(() => {
     scrollToBottom();
@@ -58,106 +39,27 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadMessages = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .eq('match_id', matchId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      toast({
-        title: "Error loading messages",
-        description: error.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setMessages(data || []);
-
-    // Mark messages as read
-    if (user && data) {
-      const unreadMessages = data.filter(
-        m => m.sender_id !== user.id && !m.read_at
-      );
-
-      if (unreadMessages.length > 0) {
-        await supabase
-          .from('messages')
-          .update({ read_at: new Date().toISOString() })
-          .in('id', unreadMessages.map(m => m.id));
-      }
-    }
-  }, [matchId, user]);
-
-  const subscribeToMessages = useCallback(() => {
-    const channel = supabase
-      .channel('messages')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `match_id=eq.${matchId}`,
-        },
-        (payload) => {
-          const newMessage = payload.new as Message;
-          setMessages(prev => [...prev, newMessage]);
-
-          // Mark as read if it's not from current user
-          if (user && newMessage.sender_id !== user.id) {
-            setTimeout(() => {
-              supabase
-                .from('messages')
-                .update({ read_at: new Date().toISOString() })
-                .eq('id', newMessage.id);
-            }, 1000);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [matchId, user]);
-
-  const sendMessage = async (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
 
-    setLoading(true);
-
-    const { error } = await supabase
-      .from('messages')
-      .insert({
-        match_id: matchId,
-        sender_id: user.id,
-        content: newMessage.trim(),
-      });
-
-    if (error) {
-      toast({
-        title: "Error sending message",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      setNewMessage('');
+    const messageToSend = newMessage.trim();
+    setNewMessage('');
+    
+    try {
+      await sendMessage(messageToSend);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Restore message on error
+      setNewMessage(messageToSend);
     }
-
-    setLoading(false);
   };
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (date: Date) => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -171,11 +73,11 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
     }
   };
 
-  const groupMessagesByDate = (messages: Message[]) => {
-    const groups: { [key: string]: Message[] } = {};
+  const groupMessagesByDate = (messages: any[]) => {
+    const groups: { [key: string]: any[] } = {};
     
     messages.forEach(message => {
-      const date = new Date(message.created_at).toDateString();
+      const date = new Date(message.timestamp).toDateString();
       if (!groups[date]) {
         groups[date] = [];
       }
@@ -189,6 +91,14 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
   };
 
   const messageGroups = groupMessagesByDate(messages);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full bg-white">
@@ -227,15 +137,15 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
             <div key={date.toDateString()}>
               <div className="text-center mb-4">
                 <span className="bg-gray-100 text-gray-600 text-xs px-3 py-1 rounded-full">
-                  {formatDate(date.toISOString())}
+                  {formatDate(date)}
                 </span>
               </div>
               
               {dayMessages.map((message, index) => {
-                const isOwn = message.sender_id === user?.id;
+                const isOwn = message.senderId === user?.id;
                 const showAvatar = !isOwn && (
                   index === 0 || 
-                  dayMessages[index - 1]?.sender_id !== message.sender_id
+                  dayMessages[index - 1]?.senderId !== message.senderId
                 );
 
                 return (
@@ -265,7 +175,7 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
                             isOwn ? 'text-white/70' : 'text-gray-500'
                           }`}
                         >
-                          {formatTime(message.created_at)}
+                          {formatTime(message.timestamp)}
                         </p>
                       </div>
                     </div>
@@ -274,8 +184,8 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
                     {isOwn && (
                       <div className="flex justify-end mt-1 mr-2">
                         <ReadReceipts
-                          messageStatus={message.read_at ? 'read' : 'delivered'}
-                          timestamp={formatTime(message.created_at)}
+                          messageStatus={message.read ? 'read' : 'delivered'}
+                          timestamp={formatTime(message.timestamp)}
                         />
                       </div>
                     )}
@@ -296,7 +206,7 @@ const ChatInterface = ({ matchId, otherUser, onBack, onVideoCall }: ChatInterfac
       )}
 
       {/* Message Input */}
-      <form onSubmit={sendMessage} className="flex items-center p-4 border-t space-x-2">
+      <form onSubmit={handleSendMessage} className="flex items-center p-4 border-t space-x-2">
         <Input
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}

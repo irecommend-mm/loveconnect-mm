@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import EnhancedSwipeStack from './EnhancedSwipeStack';
 import DiscoveryGrid from './DiscoveryGrid';
-import LikesYouPage from './LikesYouPage';
+import WhoLikesYouPage from './WhoLikesYouPage';
+import WhoVisitedYouPage from './WhoVisitedYouPage';
 import MatchesList from './MatchesList';
 import ModernSettingsPage from './ModernSettingsPage';
 import ChatInterface from './ChatInterface';
@@ -130,10 +131,17 @@ const MainContent = ({
           </div>
         )}
         
-        {/* Likes Tab */}
+        {/* Likes Tab - Who Likes You */}
         {activeTab === 'likes' && (
           <div className="px-2 sm:px-4">
-            <LikesYouPage onShowPremium={onShowPremium} />
+            <WhoLikesYouPage onShowPremium={onShowPremium} />
+          </div>
+        )}
+
+        {/* Visitors Tab - Who Visited You */}
+        {activeTab === 'visitors' && (
+          <div className="px-2 sm:px-4">
+            <WhoVisitedYouPage onShowPremium={onShowPremium} />
           </div>
         )}
         
@@ -160,9 +168,9 @@ const MainContent = ({
         )}
         
         {/* Chat Interface */}
-        {activeTab === 'chat' && selectedOtherUser && (
+        {activeTab === 'chat' && selectedOtherUser && selectedMatchId && (
           <ChatInterface 
-            matchId={matches.find(m => m.users.includes(selectedOtherUser.id))?.id || ''}
+            matchId={selectedMatchId}
             otherUser={selectedOtherUser}
             onBack={() => onTabChange('matches')}
             onVideoCall={() => onVideoCall(selectedOtherUser)}

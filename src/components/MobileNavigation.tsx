@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Heart, Search, Users, MessageCircle, Settings, Calendar } from 'lucide-react';
+import { Heart, MessageCircle, Compass, Settings, Sparkles, Eye, Calendar, Users } from 'lucide-react';
 import { AppMode } from '@/types/FriendDateTypes';
 
 interface MobileNavigationProps {
@@ -10,33 +10,79 @@ interface MobileNavigationProps {
 }
 
 const MobileNavigation = ({ activeTab, onTabChange, currentMode }: MobileNavigationProps) => {
-  const navItems = [
-    { id: 'discover', icon: Heart, label: 'Discover' },
-    { id: 'browse', icon: Search, label: 'Browse' },
-    { id: 'events', icon: Calendar, label: 'Events' },
-    { id: 'matches', icon: MessageCircle, label: 'Matches' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
+  const tabs = [
+    { 
+      id: 'discover', 
+      label: 'Discover', 
+      icon: Sparkles,
+      color: currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
+    },
+    { 
+      id: 'browse', 
+      label: 'Browse', 
+      icon: Compass,
+      color: currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
+    },
+    { 
+      id: 'events', 
+      label: 'Events', 
+      icon: Calendar,
+      color: currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
+    },
+    { 
+      id: 'likes', 
+      label: 'Likes', 
+      icon: Heart,
+      color: currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
+    },
+    { 
+      id: 'visitors', 
+      label: 'Visitors', 
+      icon: Eye,
+      color: 'text-purple-500'
+    },
+    { 
+      id: 'matches', 
+      label: 'Matches', 
+      icon: MessageCircle,
+      color: currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
+    },
+    { 
+      id: 'settings', 
+      label: 'Settings', 
+      icon: Settings,
+      color: 'text-gray-500'
+    },
   ];
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-area-pb z-50">
-      <div className="flex justify-around items-center h-14 sm:h-16 max-w-md mx-auto px-2">
-        {navItems.map((item) => (
-          <button
-            key={item.id}
-            onClick={() => onTabChange(item.id)}
-            className={`flex flex-col items-center justify-center p-1 sm:p-2 transition-colors min-w-0 flex-1 ${
-              activeTab === item.id
-                ? currentMode === 'friend' ? 'text-blue-500' : 'text-pink-500'
-                : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            <item.icon className="h-5 w-5 sm:h-6 sm:w-6 mb-0.5 sm:mb-1 flex-shrink-0" />
-            <span className="text-xs font-medium truncate">{item.label}</span>
-          </button>
-        ))}
+    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-40">
+      <div className="flex justify-around items-center max-w-md mx-auto">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          
+          return (
+            <button
+              key={tab.id}
+              onClick={() => onTabChange(tab.id)}
+              className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
+                isActive 
+                  ? `${tab.color} bg-opacity-10` 
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <Icon 
+                className={`h-5 w-5 mb-1 ${
+                  isActive ? tab.color : ''
+                }`} 
+              />
+              <span className="text-xs font-medium">{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
-    </div>
+    </nav>
   );
 };
 
