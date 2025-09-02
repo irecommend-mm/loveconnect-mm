@@ -59,7 +59,7 @@ const Index = () => {
 
   // Profile setup required
   if (!hasProfile) {
-    return <ProfileSetup onProfileComplete={async () => await checkUserProfile(user.id)} />;
+    return <ProfileSetup />;
   }
 
   const handleChatSelect = (selectedUser: UserType) => {
@@ -139,7 +139,6 @@ const Index = () => {
 
       {showVideoCall && selectedOtherUser && (
         <VideoCallModal
-          user={selectedOtherUser}
           onClose={() => setShowVideoCall(false)}
         />
       )}
