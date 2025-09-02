@@ -90,12 +90,12 @@ const Index = () => {
     setShowVideoCall(true);
   };
 
-  // Map geolocation to LocationData format
+  // Map geolocation to LocationData format with fallback values
   const mappedLocation: LocationData | undefined = location ? {
     latitude: location.lat,
     longitude: location.lng,
-    city: location.city,
-    country: location.country,
+    city: (location as any).city || 'Unknown',
+    country: (location as any).country || 'Unknown',
   } : undefined;
 
   return (
