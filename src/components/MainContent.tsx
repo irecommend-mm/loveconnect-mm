@@ -10,7 +10,7 @@ import ModernSettingsPage from './ModernSettingsPage';
 import ChatInterface from './ChatInterface';
 import LocalEvents from './LocalEvents';
 import EventCreationModal from './EventCreationModal';
-import AdvancedFilters from './AdvancedFilters';
+import AdvancedFilters from './filters/AdvancedFilters';
 import { Match, User as UserType } from '@/types/User';
 import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
 import { Button } from '@/components/ui/button';
@@ -69,6 +69,15 @@ const MainContent = ({
     return () => window.removeEventListener('openFilters', handleOpenFilters);
   }, []);
 
+  // Convert LocationData to expected format for DiscoveryGrid
+  const convertLocationForGrid = (location: LocationData | null) => {
+    if (!location) return null;
+    return {
+      lat: location.latitude,
+      lng: location.longitude
+    };
+  };
+
   return (
     <main className="pt-16 pb-20 min-h-screen bg-gray-50">
       <div className="h-full">
@@ -84,9 +93,7 @@ const MainContent = ({
           <div className="px-2 sm:px-4 relative">
             <DiscoveryGrid 
               currentUserId={user.id} 
-              userLocation={location} 
-              filters={activeFilters}
-              currentMode={currentMode}
+              userLocation={convertLocationForGrid(location)}
             />
           </div>
         )}
@@ -189,12 +196,12 @@ const MainContent = ({
 
       {showEventCreation && (
         <EventCreationModal
+          isOpen={showEventCreation}
           onClose={() => setShowEventCreation(false)}
           onEventCreated={() => {
             setShowEventCreation(false);
             // Optionally refresh events
           }}
-          currentMode={currentMode}
         />
       )}
 

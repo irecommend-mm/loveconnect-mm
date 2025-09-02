@@ -1,6 +1,13 @@
 
 export type AppMode = 'friend' | 'date';
 
+export interface LocationData {
+  latitude: number;
+  longitude: number;
+  city?: string;
+  country?: string;
+}
+
 export interface UserMode {
   currentMode: AppMode;
   friendModeActive: boolean;

@@ -12,7 +12,7 @@ interface Notification {
   message: string;
   read: boolean;
   created_at: string;
-  data?: Record<string, unknown>;
+  data?: Record<string, unknown> | null;
 }
 
 interface NotificationCenterProps {
@@ -40,10 +40,16 @@ const NotificationCenter = ({ onClose }: NotificationCenterProps) => {
             filter: `user_id=eq.${user.id}`
           },
           (payload) => {
-            const newNotification = payload.new as Record<string, unknown>;
+            const newNotification = payload.new as any;
             setNotifications(prev => [{
-              ...newNotification,
-              type: newNotification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like'
+              id: newNotification.id,
+              user_id: newNotification.user_id,
+              type: newNotification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like',
+              title: newNotification.title,
+              message: newNotification.message,
+              read: newNotification.read,
+              created_at: newNotification.created_at,
+              data: newNotification.data as Record<string, unknown> | null
             }, ...prev]);
           }
         )
@@ -70,8 +76,14 @@ const NotificationCenter = ({ onClose }: NotificationCenterProps) => {
         console.error('Error loading notifications:', error);
       } else {
         const typedNotifications = (data || []).map(notification => ({
-          ...notification,
-          type: notification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like'
+          id: notification.id,
+          user_id: notification.user_id,
+          type: notification.type as 'match' | 'message' | 'event_invite' | 'event_update' | 'like',
+          title: notification.title,
+          message: notification.message,
+          read: notification.read,
+          created_at: notification.created_at,
+          data: notification.data as Record<string, unknown> | null
         }));
         setNotifications(typedNotifications);
       }

@@ -36,7 +36,7 @@ export const useNotifications = () => {
           message: notif.message,
           type: notif.type,
           read: notif.read,
-          data: notif.data,
+          data: (notif.data && typeof notif.data === 'object') ? notif.data as Record<string, unknown> : {},
           created_at: new Date(notif.created_at)
         }));
         
@@ -65,7 +65,7 @@ export const useNotifications = () => {
             message: payload.new.message,
             type: payload.new.type,
             read: payload.new.read,
-            data: payload.new.data,
+            data: (payload.new.data && typeof payload.new.data === 'object') ? payload.new.data as Record<string, unknown> : {},
             created_at: new Date(payload.new.created_at)
           };
           
