@@ -105,7 +105,7 @@ const SignupWizard = ({ onComplete }: SignupWizardProps) => {
 
   const totalSteps = 6;
 
-  const updateData = (field: keyof SignupData, value: string | number | boolean | string[]) => {
+  const updateData = (field: keyof SignupData, value: any) => {
     setSignupData(prev => ({ ...prev, [field]: value }));
   };
 

@@ -151,6 +151,36 @@ export type Database = {
           },
         ]
       }
+      friend_requests: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          recipient_id: string
+          requester_id: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_id: string
+          requester_id: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_id?: string
+          requester_id?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       group_events: {
         Row: {
           created_at: string
@@ -393,8 +423,13 @@ export type Database = {
           orientation: string[] | null
           personality_type: string | null
           preferences: Json | null
+          premium_expires_at: string | null
+          premium_status: string | null
+          privacy_level: string | null
           relationship_type: string | null
           religion: string | null
+          show_distance: boolean | null
+          show_last_active: boolean | null
           show_me: string[] | null
           smoking: string | null
           terms_agreement: boolean | null
@@ -436,8 +471,13 @@ export type Database = {
           orientation?: string[] | null
           personality_type?: string | null
           preferences?: Json | null
+          premium_expires_at?: string | null
+          premium_status?: string | null
+          privacy_level?: string | null
           relationship_type?: string | null
           religion?: string | null
+          show_distance?: boolean | null
+          show_last_active?: boolean | null
           show_me?: string[] | null
           smoking?: string | null
           terms_agreement?: boolean | null
@@ -479,8 +519,13 @@ export type Database = {
           orientation?: string[] | null
           personality_type?: string | null
           preferences?: Json | null
+          premium_expires_at?: string | null
+          premium_status?: string | null
+          privacy_level?: string | null
           relationship_type?: string | null
           religion?: string | null
+          show_distance?: boolean | null
+          show_last_active?: boolean | null
           show_me?: string[] | null
           smoking?: string | null
           terms_agreement?: boolean | null
@@ -527,6 +572,163 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      security_audit_log: {
+        Row: {
+          action: string
+          created_at: string | null
+          id: string
+          ip_address: string | null
+          resource_id: string | null
+          resource_type: string
+          success: boolean | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type: string
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string | null
+          id?: string
+          ip_address?: string | null
+          resource_id?: string | null
+          resource_type?: string
+          success?: boolean | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      stories: {
+        Row: {
+          created_at: string
+          description: string | null
+          expires_at: string
+          friend_request_count: number | null
+          id: string
+          is_active: boolean | null
+          like_count: number | null
+          super_like_count: number | null
+          title: string
+          updated_at: string
+          user_id: string
+          view_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string
+          friend_request_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          like_count?: number | null
+          super_like_count?: number | null
+          title: string
+          updated_at?: string
+          user_id: string
+          view_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          expires_at?: string
+          friend_request_count?: number | null
+          id?: string
+          is_active?: boolean | null
+          like_count?: number | null
+          super_like_count?: number | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number | null
+        }
+        Relationships: []
+      }
+      story_interactions: {
+        Row: {
+          created_at: string
+          id: string
+          interaction_type: string
+          message: string | null
+          status: string | null
+          story_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          interaction_type: string
+          message?: string | null
+          status?: string | null
+          story_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          interaction_type?: string
+          message?: string | null
+          status?: string | null
+          story_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_interactions_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      story_media: {
+        Row: {
+          created_at: string
+          id: string
+          media_type: string
+          media_url: string
+          position: number
+          story_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          media_type: string
+          media_url: string
+          position?: number
+          story_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          media_type?: string
+          media_url?: string
+          position?: number
+          story_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "story_media_story_id_fkey"
+            columns: ["story_id"]
+            isOneToOne: false
+            referencedRelation: "stories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       swipes: {
         Row: {
@@ -684,6 +886,10 @@ export type Database = {
       calculate_zodiac_compatibility: {
         Args: { sign1: string; sign2: string }
         Returns: number
+      }
+      expire_old_stories: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       is_user_blocked: {
         Args: { blocked_id: string; blocker_id: string }

@@ -2,111 +2,109 @@ import React, { useState } from 'react';
 import { X, Sliders, MapPin, Heart, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AppMode, UserFilters } from '@/types/FriendDateTypes';
+import { Switch } from '@/components/ui/switch';
+import { UserFilters } from '@/types/FriendDateTypes';
 
 interface AdvancedFiltersProps {
-  currentMode: AppMode;
+  isOpen: boolean;
   onClose: () => void;
-  onApplyFilters: (filters: UserFilters) => void;
+  onApply: (filters: UserFilters) => void;
+  currentFilters: UserFilters;
 }
 
-const AdvancedFilters = ({ currentMode, onClose, onApplyFilters }: AdvancedFiltersProps) => {
-  const [ageRange, setAgeRange] = useState([22, 35]);
-  const [distance, setDistance] = useState([25]);
-  const [relationshipType, setRelationshipType] = useState('any');
-  const [showMe, setShowMe] = useState('everyone');
-  const [height, setHeight] = useState('any');
-  const [education, setEducation] = useState('any');
-  const [smoking, setSmoking] = useState('any');
-  const [drinking, setDrinking] = useState('any');
-  const [exercise, setExercise] = useState('any');
-  const [verified, setVerified] = useState(false);
-  const [hasPhotos, setHasPhotos] = useState(true);
-  const [recentlyActive, setRecentlyActive] = useState(false);
+export const AdvancedFilters = ({ isOpen, onClose, onApply, currentFilters }: AdvancedFiltersProps) => {
+  const [ageRange, setAgeRange] = useState<[number, number]>(currentFilters.ageRange);
+  const [maxDistance, setMaxDistance] = useState(currentFilters.maxDistance);
+  const [relationshipType, setRelationshipType] = useState(currentFilters.relationshipType || '');
+  const [showMe, setShowMe] = useState<'men' | 'women' | 'everyone'>(currentFilters.showMe);
+  const [verified, setVerified] = useState(currentFilters.verifiedOnly || false);
+  const [hasPhotos, setHasPhotos] = useState(currentFilters.hasPhotos || false);
+  const [recentlyActive, setRecentlyActive] = useState(currentFilters.onlineOnly || false);
 
-  const handleApplyFilters = () => {
+  const handleApply = () => {
     const filters: UserFilters = {
-      ageRange: [ageRange[0], ageRange[1]],
-      maxDistance: distance[0],
-      showMe: showMe as 'men' | 'women' | 'everyone',
-      relationshipType: relationshipType === 'any' ? undefined : relationshipType as 'serious' | 'casual' | 'friends' | 'unsure',
+      ageRange,
+      maxDistance,
+      relationshipType: relationshipType as 'serious' | 'casual' | 'friends' | 'unsure' | undefined,
+      showMe,
+      interests: currentFilters.interests,
       verifiedOnly: verified,
-      hasPhotos,
       onlineOnly: recentlyActive,
+      hasPhotos,
+      hasBio: true,
     };
-    onApplyFilters(filters);
+    onApply(filters);
     onClose();
   };
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <Card className="bg-white rounded-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center text-lg">
-              <Sliders className="h-5 w-5 mr-2 text-purple-600" />
-              Advanced Filters
-            </CardTitle>
-            <Button variant="ghost" size="sm" onClick={onClose}>
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <div className="flex items-center space-x-2 text-sm">
-            {currentMode === 'friend' ? (
-              <>
-                <Users className="h-4 w-4 text-blue-500" />
-                <span className="text-blue-600 font-medium">Friend Mode</span>
-              </>
-            ) : (
-              <>
-                <Heart className="h-4 w-4 text-pink-500" />
-                <span className="text-pink-600 font-medium">Date Mode</span>
-              </>
-            )}
-          </div>
-        </CardHeader>
+  if (!isOpen) return null;
 
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="flex items-center space-x-2">
+            <Sliders className="h-5 w-5" />
+            <span>Advanced Filters</span>
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            <X className="h-4 w-4" />
+          </Button>
+        </CardHeader>
+        
         <CardContent className="space-y-6">
           {/* Age Range */}
-          <div>
-            <label className="text-sm font-medium block mb-3">
-              Age Range: {ageRange[0]} - {ageRange[1]} years
-            </label>
-            <Slider
-              value={ageRange}
-              onValueChange={setAgeRange}
-              max={65}
-              min={18}
-              step={1}
-              className="w-full"
-            />
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">Age Range</Label>
+            <div className="px-2">
+              <Slider
+                value={ageRange}
+                onValueChange={(value) => setAgeRange([value[0], value[1]])}
+                max={100}
+                min={18}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                <span>{ageRange[0]}</span>
+                <span>{ageRange[1]}</span>
+              </div>
+            </div>
           </div>
 
           {/* Distance */}
-          <div>
-            <label className="text-sm font-medium block mb-3 flex items-center">
-              <MapPin className="h-4 w-4 mr-1" />
-              Maximum Distance: {distance[0]} km
-            </label>
-            <Slider
-              value={distance}
-              onValueChange={setDistance}
-              max={100}
-              min={1}
-              step={1}
-              className="w-full"
-            />
+          <div className="space-y-3">
+            <Label className="text-sm font-medium flex items-center space-x-2">
+              <MapPin className="h-4 w-4" />
+              <span>Distance (km)</span>
+            </Label>
+            <div className="px-2">
+              <Slider
+                value={[maxDistance]}
+                onValueChange={(value) => setMaxDistance(value[0])}
+                max={100}
+                min={1}
+                step={1}
+                className="w-full"
+              />
+              <div className="flex justify-center text-xs text-muted-foreground mt-1">
+                <span>{maxDistance} km</span>
+              </div>
+            </div>
           </div>
 
           {/* Show Me */}
-          <div>
-            <label className="text-sm font-medium block mb-2">Show Me</label>
-            <Select value={showMe} onValueChange={setShowMe}>
+          <div className="space-y-3">
+            <Label className="text-sm font-medium flex items-center space-x-2">
+              <Users className="h-4 w-4" />
+              <span>Show Me</span>
+            </Label>
+            <Select value={showMe} onValueChange={(value: 'men' | 'women' | 'everyone') => setShowMe(value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select preference" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="everyone">Everyone</SelectItem>
@@ -117,49 +115,41 @@ const AdvancedFilters = ({ currentMode, onClose, onApplyFilters }: AdvancedFilte
           </div>
 
           {/* Relationship Type */}
-          <div>
-            <label className="text-sm font-medium block mb-2">
-              {currentMode === 'friend' ? 'Looking For' : 'Relationship Type'}
-            </label>
+          <div className="space-y-3">
+            <Label className="text-sm font-medium flex items-center space-x-2">
+              <Heart className="h-4 w-4" />
+              <span>Looking For</span>
+            </Label>
             <Select value={relationshipType} onValueChange={setRelationshipType}>
               <SelectTrigger>
-                <SelectValue placeholder="Select type" />
+                <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="any">Any</SelectItem>
-                {currentMode === 'friend' ? (
-                  <>
-                    <SelectItem value="friends">New Friends</SelectItem>
-                    <SelectItem value="activity">Activity Partner</SelectItem>
-                    <SelectItem value="networking">Networking</SelectItem>
-                  </>
-                ) : (
-                  <>
-                    <SelectItem value="serious">Serious Relationship</SelectItem>
-                    <SelectItem value="casual">Casual Dating</SelectItem>
-                    <SelectItem value="unsure">Not Sure Yet</SelectItem>
-                  </>
-                )}
+                <SelectItem value="">Any</SelectItem>
+                <SelectItem value="serious">Serious Relationship</SelectItem>
+                <SelectItem value="casual">Casual Dating</SelectItem>
+                <SelectItem value="friends">Friends</SelectItem>
+                <SelectItem value="unsure">Not Sure</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Additional Options */}
+          {/* Additional Filters */}
           <div className="space-y-4">
-            <h3 className="font-medium text-gray-800">Additional Options</h3>
+            <Label className="text-sm font-medium">Additional Filters</Label>
             
             <div className="flex items-center justify-between">
-              <span className="text-sm">Verified profiles only</span>
+              <Label className="text-sm">Verified profiles only</Label>
               <Switch checked={verified} onCheckedChange={setVerified} />
             </div>
-            
+
             <div className="flex items-center justify-between">
-              <span className="text-sm">Has photos</span>
+              <Label className="text-sm">Must have photos</Label>
               <Switch checked={hasPhotos} onCheckedChange={setHasPhotos} />
             </div>
-            
+
             <div className="flex items-center justify-between">
-              <span className="text-sm">Recently active</span>
+              <Label className="text-sm">Recently active</Label>
               <Switch checked={recentlyActive} onCheckedChange={setRecentlyActive} />
             </div>
           </div>
@@ -169,14 +159,7 @@ const AdvancedFilters = ({ currentMode, onClose, onApplyFilters }: AdvancedFilte
             <Button variant="outline" onClick={onClose} className="flex-1">
               Cancel
             </Button>
-            <Button 
-              onClick={handleApplyFilters} 
-              className={`flex-1 ${
-                currentMode === 'friend' 
-                  ? 'bg-blue-500 hover:bg-blue-600' 
-                  : 'bg-pink-500 hover:bg-pink-600'
-              }`}
-            >
+            <Button onClick={handleApply} className="flex-1">
               Apply Filters
             </Button>
           </div>
@@ -185,5 +168,3 @@ const AdvancedFilters = ({ currentMode, onClose, onApplyFilters }: AdvancedFilte
     </div>
   );
 };
-
-export default AdvancedFilters;

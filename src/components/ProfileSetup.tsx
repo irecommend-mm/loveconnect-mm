@@ -119,19 +119,19 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
         languages_spoken: existingProfile.languages_spoken || [],
         dealbreakers: existingProfile.dealbreakers || [],
         lifestyle: {
-          interests: parsedLifestyle.interests || [],
-          ...parsedLifestyle
+          interests: (parsedLifestyle as any)?.interests || [],
+          ...(parsedLifestyle as object)
         },
         preferences: {
-          age_range: parsedPreferences.age_range || [18, 50],
-          max_distance: parsedPreferences.max_distance || 50,
-          ...parsedPreferences
+          age_range: (parsedPreferences as any)?.age_range || [18, 50],
+          max_distance: (parsedPreferences as any)?.max_distance || 50,
+          ...(parsedPreferences as object)
         },
         terms_agreement: existingProfile.terms_agreement || false,
         video_intro_url: existingProfile.video_intro_url || '',
         instagram_username: existingProfile.instagram_username || '',
         spotify_connected: existingProfile.spotify_connected || false,
-        spotify_data: existingProfile.spotify_data || {},
+        spotify_data: (existingProfile.spotify_data as { [key: string]: string | string[]; topArtists?: string[]; topTracks?: string[]; connectedAt?: string; }) || {},
         voice_intro_url: existingProfile.voice_intro_url || '',
         facebook_id: existingProfile.facebook_id || '',
         social_verified: existingProfile.social_verified || false
@@ -188,22 +188,22 @@ const ProfileSetup = ({ onComplete, existingProfile }: ProfileSetupProps) => {
           languages_spoken: profileData.languages_spoken || [],
           dealbreakers: profileData.dealbreakers || [],
           lifestyle: {
-            interests: parsedLifestyle.interests || [],
-            ...parsedLifestyle
+            interests: (parsedLifestyle as any)?.interests || [],
+            ...(parsedLifestyle as object)
           },
           preferences: {
-            age_range: parsedPreferences.age_range || [18, 50],
-            max_distance: parsedPreferences.max_distance || 50,
-            ...parsedPreferences
+            age_range: (parsedPreferences as any)?.age_range || [18, 50],
+            max_distance: (parsedPreferences as any)?.max_distance || 50,
+            ...(parsedPreferences as object)
           },
           terms_agreement: profileData.terms_agreement || false,
           video_intro_url: profileData.video_intro_url || '',
-          instagram_username: profileData.instagram_username || '',
-          spotify_connected: profileData.spotify_connected || false,
-          spotify_data: profileData.spotify_data || {},
-          voice_intro_url: profileData.voice_intro_url || '',
-          facebook_id: profileData.facebook_id || '',
-          social_verified: profileData.social_verified || false
+          instagram_username: (profileData as any).instagram_username || '',
+          spotify_connected: (profileData as any).spotify_connected || false,
+          spotify_data: (profileData as any).spotify_data || {},
+          voice_intro_url: (profileData as any).voice_intro_url || profileData.video_intro_url || '',
+          facebook_id: (profileData as any).facebook_id || '',
+          social_verified: (profileData as any).social_verified || false
         });
       }
 

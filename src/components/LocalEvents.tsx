@@ -376,7 +376,7 @@ const LocalEvents = ({ onClose }: LocalEventsProps) => {
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as string)}
+              onClick={() => setActiveTab(tab.id as "joined" | "browse" | "my-events")}
               className={`flex-1 py-3 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'

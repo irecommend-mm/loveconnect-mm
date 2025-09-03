@@ -95,32 +95,32 @@ export const useAdvancedMatching = () => {
     const locationScore = currentUser.latitude && currentUser.longitude && 
                          targetUser.latitude && targetUser.longitude
       ? calculateLocationScore(
-          currentUser.latitude, currentUser.longitude,
-          targetUser.latitude, targetUser.longitude
+          currentUser.latitude as number, currentUser.longitude as number,
+          targetUser.latitude as number, targetUser.longitude as number
         )
       : 0.5;
 
     const interestsScore = calculateInterestsScore(
-      currentUser.interests || [],
-      targetUser.interests || []
+      (currentUser.interests as string[]) || [],
+      (targetUser.interests as string[]) || []
     );
 
     const goalCompatibility = calculateGoalCompatibility(
-      currentUser.relationship_type || 'unsure',
-      targetUser.relationship_type || 'unsure'
+      (currentUser.relationship_type as string) || 'unsure',
+      (targetUser.relationship_type as string) || 'unsure'
     );
 
     let zodiacScore = 0.5;
     if (currentUser.zodiac_sign && targetUser.zodiac_sign) {
       const { data: zodiacResult } = await supabase
         .rpc('calculate_zodiac_compatibility', {
-          sign1: currentUser.zodiac_sign.toLowerCase(),
-          sign2: targetUser.zodiac_sign.toLowerCase()
+          sign1: (currentUser.zodiac_sign as string).toLowerCase(),
+          sign2: (targetUser.zodiac_sign as string).toLowerCase()
         });
       zodiacScore = zodiacResult || 0.5;
     }
 
-    const behaviorScore = await calculateBehaviorScore(currentUser.user_id, targetUser.user_id);
+    const behaviorScore = await calculateBehaviorScore(currentUser.user_id as string, targetUser.user_id as string);
 
     // Calculate preference score based on age, height preferences, etc.
     const preferenceScore = 0.7; // Simplified for now
@@ -306,7 +306,7 @@ export const useAdvancedMatching = () => {
           user_id: user.id,
           activity_type: activityType,
           target_user_id: targetUserId,
-          metadata: metadata || {}
+          metadata: (metadata || {}) as any
         });
     } catch (error) {
       console.error('Error tracking user activity:', error);

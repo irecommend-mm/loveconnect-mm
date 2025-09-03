@@ -619,16 +619,11 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         )}
       </div>
 
-
-
       {/* Profile Modal with Actions */}
       {selectedUser && (
         <ModernProfileModal
           user={selectedUser}
           onClose={() => setSelectedUser(null)}
-          onLike={() => handleLike(selectedUser.id)}
-          onPass={() => handlePass(selectedUser.id)}
-          onSuperLike={() => handleSuperLike(selectedUser.id)}
         />
       )}
 
@@ -637,15 +632,14 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         <MatchCelebrationModal
           isOpen={showMatchModal}
           matchedUser={matchedUser}
-          currentUserPhoto={currentUserPhoto}
-          onChatNow={() => {
+          onStartChat={() => {
             setShowMatchModal(false);
             toast({
               title: "Opening chat...",
               description: `Starting conversation with ${matchedUser?.name}`,
             });
           }}
-          onContinueBrowsing={() => setShowMatchModal(false)}
+          onKeepSwiping={() => setShowMatchModal(false)}
           onClose={() => setShowMatchModal(false)}
         />
       )}

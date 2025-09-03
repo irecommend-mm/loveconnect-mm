@@ -10,8 +10,8 @@ import ModernSettingsPage from './ModernSettingsPage';
 import ChatInterface from './ChatInterface';
 import LocalEvents from './LocalEvents';
 import EventCreationModal from './EventCreationModal';
-import AdvancedFilters from './filters/AdvancedFilters';
-import StoriesPage from './stories/StoriesPage';
+import { AdvancedFilters } from './filters/AdvancedFilters';
+// import StoriesPage from './stories/StoriesPage';
 import { Match, User as UserType } from '@/types/User';
 import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
 import { Button } from '@/components/ui/button';
@@ -101,7 +101,14 @@ const MainContent = ({
         
         {/* Stories Tab - User Stories */}
         {activeTab === 'stories' && (
-          <StoriesPage />
+          <div className="px-2 sm:px-4 py-4">
+            <div className="text-center py-12">
+              <h3 className="text-xl font-semibold mb-2">Stories Coming Soon</h3>
+              <p className="text-gray-600">
+                Share your moments with stories feature coming soon!
+              </p>
+            </div>
+          </div>
         )}
         
         {/* Events Tab - Local Events & Meetups */}
@@ -154,7 +161,7 @@ const MainContent = ({
         {/* Visitors Tab - Who Visited You */}
         {activeTab === 'visitors' && (
           <div className="px-2 sm:px-4">
-            <WhoVisitedYouPage onShowPremium={onShowPremium} />
+            <WhoVisitedYouPage />
           </div>
         )}
         
@@ -194,9 +201,19 @@ const MainContent = ({
       {/* Modals */}
       {showFilters && (
         <AdvancedFilters
-          currentMode={currentMode}
+          isOpen={showFilters}
           onClose={() => setShowFilters(false)}
-          onApplyFilters={handleApplyFilters}
+          onApply={handleApplyFilters}
+          currentFilters={{
+            ageRange: [18, 50],
+            maxDistance: 50,
+            showMe: 'everyone',
+            interests: [],
+            verifiedOnly: false,
+            onlineOnly: false,
+            hasPhotos: true,
+            hasBio: true
+          }}
         />
       )}
 

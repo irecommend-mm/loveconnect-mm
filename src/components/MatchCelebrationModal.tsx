@@ -1,150 +1,110 @@
 
-import React, { useEffect } from 'react';
-import { Heart, Sparkles, X } from 'lucide-react';
-import { User as UserType } from '../types/User';
+import React from 'react';
+import { Heart, MessageCircle, X, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { User } from '@/types/User';
 
 interface MatchCelebrationModalProps {
   isOpen: boolean;
-  matchedUser: UserType;
-  currentUserPhoto?: string;
-  onChatNow: () => void;
-  onContinueBrowsing: () => void;
   onClose: () => void;
+  matchedUser: User;
+  onStartChat: () => void;
+  onKeepSwiping: () => void;
 }
 
 const MatchCelebrationModal = ({ 
   isOpen, 
+  onClose, 
   matchedUser, 
-  currentUserPhoto,
-  onChatNow, 
-  onContinueBrowsing,
-  onClose 
+  onStartChat, 
+  onKeepSwiping 
 }: MatchCelebrationModalProps) => {
-  useEffect(() => {
-    if (isOpen) {
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = 'unset';
-      };
-    }
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-pink-500/95 via-purple-600/95 to-red-500/95 animate-fade-in">
-        {/* Floating Hearts Animation */}
-        <div className="absolute inset-0 overflow-hidden">
-          {[...Array(12)].map((_, i) => (
-            <div
-              key={i}
-              className="absolute animate-pulse"
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
-              }}
-            >
-              <Heart className="h-4 w-4 text-white/30 fill-current" />
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="bg-gradient-to-br from-pink-50 to-purple-50 border-0 shadow-2xl max-w-md w-full">
+        <CardContent className="p-8 text-center relative">
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/50 hover:bg-white/70 flex items-center justify-center transition-all duration-200"
+          >
+            <X className="h-4 w-4 text-gray-600" />
+          </button>
 
-      {/* Modal Content */}
-      <div className="relative z-10 w-full max-w-sm mx-4 animate-scale-in">
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute -top-4 -right-4 w-10 h-10 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors z-20"
-        >
-          <X className="h-5 w-5 text-white" />
-        </button>
-
-        <div className="bg-white/10 backdrop-blur-md rounded-3xl p-8 text-center text-white border border-white/20">
-          {/* Celebration Icon */}
+          {/* Celebration Animation */}
           <div className="relative mb-6">
-            <div className="w-20 h-20 mx-auto bg-white/20 rounded-full flex items-center justify-center animate-pulse">
+            <div className="w-20 h-20 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full mx-auto flex items-center justify-center shadow-lg animate-pulse">
               <Heart className="h-10 w-10 text-white fill-current" />
             </div>
-            <div className="absolute inset-0 w-20 h-20 mx-auto">
-              <Sparkles className="absolute top-0 right-0 h-6 w-6 text-yellow-300 animate-ping" />
-              <Sparkles className="absolute bottom-0 left-0 h-4 w-4 text-yellow-300 animate-ping" style={{ animationDelay: '0.5s' }} />
-              <Sparkles className="absolute top-1/2 left-0 h-5 w-5 text-yellow-300 animate-ping" style={{ animationDelay: '1s' }} />
+            <div className="absolute -top-2 -right-2">
+              <Sparkles className="h-6 w-6 text-yellow-400 animate-bounce" />
+            </div>
+            <div className="absolute -bottom-2 -left-2">
+              <Sparkles className="h-4 w-4 text-pink-400 animate-bounce delay-300" />
             </div>
           </div>
 
-          {/* Match Text */}
-          <h1 className="text-4xl font-bold mb-2 animate-fade-in" style={{ animationDelay: '0.3s' }}>
-            It's a Match!
-          </h1>
-          <p className="text-lg mb-8 opacity-90 animate-fade-in" style={{ animationDelay: '0.5s' }}>
-            You and {matchedUser.name} liked each other
+          {/* Celebration Text */}
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">
+            🎉 It's a Match!
+          </h2>
+          <p className="text-gray-600 mb-6">
+            You and <span className="font-semibold text-pink-600">{matchedUser.name}</span> liked each other!
           </p>
 
-          {/* User Photos */}
-          <div className="flex justify-center items-center space-x-6 mb-8 animate-fade-in" style={{ animationDelay: '0.7s' }}>
-            {/* Current User Photo */}
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full border-4 border-white/50 overflow-hidden bg-gradient-to-br from-pink-400 to-purple-500">
-                {currentUserPhoto ? (
-                  <img
-                    src={currentUserPhoto}
-                    alt="You"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">You</span>
-                  </div>
-                )}
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center animate-pulse">
-                <Heart className="h-4 w-4 text-white fill-current" />
-              </div>
-            </div>
-
-            {/* Heart in the middle */}
-            <div className="flex-shrink-0 animate-pulse">
-              <Heart className="h-8 w-8 text-white fill-current" />
-            </div>
-
-            {/* Matched User Photo */}
-            <div className="relative">
-              <div className="w-24 h-24 rounded-full border-4 border-white/50 overflow-hidden">
-                <img
-                  src={matchedUser.photos[0]}
+          {/* User Info */}
+          <div className="flex items-center justify-center space-x-4 mb-8">
+            <div className="w-16 h-16 rounded-full border-4 border-pink-200 overflow-hidden shadow-lg">
+              {matchedUser.photos && matchedUser.photos.length > 0 ? (
+                <img 
+                  src={matchedUser.photos[0]} 
                   alt={matchedUser.name}
                   className="w-full h-full object-cover"
                 />
-              </div>
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center animate-pulse">
-                <Heart className="h-4 w-4 text-white fill-current" />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-pink-200 to-purple-200 flex items-center justify-center">
+                  <Heart className="h-6 w-6 text-pink-500" />
+                </div>
+              )}
+            </div>
+            <div className="w-8 h-8 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center">
+              <Heart className="h-4 w-4 text-white fill-current animate-pulse" />
+            </div>
+            <div className="w-16 h-16 rounded-full border-4 border-purple-200 overflow-hidden shadow-lg">
+              <div className="w-full h-full bg-gradient-to-br from-purple-200 to-pink-200 flex items-center justify-center">
+                <span className="text-purple-600 font-bold text-xl">You</span>
               </div>
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-4 animate-fade-in" style={{ animationDelay: '0.9s' }}>
-            <button
-              onClick={onChatNow}
-              className="w-full py-4 bg-white text-pink-600 rounded-2xl font-bold text-lg hover:bg-gray-100 transition-all duration-200 shadow-lg hover:scale-105 active:scale-95"
+          <div className="space-y-3">
+            <Button
+              onClick={onStartChat}
+              className="w-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700 text-white py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
             >
-              💬 Send Message
-            </button>
-            <button
-              onClick={onContinueBrowsing}
-              className="w-full py-4 bg-white/20 text-white rounded-2xl font-medium hover:bg-white/30 transition-all duration-200 backdrop-blur-sm border border-white/30"
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Start Chatting
+            </Button>
+            
+            <Button
+              onClick={onKeepSwiping}
+              variant="outline"
+              className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50 py-3 rounded-xl font-semibold transition-all duration-200"
             >
               Keep Swiping
-            </button>
+            </Button>
           </div>
-        </div>
-      </div>
+
+          {/* Fun fact */}
+          <p className="text-xs text-gray-500 mt-6">
+            💡 Start the conversation within 24 hours for the best results!
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 };

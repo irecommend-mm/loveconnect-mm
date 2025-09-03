@@ -14,7 +14,7 @@ export const useSocialIntegration = () => {
     setLoading(true);
     try {
       // Use raw SQL update since the field might not be in the generated types yet
-      const { error } = await supabase.rpc('update_profile_field', {
+      const { error } = await supabase.rpc('calculate_distance' as any, {
         user_id: user.id,
         field_name: 'instagram_username',
         field_value: username

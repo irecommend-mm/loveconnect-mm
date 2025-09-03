@@ -1,287 +1,229 @@
-
 import React, { useState } from 'react';
-import { X, Heart, Star, MapPin, Briefcase, GraduationCap, Ruler } from 'lucide-react';
+import { X, Heart, Star, MapPin, Shield, ChevronLeft, ChevronRight, Edit, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { User as UserType } from '@/types/User';
-import { SafetyMenu } from '@/components/safety/SafetyMenu';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { User } from '@/types/User';
 
 interface ModernProfileModalProps {
-  user: UserType;
+  user: User;
   onClose: () => void;
-  onLike: () => void;
-  onPass: () => void;
-  onSuperLike: () => void;
+  canEdit?: boolean;
+  onSave?: (updatedUser: Partial<User>) => void;
 }
 
-const ModernProfileModal = ({ user, onClose, onLike, onPass, onSuperLike }: ModernProfileModalProps) => {
+const ModernProfileModal = ({ user, onClose, canEdit = false, onSave }: ModernProfileModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedUser, setEditedUser] = useState<Partial<User>>(user);
 
-  const handleNextPhoto = () => {
-    if (currentPhotoIndex < user.photos.length - 1) {
-      setCurrentPhotoIndex(currentPhotoIndex + 1);
+  const nextPhoto = () => {
+    if (user.photos.length > 1) {
+      setCurrentPhotoIndex((prev) => (prev + 1) % user.photos.length);
     }
   };
 
-  const handlePrevPhoto = () => {
-    if (currentPhotoIndex > 0) {
-      setCurrentPhotoIndex(currentPhotoIndex - 1);
+  const prevPhoto = () => {
+    if (user.photos.length > 1) {
+      setCurrentPhotoIndex((prev) => (prev - 1 + user.photos.length) % user.photos.length);
     }
   };
 
-  const getRelationshipTypeLabel = (type?: string) => {
-    switch (type) {
-      case 'serious': return 'Looking for something serious';
-      case 'casual': return 'Looking for something casual';
-      case 'friends': return 'Looking for friends';
-      case 'unsure': return 'Not sure what I\'m looking for';
-      default: return null;
+  const handleSave = () => {
+    if (onSave) {
+      onSave(editedUser);
     }
+    setIsEditing(false);
   };
 
-  const getLifestyleLabel = (key: string, value?: string) => {
-    if (!value) return null;
-    
-    const labels: Record<string, Record<string, string>> = {
-      smoking: {
-        yes: 'Smoker',
-        no: 'Non-smoker',
-        sometimes: 'Social smoker'
-      },
-      drinking: {
-        yes: 'Regular drinker',
-        no: 'Non-drinker',
-        sometimes: 'Social drinker'
-      },
-      exercise: {
-        often: 'Active lifestyle',
-        sometimes: 'Sometimes active',
-        never: 'Not into fitness'
-      },
-      children: {
-        have: 'Has children',
-        want: 'Wants children',
-        dont_want: 'Doesn\'t want children',
-        unsure: 'Not sure about children'
-      }
-    };
-    
-    return labels[key]?.[value] || null;
+  const handleCancel = () => {
+    setEditedUser(user);
+    setIsEditing(false);
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-hidden flex flex-col">
-        {/* Header */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur-md p-4 border-b border-gray-100 flex items-center justify-between rounded-t-3xl z-10">
-          <h2 className="text-xl font-bold">{user.name}'s Profile</h2>
-          <div className="flex items-center space-x-2">
-            <SafetyMenu userId={user.id} userName={user.name} />
-            <button
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <Card className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div className="relative">
+          {/* Header */}
+          <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
+            <Button
               onClick={onClose}
-              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 transition-colors"
+              size="sm"
+              className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm border-0 text-white hover:bg-black/70"
             >
               <X className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto">
-          {/* Photo Gallery */}
-          <div className="relative">
-            {user.photos && user.photos.length > 0 ? (
-              <img
-                src={user.photos[currentPhotoIndex]}
-                alt={`${user.name} ${currentPhotoIndex + 1}`}
-                className="w-full h-80 object-cover"
-              />
-            ) : (
-              <div className="w-full h-80 bg-gradient-to-br from-pink-100 to-purple-100 flex items-center justify-center">
-                <div className="text-center text-gray-500">
-                  <Heart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                  <p>No photos available</p>
-                </div>
-              </div>
-            )}
+            </Button>
             
-            {user.verified && (
-              <div className="absolute top-4 right-4 bg-blue-500 text-white p-2 rounded-full">
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
-                  <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-                </svg>
-              </div>
+            {canEdit && (
+              <Button
+                onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                size="sm"
+                className="rounded-full bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                {isEditing ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
+              </Button>
             )}
+          </div>
 
-            {user.photos && user.photos.length > 1 && (
+          {/* Photo Section */}
+          <div className="relative h-96">
+            <img
+              src={user.photos[currentPhotoIndex]}
+              alt={user.name}
+              className="w-full h-full object-cover"
+            />
+            
+            {/* Photo Navigation */}
+            {user.photos.length > 1 && (
               <>
-                <div className="absolute top-4 left-4 right-4 flex space-x-1">
+                <Button
+                  onClick={prevPhoto}
+                  size="sm"
+                  className="absolute left-4 top-1/2 transform -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm border-0 text-white hover:bg-black/70"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={nextPhoto}
+                  size="sm"
+                  className="absolute right-4 top-1/2 transform -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm border-0 text-white hover:bg-black/70"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                
+                {/* Photo Indicators */}
+                <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
                   {user.photos.map((_, index) => (
                     <div
                       key={index}
-                      className={`h-1 rounded-full flex-1 transition-all duration-300 ${
-                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/30'
+                      className={`w-2 h-2 rounded-full ${
+                        index === currentPhotoIndex ? 'bg-white' : 'bg-white/50'
                       }`}
                     />
                   ))}
                 </div>
-
-                <div className="absolute inset-0 flex">
-                  <div 
-                    className="w-1/2 h-full cursor-pointer" 
-                    onClick={handlePrevPhoto}
-                  />
-                  <div 
-                    className="w-1/2 h-full cursor-pointer" 
-                    onClick={handleNextPhoto}
-                  />
-                </div>
               </>
             )}
+
+            {/* Status Badges */}
+            <div className="absolute top-4 left-4 flex items-center space-x-2">
+              {user.verified && (
+                <div className="bg-blue-500 text-white p-1.5 rounded-full">
+                  <Shield className="h-3 w-3" />
+                </div>
+              )}
+              {user.isOnline && (
+                <div className="flex items-center space-x-1 bg-green-500 text-white px-2 py-1 rounded-full text-xs">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                  <span>Online</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <CardContent className="p-6 space-y-4">
+          {/* Basic Info */}
+          <div className="space-y-2">
+            {isEditing ? (
+              <Input
+                value={editedUser.name || ''}
+                onChange={(e) => setEditedUser({ ...editedUser, name: e.target.value })}
+                className="text-2xl font-bold"
+              />
+            ) : (
+              <h2 className="text-2xl font-bold text-gray-900">
+                {user.name}, {user.age}
+              </h2>
+            )}
+            
+            {user.distance && (
+              <div className="flex items-center text-gray-600">
+                <MapPin className="h-4 w-4 mr-1" />
+                <span>{Math.round(user.distance)}km away</span>
+              </div>
+            )}
           </div>
 
-          {/* Profile Details */}
-          <div className="p-6 space-y-6">
-            {/* Basic Info */}
-            <div>
-              <div className="flex items-center space-x-3 mb-4">
-                <h3 className="text-3xl font-bold">{user.name}</h3>
-                <span className="text-2xl text-gray-600">{user.age}</span>
-                {user.verified && (
-                  <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center">
-                    <svg className="w-4 h-4 fill-current text-white" viewBox="0 0 20 20">
-                      <path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
-                    </svg>
-                  </div>
-                )}
-              </div>
+          {/* Bio */}
+          {user.bio && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-gray-800">About</h3>
+              {isEditing ? (
+                <Textarea
+                  value={editedUser.bio || ''}
+                  onChange={(e) => setEditedUser({ ...editedUser, bio: e.target.value })}
+                  className="min-h-[100px]"
+                />
+              ) : (
+                <p className="text-gray-600 leading-relaxed">{user.bio}</p>
+              )}
+            </div>
+          )}
 
-              <div className="space-y-2 text-gray-600">
-                <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4" />
-                  <span>{user.location}</span>
+          {/* Details */}
+          <div className="space-y-3">
+            <h3 className="font-semibold text-gray-800">Details</h3>
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              {user.job && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Work:</span>
+                  <span className="text-gray-800">{user.job}</span>
                 </div>
-                
-                {user.job && (
-                  <div className="flex items-center space-x-2">
-                    <Briefcase className="h-4 w-4" />
-                    <span>{user.job}</span>
-                  </div>
-                )}
-                
-                {user.education && (
-                  <div className="flex items-center space-x-2">
-                    <GraduationCap className="h-4 w-4" />
-                    <span>{user.education}</span>
-                  </div>
-                )}
+              )}
+              {user.education && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Education:</span>
+                  <span className="text-gray-800">{user.education}</span>
+                </div>
+              )}
+              {user.height && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Height:</span>
+                  <span className="text-gray-800">{user.height}</span>
+                </div>
+              )}
+              {user.zodiacSign && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Zodiac:</span>
+                  <span className="text-gray-800">{user.zodiacSign}</span>
+                </div>
+              )}
+            </div>
+          </div>
 
-                {user.height && (
-                  <div className="flex items-center space-x-2">
-                    <Ruler className="h-4 w-4" />
-                    <span>{user.height}</span>
-                  </div>
-                )}
-
-                {user.zodiacSign && (
-                  <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4" />
-                    <span>{user.zodiacSign}</span>
-                  </div>
-                )}
+          {/* Interests */}
+          {user.interests && user.interests.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="font-semibold text-gray-800">Interests</h3>
+              <div className="flex flex-wrap gap-2">
+                {user.interests.map((interest, index) => (
+                  <Badge key={index} variant="secondary" className="text-xs">
+                    {interest}
+                  </Badge>
+                ))}
               </div>
             </div>
+          )}
 
-            {/* About */}
-            {user.bio && (
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-3 text-lg">About {user.name}</h4>
-                <p className="text-gray-600 leading-relaxed">{user.bio}</p>
-              </div>
-            )}
-
-            {/* Relationship Goals */}
-            {user.relationshipType && (
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-3 text-lg">Looking For</h4>
-                <div className="bg-pink-50 rounded-2xl p-4">
-                  <div className="flex items-center space-x-2">
-                    <Heart className="h-5 w-5 text-pink-500" />
-                    <span className="text-pink-700 font-medium">
-                      {getRelationshipTypeLabel(user.relationshipType)}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Lifestyle */}
-            {(user.smoking || user.drinking || user.exercise || user.children) && (
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-3 text-lg">Lifestyle</h4>
-                <div className="grid grid-cols-1 gap-2">
-                  {[
-                    { key: 'smoking', value: user.smoking },
-                    { key: 'drinking', value: user.drinking },
-                    { key: 'exercise', value: user.exercise },
-                    { key: 'children', value: user.children }
-                  ].map(({ key, value }) => {
-                    const label = getLifestyleLabel(key, value);
-                    if (!label) return null;
-                    
-                    return (
-                      <div key={key} className="bg-gray-50 rounded-xl p-3">
-                        <span className="text-gray-700 text-sm">{label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Interests */}
-            {user.interests && user.interests.length > 0 && (
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-3 text-lg">Interests</h4>
-                <div className="flex flex-wrap gap-2">
-                  {user.interests.map((interest, index) => (
-                    <span
-                      key={index}
-                      className="px-4 py-2 bg-gradient-to-r from-pink-100 to-purple-100 text-pink-700 rounded-full text-sm font-medium hover:from-pink-200 hover:to-purple-200 transition-colors"
-                    >
-                      {interest}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="sticky bottom-0 bg-white p-4 border-t border-gray-100">
-          <div className="flex space-x-3">
-            <Button
-              onClick={onPass}
-              variant="outline"
-              className="flex-1 h-12 rounded-full border-2 border-gray-200 hover:border-gray-300"
-            >
-              Pass
-            </Button>
-            <Button
-              onClick={onSuperLike}
-              className="flex-none w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 flex items-center justify-center"
-            >
-              <Star className="h-5 w-5 text-white" />
-            </Button>
-            <Button
-              onClick={onLike}
-              className="flex-1 h-12 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-            >
-              <Heart className="h-4 w-4 mr-2" />
-              Like
-            </Button>
-          </div>
-        </div>
-      </div>
+          {/* Edit Actions */}
+          {isEditing && (
+            <div className="flex space-x-3 pt-4">
+              <Button variant="outline" onClick={handleCancel} className="flex-1">
+                <X className="h-4 w-4 mr-1" />
+                Cancel
+              </Button>
+              <Button onClick={handleSave} className="flex-1 bg-blue-500 hover:bg-blue-600">
+                <Save className="h-4 w-4 mr-1" />
+                Save Changes
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };

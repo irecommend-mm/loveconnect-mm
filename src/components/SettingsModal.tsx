@@ -32,7 +32,7 @@ const SettingsModal = ({ settings, onUpdateSettings, onClose }: SettingsModalPro
     onClose();
   };
 
-  const updateSettings = (section: keyof UserSettings, key: string, value: string | boolean | number) => {
+  const updateSettings = (section: keyof UserSettings, key: string, value: string | boolean | number | [number, number]) => {
     setCurrentSettings(prev => ({
       ...prev,
       [section]: {
@@ -262,7 +262,7 @@ const SettingsModal = ({ settings, onUpdateSettings, onClose }: SettingsModalPro
           ].map(tab => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as string)}
+              onClick={() => setActiveTab(tab.id as "notifications" | "privacy" | "discovery" | "verification")}
               className={`flex-1 flex items-center justify-center space-x-2 py-4 text-sm font-medium transition-colors ${
                 activeTab === tab.id
                   ? 'text-pink-600 border-b-2 border-pink-600'
@@ -357,7 +357,7 @@ const SettingsModal = ({ settings, onUpdateSettings, onClose }: SettingsModalPro
                 <Label className="text-base font-medium mb-4 block">Age range: {currentSettings.discovery.ageRange[0]} - {currentSettings.discovery.ageRange[1]}</Label>
                 <Slider
                   value={currentSettings.discovery.ageRange}
-                  onValueChange={(value) => updateSettings('discovery', 'ageRange', value)}
+                  onValueChange={(value) => updateSettings('discovery', 'ageRange', value as [number, number])}
                   min={18}
                   max={65}
                   step={1}

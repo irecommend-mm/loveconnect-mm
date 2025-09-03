@@ -328,7 +328,6 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
       {/* Premium Modal */}
       {showPremiumModal && (
         <PremiumFeatures
-          isOpen={showPremiumModal}
           onClose={() => setShowPremiumModal(false)}
           onUpgrade={onShowPremium}
         />
