@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { Heart, Star, X, Users, MapPin, Briefcase, GraduationCap } from 'lucide-react';
+import { Heart, Star, X, Users, MapPin, Briefcase, GraduationCap, Info } from 'lucide-react';
 import { User as UserType } from '@/types/User';
 import { AppMode } from '@/types/FriendDateTypes';
 import PhotoGallery from './PhotoGallery';
@@ -11,9 +11,11 @@ interface EnhancedSwipeCardProps {
   mode: AppMode;
   onSwipe: (direction: 'left' | 'right' | 'super', user: UserType) => void;
   onShowProfile: (user: UserType) => void;
+  onShowDetails: () => void;
+  showActions?: boolean;
 }
 
-const EnhancedSwipeCard = ({ user, mode, onSwipe, onShowProfile }: EnhancedSwipeCardProps) => {
+const EnhancedSwipeCard = ({ user, mode, onSwipe, onShowProfile, onShowDetails, showActions = true }: EnhancedSwipeCardProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [rotation, setRotation] = useState(0);
@@ -138,6 +140,14 @@ const EnhancedSwipeCard = ({ user, mode, onSwipe, onShowProfile }: EnhancedSwipe
         {/* Photo Gallery */}
         <div className="relative">
           <PhotoGallery photos={user.photos} />
+          
+          {/* Info Button - Top Right */}
+          <button
+            onClick={onShowDetails}
+            className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center shadow-lg hover:bg-white transition-all duration-200 hover:scale-110 z-20"
+          >
+            <Info className="w-5 h-5 text-gray-700" />
+          </button>
         </div>
 
         {/* Profile Content */}
@@ -231,41 +241,43 @@ const EnhancedSwipeCard = ({ user, mode, onSwipe, onShowProfile }: EnhancedSwipe
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="flex justify-center items-center space-x-4 mt-6">
-        <button
-          onClick={() => onSwipe('left', user)}
-          className="w-14 h-14 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 group"
-        >
-          <X className="h-6 w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
-        </button>
-        
-        <button
-          onClick={() => onSwipe('super', user)}
-          className={`w-12 h-12 rounded-full bg-gradient-to-r shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 ${
-            mode === 'friend' 
-              ? 'from-blue-400 to-blue-600' 
-              : 'from-purple-400 to-purple-600'
-          }`}
-        >
-          <Star className="h-5 w-5 text-white fill-current" />
-        </button>
-        
-        <button
-          onClick={() => onSwipe('right', user)}
-          className={`w-16 h-16 rounded-full bg-gradient-to-r shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 ${
-            mode === 'friend' 
-              ? 'from-blue-500 to-blue-600' 
-              : 'from-pink-500 to-red-500'
-          }`}
-        >
-          {mode === 'friend' ? (
-            <Users className="h-8 w-8 text-white" />
-          ) : (
-            <Heart className="h-8 w-8 text-white fill-current" />
-          )}
-        </button>
-      </div>
+      {/* Action Buttons - Only show if showActions is true */}
+      {showActions && (
+        <div className="flex justify-center items-center space-x-4 mt-6">
+          <button
+            onClick={() => onSwipe('left', user)}
+            className="w-14 h-14 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 group"
+          >
+            <X className="h-6 w-6 text-gray-600 group-hover:text-red-500 transition-colors" />
+          </button>
+          
+          <button
+            onClick={() => onSwipe('super', user)}
+            className={`w-12 h-12 rounded-full bg-gradient-to-r shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 ${
+              mode === 'friend' 
+                ? 'from-blue-400 to-blue-600' 
+                : 'from-purple-400 to-purple-600'
+            }`}
+          >
+            <Star className="h-5 w-5 text-white fill-current" />
+          </button>
+          
+          <button
+            onClick={() => onSwipe('right', user)}
+            className={`w-16 h-16 rounded-full bg-gradient-to-r shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 ${
+              mode === 'friend' 
+                ? 'from-blue-500 to-blue-600' 
+                : 'from-pink-500 to-red-500'
+            }`}
+          >
+            {mode === 'friend' ? (
+              <Users className="h-8 w-8 text-white" />
+            ) : (
+              <Heart className="h-8 w-8 text-white fill-current" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

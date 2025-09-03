@@ -62,8 +62,10 @@ const MobileNavigation = ({ activeTab, onTabChange, currentMode }: MobileNavigat
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1 z-40">
-      <div className="flex justify-around items-center max-w-md mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-gray-200 z-40">
+      {/* Mobile Layout - Compact and proportional */}
+      <div className="block sm:hidden">
+        <div className="flex justify-around items-center px-2 py-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -72,21 +74,109 @@ const MobileNavigation = ({ activeTab, onTabChange, currentMode }: MobileNavigat
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className={`flex flex-col items-center p-2 rounded-lg transition-colors ${
+                className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-all duration-200 ${
                 isActive 
                   ? `${tab.color} bg-opacity-10` 
                   : 'text-gray-400 hover:text-gray-600'
               }`}
             >
-              <Icon 
-                className={`h-5 w-5 mb-1 ${
-                  isActive ? tab.color : ''
-                }`} 
-              />
-              <span className="text-xs font-medium">{tab.label}</span>
+                               <Icon 
+                   className={`h-4 w-4 mb-1 ${
+                     isActive ? tab.color : ''
+                   }`} 
+                 />
+                <span className="text-xs font-medium leading-tight">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tablet Layout - Balanced sizing */}
+      <div className="hidden sm:block md:hidden">
+        <div className="flex justify-around items-center px-4 py-2.5 max-w-2xl mx-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={`flex flex-col items-center p-2 rounded-lg transition-all duration-200 ${
+                  isActive 
+                    ? `${tab.color} bg-opacity-10` 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                                 <Icon 
+                   className={`h-4 w-4 mb-1.5 ${
+                     isActive ? tab.color : ''
+                   }`} 
+                 />
+                <span className="text-xs font-medium leading-tight">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Desktop Layout - Professional sizing */}
+      <div className="hidden md:block lg:hidden">
+        <div className="flex justify-around items-center px-6 py-3 max-w-4xl mx-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={`flex flex-col items-center p-3 rounded-lg transition-all duration-200 ${
+                  isActive 
+                    ? `${tab.color} bg-opacity-10` 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                                 <Icon 
+                   className={`h-5 w-5 mb-2 ${
+                     isActive ? tab.color : ''
+                   }`} 
+                 />
+                <span className="text-sm font-medium leading-tight">{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Large Desktop Layout - Enhanced but proportional */}
+      <div className="hidden lg:block">
+        <div className="flex justify-around items-center px-8 py-4 max-w-6xl mx-auto">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange(tab.id)}
+                className={`flex flex-col items-center p-4 rounded-xl transition-all duration-200 ${
+                  isActive 
+                    ? `${tab.color} bg-opacity-10` 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                                 <Icon 
+                   className={`h-6 w-6 mb-2 ${
+                     isActive ? tab.color : ''
+                   }`} 
+                 />
+                <span className="text-sm font-medium leading-tight">{tab.label}</span>
             </button>
           );
         })}
+        </div>
       </div>
     </nav>
   );

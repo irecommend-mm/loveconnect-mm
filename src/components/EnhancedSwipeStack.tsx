@@ -5,7 +5,9 @@ import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import EnhancedSwipeCard from './EnhancedSwipeCard';
+import ProfileDetailCard from './ProfileDetailCard';
 import { toast } from '@/hooks/use-toast';
+import { X, Star, Users, Heart, RotateCcw } from 'lucide-react';
 
 interface EnhancedSwipeStackProps {
   mode: AppMode;
@@ -18,6 +20,9 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [swipeHistory, setSwipeHistory] = useState<Array<{ user: UserType; action: string }>>([]);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
+  const [selectedUserForDetails, setSelectedUserForDetails] = useState<UserType | null>(null);
 
   const loadUsers = useCallback(async () => {
     if (!user) return;
@@ -25,6 +30,7 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
     try {
       setLoading(true);
       
+      // TEMPORARILY DISABLE SWIPE FILTERING FOR TESTING
       // Get users who haven't been swiped by current user
       const { data: swipedUsers } = await supabase
         .from('swipes')
@@ -33,32 +39,34 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
 
       const swipedUserIds = swipedUsers?.map(s => s.swiped_id) || [];
 
-      // Build query for profiles
+      // Build query for profiles - Show all users except current user
       let query = supabase
         .from('profiles')
         .select('*')
         .neq('user_id', user.id);
 
-      // Exclude already swiped users
-      if (swipedUserIds.length > 0) {
-        query = query.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
-      }
+      // TEMPORARILY COMMENT OUT SWIPE FILTERING - Show all users for testing
+      // if (swipedUserIds.length > 0) {
+      //   query = query.not('user_id', 'in', `(${swipedUserIds.join(',')})`);
+      // }
 
-      // Apply mode filter
-      if (mode === 'friend') {
-        query = query.or('relationship_type.eq.friendship,relationship_type.eq.friends');
-      } else {
-        query = query.or('relationship_type.eq.dating,relationship_type.eq.serious,relationship_type.eq.casual,relationship_type.is.null');
-      }
-
-      const { data: profilesData, error } = await query.limit(20);
+      // Remove complex relationship filtering for now - show all users
+      // TODO: Add back relationship filtering once we have more users
+      
+      const { data: profilesData, error } = await query.limit(50);
 
       if (error) {
         console.error('Error loading profiles:', error);
+        setUsers([]);
+        setCurrentIndex(0);
         return;
       }
 
+      console.log('Profiles loaded:', profilesData?.length || 0);
+      console.log('Sample profile:', profilesData?.[0]);
+
       if (!profilesData || profilesData.length === 0) {
+        console.log('No profiles found - this might mean no users in database');
         setUsers([]);
         return;
       }
@@ -164,6 +172,9 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
 
     // Map direction to action
     const action = direction === 'left' ? 'dislike' : direction === 'right' ? 'like' : 'super_like';
+    
+    // Add to swipe history for undo functionality
+    setSwipeHistory(prev => [...prev, { user: currentUser, action }]);
 
     try {
       // Record the swipe
@@ -209,11 +220,11 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
         }
       }
 
-      // Move to next user
+      // Add a small delay for the swipe animation to be visible
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
         setIsAnimating(false);
-      }, 300);
+      }, 200);
 
     } catch (error) {
       console.error('Error handling swipe:', error);
@@ -224,6 +235,11 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
   const handleShowProfile = (user: UserType) => {
     console.log('Show profile for:', user.name);
     // TODO: Implement profile modal
+  };
+
+  const handleShowDetails = (user: UserType) => {
+    setSelectedUserForDetails(user);
+    setShowProfileDetails(true);
   };
 
   if (loading) {
@@ -246,6 +262,29 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
         <p className="text-gray-600 mb-4">
           Check back later for new profiles or expand your search filters.
         </p>
+        <div className="flex space-x-4">
+          <button
+            onClick={() => {
+              setCurrentIndex(0);
+              setSwipeHistory([]);
+              loadUsers();
+            }}
+            className="bg-pink-500 text-white px-4 py-2 rounded-lg hover:bg-pink-600 transition-colors"
+          >
+            Reset & Show All Users
+          </button>
+          {swipeHistory.length > 0 && (
+            <button
+              onClick={() => {
+                setCurrentIndex(0);
+                setSwipeHistory([]);
+              }}
+              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+            >
+              Start Over
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -254,28 +293,137 @@ const EnhancedSwipeStack = ({ mode, filters }: EnhancedSwipeStackProps) => {
   const nextUser = users[currentIndex + 1];
 
   return (
-    <div className="relative w-full max-w-sm mx-auto h-[600px]">
-      {/* Next card (background) */}
-      {nextUser && (
-        <div className="absolute inset-0 transform scale-95">
-          <EnhancedSwipeCard
-            user={nextUser}
-            onSwipe={() => {}}
-            onShowProfile={handleShowProfile}
-            mode={mode}
-          />
-        </div>
-      )}
-      
-      {/* Current card (foreground) */}
-      <div className="absolute inset-0 z-10">
-        <EnhancedSwipeCard
-          user={currentUser}
-          onSwipe={handleSwipe}
-          onShowProfile={handleShowProfile}
-          mode={mode}
-        />
+    <div className="relative w-full max-w-sm mx-auto pt-4">
+      {/* Progress Counter */}
+      <div className="text-center mb-4">
+        <p className="text-sm text-gray-600">
+          {currentIndex + 1} of {users.length} profiles
+        </p>
       </div>
+
+             {/* Card Stack */}
+       <div className="relative w-full max-w-sm mx-auto h-[600px] mb-[400px]">
+        {/* Next card (background) */}
+        {nextUser && (
+          <div className="absolute inset-0 transform scale-95">
+                         <EnhancedSwipeCard
+               user={nextUser}
+               onSwipe={() => {}}
+               onShowProfile={handleShowProfile}
+               onShowDetails={() => handleShowDetails(nextUser)}
+               mode={mode}
+               showActions={false}
+             />
+          </div>
+        )}
+        
+        {/* Current card (foreground) */}
+        <div 
+          className={`absolute inset-0 z-10 transition-all duration-300 ${
+            isAnimating ? 'opacity-0 scale-95 transform translate-x-full' : 'opacity-100 scale-100 transform translate-x-0'
+          }`}
+        >
+                     <EnhancedSwipeCard
+             user={currentUser}
+             onSwipe={handleSwipe}
+             onShowProfile={handleShowProfile}
+             onShowDetails={() => handleShowDetails(currentUser)}
+             mode={mode}
+             showActions={false}
+           />
+        </div>
+      </div>
+
+      {/* Floating Action Buttons - Fixed above footer navigation like Tinder */}
+      <div className="fixed bottom-16 sm:bottom-20 md:bottom-24 lg:bottom-28 left-1/2 transform -translate-x-1/2 z-50">
+        <div className="flex justify-center items-center space-x-2 sm:space-x-3 bg-white/10 backdrop-blur-sm p-2 sm:p-3 rounded-full shadow-2xl">
+          {/* Undo Button */}
+          {swipeHistory.length > 0 && (
+            <button
+              onClick={() => {
+                if (swipeHistory.length > 0) {
+                  setSwipeHistory(prev => prev.slice(0, -1));
+                  setCurrentIndex(prev => Math.max(0, prev - 1));
+                  setIsAnimating(false);
+                }
+              }}
+              disabled={swipeHistory.length === 0}
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-yellow-400 shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Undo last swipe"
+            >
+              <RotateCcw className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            </button>
+          )}
+          
+          {/* Rewind to Start Button */}
+          {swipeHistory.length > 0 && (
+            <button
+              onClick={() => {
+                setCurrentIndex(0);
+                setSwipeHistory([]);
+              }}
+              className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-500 shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200"
+              title="Start over from beginning"
+            >
+              <svg className="h-5 w-5 sm:h-6 sm:w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            </button>
+          )}
+          
+          {/* Dislike Button */}
+          <button
+            onClick={() => handleSwipe('left', currentUser)}
+            disabled={isAnimating}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white shadow-lg border border-gray-200 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 group disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <X className="h-6 w-6 sm:h-7 sm:w-7 text-gray-600 group-hover:text-red-500 transition-colors" />
+          </button>
+          
+          {/* Super Like Button */}
+          <button
+            onClick={() => handleSwipe('super', currentUser)}
+            disabled={isAnimating}
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              mode === 'friend' 
+                ? 'from-blue-400 to-blue-600' 
+                : 'from-purple-400 to-purple-600'
+            }`}
+          >
+            <Star className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-current" />
+          </button>
+          
+          {/* Like Button */}
+          <button
+            onClick={() => handleSwipe('right', currentUser)}
+            disabled={isAnimating}
+            className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-r shadow-lg flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-200 disabled:opacity-50 disabled:cursor-not-allowed ${
+              mode === 'friend' 
+                ? 'from-blue-500 to-blue-600' 
+                : 'from-pink-500 to-red-500'
+            }`}
+          >
+                          {mode === 'friend' ? (
+                <Users className="h-6 w-6 sm:h-7 sm:w-7 text-white" />
+              ) : (
+                <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-white fill-current" />
+              )}
+          </button>
+          
+          
+        </div>
+      </div>
+
+      {/* Profile Detail Card */}
+      {showProfileDetails && selectedUserForDetails && (
+        <ProfileDetailCard
+          user={selectedUserForDetails}
+          mode={mode}
+          isVisible={showProfileDetails}
+          onClose={() => setShowProfileDetails(false)}
+        />
+      )}
+
     </div>
   );
 };

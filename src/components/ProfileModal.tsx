@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { User as UserType } from '../types/User';
 import { MapPin, Briefcase, GraduationCap, Heart, Star, Ruler, X, Edit, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import EditProfileModal from './EditProfileModal';
 
 interface ProfileModalProps {
   user: UserType;
@@ -14,6 +15,7 @@ interface ProfileModalProps {
 
 const ProfileModal = ({ user, onClose, onEdit, isCurrentUser = false, showActions = false }: ProfileModalProps) => {
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   const handleNextPhoto = () => {
     if (currentPhotoIndex < user.photos.length - 1) {
@@ -34,9 +36,7 @@ const ProfileModal = ({ user, onClose, onEdit, isCurrentUser = false, showAction
 
   const handleEdit = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (onEdit) {
-      onEdit();
-    }
+    setShowEditModal(true);
   };
 
   const getRelationshipTypeLabel = (type?: string) => {
@@ -279,6 +279,23 @@ const ProfileModal = ({ user, onClose, onEdit, isCurrentUser = false, showAction
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {showEditModal && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setShowEditModal(false)}
+          onSave={(updatedUser) => {
+            // Update the local user state
+            Object.assign(user, updatedUser);
+            setShowEditModal(false);
+            // Call the original onEdit if provided
+            if (onEdit) {
+              onEdit();
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

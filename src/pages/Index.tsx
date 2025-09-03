@@ -9,7 +9,7 @@ import { useGeolocation } from '@/hooks/useGeolocation';
 import Auth from './Auth';
 import ProfileSetup from '@/components/ProfileSetup';
 import MainContent from '@/components/MainContent';
-import FDHeader from '@/components/FDHeader';
+import ModernHeader from '@/components/ModernHeader';
 import MobileNavigation from '@/components/MobileNavigation';
 import PremiumFeatures from '@/components/PremiumFeatures';
 import ProfileModal from '@/components/ProfileModal';
@@ -101,11 +101,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <FDHeader 
-        currentMode={currentMode}
+      <ModernHeader 
+        mode={currentMode}
         onModeSwitch={switchMode}
-        onNotificationsClick={() => setShowNotifications(true)}
-        onFiltersClick={() => {
+        onNotificationClick={() => setShowNotifications(true)}
+        onFilterClick={() => {
           // This will open filters for the current active tab
           if (activeTab === 'discover' || activeTab === 'browse') {
             // We need to trigger the filter modal in MainContent
@@ -113,7 +113,6 @@ const Index = () => {
             window.dispatchEvent(new CustomEvent('openFilters'));
           }
         }}
-        userProfile={currentUserProfile}
       />
 
       {/* Main Content */}
@@ -146,6 +145,11 @@ const Index = () => {
         <ProfileModal
           user={currentUserProfile}
           onClose={() => setShowProfile(false)}
+          isCurrentUser={true}
+          onEdit={() => {
+            // Refresh user profile data after edit
+            checkUserProfile(user.id);
+          }}
         />
       )}
 

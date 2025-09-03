@@ -46,6 +46,9 @@ export const useMatches = (user: User | null) => {
 
       if (profilesError) {
         console.error('Error loading profiles:', profilesError);
+        // Don't return here, set empty arrays to prevent infinite loops
+        setMatches([]);
+        setUsers([]);
         return;
       }
 

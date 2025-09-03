@@ -80,7 +80,7 @@ const MainContent = ({
   };
 
   return (
-    <main className="pt-16 pb-20 min-h-screen bg-gray-50">
+    <main className="pt-16 pb-24 sm:pb-28 md:pb-32 lg:pb-36 min-h-screen bg-gray-50">
       <div className="h-full">
         {/* Discover Tab - Enhanced Swipe Mode with F&D */}
         {activeTab === 'discover' && (

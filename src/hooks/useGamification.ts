@@ -70,7 +70,22 @@ export const useGamification = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.warn('Gamification table not found or accessible:', error);
+        // Initialize with default values if table doesn't exist
+        setGamificationData({
+          totalScore: profileScore,
+          level: 1,
+          badges: [],
+          meetupPoints: 0,
+          streakDays: 0,
+          activityLevel: 'low',
+          profileCompletenessScore: profileScore,
+          engagementScore: 0,
+          lastActivity: new Date()
+        });
+        return;
+      }
 
       if (data) {
         setGamificationData({
@@ -154,7 +169,7 @@ export const useGamification = () => {
     else if (newScore >= 50) activityLevel = 'low';
 
     try {
-      await supabase
+      const { error } = await supabase
         .from('user_gamification')
         .update({
           activity_level: activityLevel,
@@ -164,6 +179,18 @@ export const useGamification = () => {
         })
         .eq('user_id', user.id);
 
+      if (error) {
+        console.warn('Could not update gamification (table may not exist):', error);
+        // Update local state anyway
+        setGamificationData(prev => prev ? {
+          ...prev,
+          activityLevel,
+          totalScore: newScore,
+          lastActivity: new Date()
+        } : null);
+        return;
+      }
+
       setGamificationData(prev => prev ? {
         ...prev,
         activityLevel,
@@ -172,6 +199,13 @@ export const useGamification = () => {
       } : null);
     } catch (error) {
       console.error('Error updating activity level:', error);
+      // Update local state anyway
+      setGamificationData(prev => prev ? {
+        ...prev,
+        activityLevel,
+        totalScore: newScore,
+        lastActivity: new Date()
+      } : null);
     }
   };
 
