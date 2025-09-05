@@ -39,8 +39,8 @@ const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
     exercise: user.exercise || '',
     religion: user.religion || '',
     gender: user.gender || '',
-    orientation: user.orientation || '',
-    showMe: user.showMe || '',
+    orientation: user.orientation || [],
+    showMe: user.showMe || [],
     loveLanguages: user.loveLanguages || [],
     personalityType: user.personalityType || '',
     bodyType: user.bodyType || '',
@@ -183,6 +183,11 @@ const EditProfileModal = ({ user, onClose, onSave }: EditProfileModalProps) => {
       const updatedUser: UserType = {
         ...user,
         ...profile,
+        relationshipType: profile.relationshipType as 'serious' | 'casual' | 'friends' | 'unsure',
+        children: profile.children as 'have' | 'want' | 'dont_want' | 'unsure',
+        smoking: profile.smoking as 'yes' | 'no' | 'sometimes',
+        drinking: profile.drinking as 'yes' | 'no' | 'sometimes',
+        exercise: profile.exercise as 'often' | 'sometimes' | 'never',
         photos: photos.filter(photo => photo)
       };
 

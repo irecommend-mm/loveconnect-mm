@@ -147,6 +147,7 @@ const SwipeStack = ({
               mode="date"
               onSwipe={(direction) => index === 0 && handleSwipe(direction as "left" | "right" | "up", user)}
               onShowProfile={() => {}}
+              onShowDetails={() => {}}
             />
           </div>
         ))}

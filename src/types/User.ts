@@ -22,7 +22,18 @@ export interface User {
   distance?: number;
   latitude?: number;
   longitude?: number;
-  // New social media fields
+  // Extended profile fields
+  company?: string;
+  religion?: string;
+  gender?: string;
+  orientation?: string[];
+  showMe?: string[];
+  loveLanguages?: string[];
+  personalityType?: string;
+  bodyType?: string;
+  languagesSpoken?: string[];
+  dealbreakers?: string[];
+  // Social media fields
   instagramUsername?: string;
   spotifyConnected?: boolean;
   spotifyData?: {

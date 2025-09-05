@@ -75,10 +75,7 @@ export const useGamification = () => {
         // Initialize with default values if table doesn't exist
         setGamificationData({
           totalScore: profileScore,
-          level: 1,
-          badges: [],
-          meetupPoints: 0,
-          streakDays: 0,
+          dailyStreak: 0,
           activityLevel: 'low',
           profileCompletenessScore: profileScore,
           engagementScore: 0,

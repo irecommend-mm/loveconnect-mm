@@ -40,7 +40,7 @@ const ProfileDetailCard = ({ user, mode, isVisible, onClose }: ProfileDetailCard
               </div>
               <div>
                 <h4 className="font-semibold text-gray-800">{user.name}, {user.age}</h4>
-                <p className="text-sm text-gray-600">{user.location?.city}, {user.location?.country}</p>
+                <p className="text-sm text-gray-600">{user.location}</p>
               </div>
             </div>
 
@@ -53,10 +53,10 @@ const ProfileDetailCard = ({ user, mode, isVisible, onClose }: ProfileDetailCard
 
             {/* Details Grid */}
             <div className="grid grid-cols-2 gap-3">
-              {user.occupation && (
+              {user.job && (
                 <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-3">
                   <Briefcase className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">{user.occupation}</span>
+                  <span className="text-sm text-gray-700">{user.job}</span>
                 </div>
               )}
               
@@ -74,37 +74,32 @@ const ProfileDetailCard = ({ user, mode, isVisible, onClose }: ProfileDetailCard
                 </div>
               )}
 
-              {user.language && (
+              {user.languagesSpoken && user.languagesSpoken.length > 0 && (
                 <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-3">
                   <Globe className="w-4 h-4 text-gray-500" />
-                  <span className="text-sm text-gray-700">{user.language}</span>
+                  <span className="text-sm text-gray-700">{user.languagesSpoken.join(', ')}</span>
                 </div>
               )}
             </div>
 
             {/* Lifestyle */}
-            {user.lifestyle && (
+            {(user.drinking || user.smoking || user.exercise) && (
               <div className="space-y-3">
                 <h5 className="font-medium text-gray-800">Lifestyle</h5>
                 <div className="grid grid-cols-2 gap-2">
-                  {user.lifestyle.drinking && (
+                  {user.drinking && (
                     <div className="bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm">
-                      {user.lifestyle.drinking}
+                      Drinking: {user.drinking}
                     </div>
                   )}
-                  {user.lifestyle.smoking && (
+                  {user.smoking && (
                     <div className="bg-green-50 text-green-700 px-3 py-2 rounded-lg text-sm">
-                      {user.lifestyle.smoking}
+                      Smoking: {user.smoking}
                     </div>
                   )}
-                  {user.lifestyle.exercise && (
+                  {user.exercise && (
                     <div className="bg-purple-50 text-purple-700 px-3 py-2 rounded-lg text-sm">
-                      {user.lifestyle.exercise}
-                    </div>
-                  )}
-                  {user.lifestyle.diet && (
-                    <div className="bg-orange-50 text-orange-700 px-3 py-2 rounded-lg text-sm">
-                      {user.lifestyle.diet}
+                      Exercise: {user.exercise}
                     </div>
                   )}
                 </div>
