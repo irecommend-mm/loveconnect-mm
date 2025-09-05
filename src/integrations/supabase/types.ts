@@ -154,6 +154,7 @@ export type Database = {
       friend_requests: {
         Row: {
           created_at: string
+          expires_at: string | null
           id: string
           message: string | null
           recipient_id: string
@@ -163,6 +164,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          expires_at?: string | null
           id?: string
           message?: string | null
           recipient_id: string
@@ -172,6 +174,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          expires_at?: string | null
           id?: string
           message?: string | null
           recipient_id?: string
@@ -617,7 +620,9 @@ export type Database = {
           friend_request_count: number | null
           id: string
           is_active: boolean | null
+          is_anonymous: boolean | null
           like_count: number | null
+          relationship_mode: string | null
           super_like_count: number | null
           title: string
           updated_at: string
@@ -631,7 +636,9 @@ export type Database = {
           friend_request_count?: number | null
           id?: string
           is_active?: boolean | null
+          is_anonymous?: boolean | null
           like_count?: number | null
+          relationship_mode?: string | null
           super_like_count?: number | null
           title: string
           updated_at?: string
@@ -645,7 +652,9 @@ export type Database = {
           friend_request_count?: number | null
           id?: string
           is_active?: boolean | null
+          is_anonymous?: boolean | null
           like_count?: number | null
+          relationship_mode?: string | null
           super_like_count?: number | null
           title?: string
           updated_at?: string
@@ -735,6 +744,7 @@ export type Database = {
           action: string
           created_at: string
           id: string
+          relationship_intent: string | null
           swiped_id: string
           swiper_id: string
         }
@@ -742,6 +752,7 @@ export type Database = {
           action: string
           created_at?: string
           id?: string
+          relationship_intent?: string | null
           swiped_id: string
           swiper_id: string
         }
@@ -749,6 +760,7 @@ export type Database = {
           action?: string
           created_at?: string
           id?: string
+          relationship_intent?: string | null
           swiped_id?: string
           swiper_id?: string
         }
