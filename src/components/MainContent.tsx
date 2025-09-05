@@ -12,6 +12,7 @@ import LocalEvents from './LocalEvents';
 import EventCreationModal from './EventCreationModal';
 import { AdvancedFilters } from './filters/AdvancedFilters';
 import StoriesPage from './stories/StoriesPage';
+import StoryManagementPage from './stories/StoryManagementPage';
 import { Match, User as UserType } from '@/types/User';
 import { AppMode, LocationData, UserFilters } from '@/types/FriendDateTypes';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,11 @@ const MainContent = ({
         {/* Stories Tab - User Stories */}
         {activeTab === 'stories' && (
           <StoriesPage />
+        )}
+        
+        {/* Story Management Tab */}
+        {activeTab === 'manage-stories' && (
+          <StoryManagementPage />
         )}
         
         {/* Events Tab - Local Events & Meetups */}

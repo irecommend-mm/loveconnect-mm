@@ -138,6 +138,8 @@ export const useStories = () => {
           user_id: user.id,
           title: storyData.title,
           description: storyData.description,
+          is_anonymous: storyData.isAnonymous || false,
+          relationship_mode: storyData.relationshipMode || 'date',
         })
         .select()
         .single();

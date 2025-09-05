@@ -237,4 +237,6 @@ export interface CreateStoryData {
   title: string;
   description?: string;
   media: File[];
+  isAnonymous?: boolean;
+  relationshipMode?: 'friend' | 'date';
 }

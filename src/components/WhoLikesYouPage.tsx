@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Heart, Crown, Sparkles, Eye } from 'lucide-react';
+import { Heart, Crown, Sparkles, Eye, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from '@/hooks/use-toast';
@@ -15,6 +16,7 @@ interface Profile {
   photos: string[];
   location: string;
   action: 'like' | 'super_like';
+  relationshipIntent: 'friend' | 'date';
 }
 
 interface WhoLikesYouPageProps {
@@ -27,6 +29,7 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
   const [loading, setLoading] = useState(true);
   const [isPremium] = useState(false); // This would be dynamic based on user's subscription
   const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'friend' | 'date'>('date');
 
   useEffect(() => {
     if (user) {
@@ -41,7 +44,7 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
       // Get users who liked current user
       const { data: swipeData } = await supabase
         .from('swipes')
-        .select('swiper_id, action')
+        .select('swiper_id, action, relationship_intent')
         .eq('swiped_id', user.id)
         .in('action', ['like', 'super_like']);
 
@@ -78,7 +81,8 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
               age: profile.age,
               photos: photosData?.map(p => p.url) || [],
               location: profile.location || '',
-              action: (swipeInfo?.action === 'super_like' ? 'super_like' : 'like') as 'like' | 'super_like'
+              action: (swipeInfo?.action === 'super_like' ? 'super_like' : 'like') as 'like' | 'super_like',
+              relationshipIntent: (swipeInfo?.relationship_intent || 'date') as 'friend' | 'date'
             };
           })
         );
@@ -108,7 +112,8 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
         .insert({
           swiper_id: user.id,
           swiped_id: likedProfile.user_id,
-          action: 'like'
+          action: 'like',
+          relationship_intent: likedProfile.relationshipIntent
         });
 
       if (swipeError) throw swipeError;
@@ -172,6 +177,13 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
     }
   };
 
+  // Filter likes by relationship intent
+  const friendLikes = likes.filter(like => like.relationshipIntent === 'friend');
+  const dateLikes = likes.filter(like => like.relationshipIntent === 'date');
+
+  // Get current tab's likes
+  const currentLikes = activeTab === 'friend' ? friendLikes : dateLikes;
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -180,46 +192,29 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
     );
   }
 
-  if (likes.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <Heart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-        <h3 className="text-xl font-semibold mb-2">No likes yet</h3>
-        <p className="text-gray-600 mb-6">
-          When someone likes your profile, they'll appear here.
-        </p>
-        <Button
-          onClick={() => onShowPremium()}
-          className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
-        >
-          <Crown className="h-4 w-4 mr-2" />
-          Get Premium to see who likes you
-        </Button>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          Who Liked You
-          <span className="text-pink-500 ml-2">({likes.length})</span>
-        </h2>
-        {!isPremium && (
+  const renderLikesGrid = (likesData: Profile[]) => {
+    if (likesData.length === 0) {
+      return (
+        <div className="text-center py-12">
+          <Heart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+          <h3 className="text-xl font-semibold mb-2">No {activeTab === 'friend' ? 'friend requests' : 'likes'} yet</h3>
+          <p className="text-gray-600 mb-6">
+            When someone {activeTab === 'friend' ? 'wants to be your friend' : 'likes your profile'}, they'll appear here.
+          </p>
           <Button
-            onClick={() => setShowPremiumModal(true)}
-            variant="outline"
-            className="border-yellow-400 text-yellow-600 hover:bg-yellow-50"
+            onClick={() => onShowPremium()}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-600 hover:to-purple-700"
           >
             <Crown className="h-4 w-4 mr-2" />
-            Upgrade to Premium
+            Get Premium to see who likes you
           </Button>
-        )}
-      </div>
+        </div>
+      );
+    }
 
+    return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {likes.map((profile) => (
+        {likesData.map((profile) => (
           <div
             key={profile.id}
             className="bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100 hover:shadow-xl transition-shadow cursor-pointer"
@@ -324,6 +319,48 @@ const WhoLikesYouPage = ({ onShowPremium }: WhoLikesYouPageProps) => {
           </div>
         ))}
       </div>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold text-gray-900">
+          Who Liked You
+          <span className="text-pink-500 ml-2">({likes.length})</span>
+        </h2>
+        {!isPremium && (
+          <Button
+            onClick={() => setShowPremiumModal(true)}
+            variant="outline"
+            className="border-yellow-400 text-yellow-600 hover:bg-yellow-50"
+          >
+            <Crown className="h-4 w-4 mr-2" />
+            Upgrade to Premium
+          </Button>
+        )}
+      </div>
+
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'friend' | 'date')} className="w-full">
+        <TabsList className="grid grid-cols-2 w-full">
+          <TabsTrigger value="date" className="flex items-center space-x-2">
+            <Heart className="h-4 w-4" />
+            <span>Date ({dateLikes.length})</span>
+          </TabsTrigger>
+          <TabsTrigger value="friend" className="flex items-center space-x-2">
+            <Users className="h-4 w-4" />
+            <span>Friend ({friendLikes.length})</span>
+          </TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="date" className="mt-6">
+          {renderLikesGrid(dateLikes)}
+        </TabsContent>
+        
+        <TabsContent value="friend" className="mt-6">
+          {renderLikesGrid(friendLikes)}
+        </TabsContent>
+      </Tabs>
 
       {/* Premium Modal */}
       {showPremiumModal && (

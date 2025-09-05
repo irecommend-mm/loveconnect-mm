@@ -1,10 +1,12 @@
 import React, { useState, useRef } from 'react';
-import { X, Camera, Video, Plus, Trash2 } from 'lucide-react';
+import { X, Camera, Video, Plus, Trash2, UserX } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { useStories } from '@/hooks/useStories';
+import { useAppMode } from '@/hooks/useAppMode';
 import { CreateStoryData } from '@/types/FriendDateTypes';
 
 interface CreateStoryModalProps {
@@ -15,12 +17,14 @@ interface CreateStoryModalProps {
 
 const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }: CreateStoryModalProps) => {
   const { createStory, creating } = useStories();
+  const { currentMode } = useAppMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mediaFiles, setMediaFiles] = useState<File[]>([]);
   const [mediaPreviews, setMediaPreviews] = useState<string[]>([]);
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files || []);
@@ -73,7 +77,9 @@ const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }: CreateStoryModalP
     const storyData: CreateStoryData = {
       title: title.trim(),
       description: description.trim() || undefined,
-      media: mediaFiles
+      media: mediaFiles,
+      isAnonymous,
+      relationshipMode: currentMode
     };
 
     const success = await createStory(storyData);
@@ -92,6 +98,7 @@ const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }: CreateStoryModalP
     setDescription('');
     setMediaFiles([]);
     setMediaPreviews([]);
+    setIsAnonymous(false);
     
     onClose();
   };
@@ -154,6 +161,27 @@ const CreateStoryModal = ({ isOpen, onClose, onStoryCreated }: CreateStoryModalP
             <p className="text-xs text-muted-foreground">
               {description.length}/500 characters
             </p>
+          </div>
+
+          {/* Anonymous Toggle */}
+          <div className="flex items-center justify-between p-4 border border-border rounded-lg">
+            <div className="space-y-1">
+              <div className="flex items-center space-x-2">
+                <UserX className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="anonymous" className="text-sm font-medium">
+                  Post Anonymously
+                </Label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Other users can send you friend requests without seeing your profile
+              </p>
+            </div>
+            <Switch
+              id="anonymous"
+              checked={isAnonymous}
+              onCheckedChange={setIsAnonymous}
+              disabled={creating}
+            />
           </div>
 
           {/* Media Upload */}
