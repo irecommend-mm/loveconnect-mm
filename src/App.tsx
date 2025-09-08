@@ -22,6 +22,9 @@ const App = () => {
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route path="/" element={<Index />} />
+              <Route path="/discover/type" element={<Index />} />
+              <Route path="/discover/intent" element={<Index />} />
+              <Route path="/discover/interest" element={<Index />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </BrowserRouter>

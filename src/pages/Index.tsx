@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { useMatches } from '@/hooks/useMatches';
@@ -15,10 +16,14 @@ import PremiumFeatures from '@/components/PremiumFeatures';
 import ProfileModal from '@/components/ProfileModal';
 import NotificationCenter from '@/components/NotificationCenter';
 import VideoCallModal from '@/components/VideoCallModal';
+import DiscoverByTypePage from '@/components/DiscoverByTypePage';
+import DiscoverByIntentPage from '@/components/DiscoverByIntentPage';
+import DiscoverByInterestPage from '@/components/DiscoverByInterestPage';
 import { User as UserType } from '@/types/User';
 import { LocationData } from '@/types/FriendDateTypes';
 
 const Index = () => {
+  const routerLocation = useLocation();
   const { user, loading: authLoading } = useAuth();
   const { currentMode, switchMode } = useAppMode();
   const { hasProfile, loading: profileLoading, currentUserProfile, checkUserProfile } = useUserProfile(user);
@@ -97,6 +102,48 @@ const Index = () => {
     city: (location as any).city || 'Unknown',
     country: (location as any).country || 'Unknown',
   } : undefined;
+
+  // Convert LocationData to expected format for discovery pages
+  const convertLocationForGrid = (location: LocationData | null) => {
+    if (!location) return null;
+    return {
+      lat: location.latitude,
+      lng: location.longitude
+    };
+  };
+
+  // Check if we're on a discovery page
+  const isDiscoveryPage = routerLocation.pathname.startsWith('/discover/');
+  
+  if (isDiscoveryPage) {
+    const discoveryType = routerLocation.pathname.split('/')[2];
+    
+    switch (discoveryType) {
+      case 'type':
+        return (
+          <DiscoverByTypePage 
+            currentUserId={user.id}
+            userLocation={convertLocationForGrid(mappedLocation || null)}
+          />
+        );
+      case 'intent':
+        return (
+          <DiscoverByIntentPage 
+            currentUserId={user.id}
+            userLocation={convertLocationForGrid(mappedLocation || null)}
+          />
+        );
+      case 'interest':
+        return (
+          <DiscoverByInterestPage 
+            currentUserId={user.id}
+            userLocation={convertLocationForGrid(mappedLocation || null)}
+          />
+        );
+      default:
+        break;
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

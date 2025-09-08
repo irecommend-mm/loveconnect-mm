@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import EnhancedSwipeStack from './EnhancedSwipeStack';
-import DiscoveryGrid from './DiscoveryGrid';
+import OrganizedDiscoveryGrid from './OrganizedDiscoveryGrid';
 import WhoLikesYouPage from './WhoLikesYouPage';
 import WhoVisitedYouPage from './WhoVisitedYouPage';
 import MatchesList from './MatchesList';
@@ -93,10 +93,7 @@ const MainContent = ({
         {/* Browse Tab - Discovery Grid */}
         {activeTab === 'browse' && (
           <div className="px-2 sm:px-4 relative">
-            <DiscoveryGrid 
-              currentUserId={user.id} 
-              userLocation={convertLocationForGrid(location)}
-            />
+            <OrganizedDiscoveryGrid />
           </div>
         )}
         
