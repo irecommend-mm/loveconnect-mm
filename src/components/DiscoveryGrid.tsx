@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X, RotateCcw } from 'lucide-react';
+import { Shield, Star, MapPin, Clock, Users, Heart, Coffee, UserCheck, Navigation, X, RotateCcw, Camera, Plane, Dog, Brain, Laptop, Music, Mountain, Palette, Dumbbell, UtensilsCrossed } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { User as UserType } from '../types/User';
 import ModernProfileModal from './ModernProfileModal';
@@ -14,7 +14,7 @@ interface DiscoveryGridProps {
   userLocation?: {lat: number, lng: number} | null;
 }
 
-type CategoryType = 'verified' | 'popular' | 'nearby' | 'recent' | 'online' | 'serious' | 'casual' | 'friends' | 'unsure';
+type CategoryType = 'verified' | 'popular' | 'nearby' | 'recent' | 'online' | 'serious' | 'casual' | 'friends' | 'unsure' | 'cafe_lover' | 'traveller' | 'animal_lover' | 'mindfulness' | 'digital_nomad' | 'nightlife' | 'adventure' | 'creative' | 'fitness' | 'foodie';
 
 interface FilterPreferences {
   ageRange: [number, number];
@@ -56,6 +56,19 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
     { id: 'casual' as CategoryType, label: 'Casual', icon: Coffee, color: 'bg-orange-500' },
     { id: 'friends' as CategoryType, label: 'Friends', icon: Users, color: 'bg-indigo-500' },
     { id: 'unsure' as CategoryType, label: 'Unsure', icon: Users, color: 'bg-gray-500' },
+  ];
+
+  const interestCategories = [
+    { id: 'cafe_lover' as CategoryType, label: 'Cafe Lover', icon: Coffee, color: 'bg-amber-600', interests: ['Coffee', 'Food', 'Restaurants'] },
+    { id: 'traveller' as CategoryType, label: 'Traveller', icon: Plane, color: 'bg-sky-500', interests: ['Travel'] },
+    { id: 'animal_lover' as CategoryType, label: 'Animal Lover', icon: Dog, color: 'bg-green-600', interests: ['Conservation', 'Nature', 'Environment'] },
+    { id: 'mindfulness' as CategoryType, label: 'Mindfulness', icon: Brain, color: 'bg-purple-500', interests: ['Meditation', 'Yoga', 'Wellness', 'Mindfulness'] },
+    { id: 'digital_nomad' as CategoryType, label: 'Digital Nomad', icon: Laptop, color: 'bg-blue-600', interests: ['Technology', 'Programming', 'Coding', 'AI', 'Startups', 'Entrepreneurship'] },
+    { id: 'nightlife' as CategoryType, label: 'Nightlife', icon: Music, color: 'bg-pink-600', interests: ['Dancing', 'Concerts', 'Music'] },
+    { id: 'adventure' as CategoryType, label: 'Adventure', icon: Mountain, color: 'bg-teal-600', interests: ['Hiking', 'Rock Climbing', 'Camping', 'Skiing', 'Diving'] },
+    { id: 'creative' as CategoryType, label: 'Creative', icon: Palette, color: 'bg-rose-500', interests: ['Art', 'Design', 'Photography', 'Writing', 'Painting', 'Music'] },
+    { id: 'fitness' as CategoryType, label: 'Fitness', icon: Dumbbell, color: 'bg-red-600', interests: ['Fitness', 'Sports', 'Soccer', 'Tennis', 'Swimming', 'Yoga'] },
+    { id: 'foodie' as CategoryType, label: 'Foodie', icon: UtensilsCrossed, color: 'bg-orange-600', interests: ['Cooking', 'Food', 'Wine', 'Restaurants'] },
   ];
 
   useEffect(() => {
@@ -229,6 +242,15 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
               userInterests.includes(interest)
             );
             if (!hasMatchingInterest) return null;
+          }
+
+          // Apply interest category filter
+          const currentInterestCategory = interestCategories.find(cat => cat.id === category);
+          if (currentInterestCategory) {
+            const hasMatchingCategoryInterest = currentInterestCategory.interests.some(interest => 
+              userInterests.includes(interest)
+            );
+            if (!hasMatchingCategoryInterest) return null;
           }
 
           // Apply distance filter
@@ -581,12 +603,41 @@ const DiscoveryGrid = ({ currentUserId, userLocation }: DiscoveryGridProps) => {
         </div>
       </div>
 
+      {/* Interest Categories - Mobile Optimized */}
+      <div>
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 px-2">Discover by Interest Group</h2>
+        <div className="flex overflow-x-auto pb-2 -mx-2 px-2 sm:grid sm:grid-cols-5 gap-2">
+          {interestCategories.map((category) => {
+            const Icon = category.icon;
+            return (
+              <Button
+                key={category.id}
+                onClick={() => {
+                  setSelectedCategory(category.id);
+                  loadUsersForCategory(category.id, appliedFilters);
+                }}
+                variant={selectedCategory === category.id ? "default" : "outline"}
+                className={`flex-shrink-0 h-auto p-3 sm:p-4 flex flex-col items-center space-y-1 sm:space-y-2 text-xs sm:text-sm ${
+                  selectedCategory === category.id
+                    ? `${category.color} text-white hover:opacity-90`
+                    : 'hover:bg-gray-50'
+                }`}
+              >
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                <span className="font-medium leading-tight text-center whitespace-nowrap">{category.label}</span>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Users Grid - Mobile Optimized */}
       <div>
         <div className="flex items-center justify-between mb-3 px-2">
           <h3 className="text-lg sm:text-xl font-semibold text-gray-900">
             {categories.find(c => c.id === selectedCategory)?.label || 
-             relationshipCategories.find(c => c.id === selectedCategory)?.label}
+             relationshipCategories.find(c => c.id === selectedCategory)?.label ||
+             interestCategories.find(c => c.id === selectedCategory)?.label}
             {selectedCategory === 'nearby' && !userLocation && (
               <span className="text-sm text-gray-500 ml-2">(Enable location for distance)</span>
             )}
