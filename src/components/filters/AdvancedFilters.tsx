@@ -125,7 +125,7 @@ export const AdvancedFilters = ({ isOpen, onClose, onApply, currentFilters }: Ad
                 <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Any</SelectItem>
+                <SelectItem value="any">Any</SelectItem>
                 <SelectItem value="serious">Serious Relationship</SelectItem>
                 <SelectItem value="casual">Casual Dating</SelectItem>
                 <SelectItem value="friends">Friends</SelectItem>
